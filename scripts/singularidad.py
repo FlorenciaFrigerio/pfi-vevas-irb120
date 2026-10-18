@@ -164,8 +164,13 @@ if __name__ == "__main__":
     print(f"   sigma_min = {s_min:.3e}")
     print(f"   vector    = {u}")
     print(f"   lineal    = {u[:3]}   angular = {u[3:]}")
-    print("   La componente dominante es angular: la muneca pierde una")
-    print("   rotacion, no una traslacion.\n")
+    nl, na = np.linalg.norm(u[:3]), np.linalg.norm(u[3:])
+    print(f"   norma lineal  = {nl:.4f}   norma angular = {na:.4f}")
+    print("   ADVERTENCIA DE UNIDADES: comparar estas dos normas mezcla")
+    print("   m/s con rad/s. Para compararlas haria falta declarar una")
+    print("   longitud caracteristica. Lo que SI es incondicional es que")
+    print("   el rango cae de 6 a 5: se pierde UNA direccion del twist")
+    print("   combinado, no una velocidad puramente angular.\n")
 
     # --- 1b. Que direcciones SOBREVIVEN (contra el error "no se mueve")
     Uc, Sc = direcciones_conservadas(q_sing)
@@ -178,6 +183,24 @@ if __name__ == "__main__":
         print(f"   base {i+1}: sigma = {Sc[i]:>8.4f}   dominante: {tipo:<10}"
               f" |v| = {np.linalg.norm(v):.3f}  |w| = {np.linalg.norm(w):.3f}")
     print()
+
+    # --- 1c. Que devuelve lstsq en la singularidad exacta
+    J_s = jacobiano(q_sing)
+    xd_inc = np.r_[np.zeros(3), u[3:] / np.linalg.norm(u[3:])]
+    qd_inc = velocidad_requerida(q_sing, xd_inc)
+    res_inc = np.linalg.norm(J_s @ qd_inc - xd_inc)
+    qd_com = np.array([1., 0., 0., 0., 0., 0.])
+    res_com = np.linalg.norm(J_s @ qd_com - J_s @ qd_com)
+    print("1c. Residuo de la pseudoinversa, que hay que declarar")
+    print(f"   tarea INCOMPATIBLE: ||J qd - xd|| = {res_inc:.6f}")
+    print(f"   tarea COMPATIBLE  : ||J qd - xd|| = {res_com:.3e}")
+    print("   lstsq NO resuelve la tarea incompatible: devuelve el mejor")
+    print("   ajuste por minimos cuadrados. Una velocidad finita en la")
+    print("   singularidad puede significar que se abandono parte de la")
+    print("   tarea, y ese residuo es la parte abandonada.")
+    print("   Corolario: desde HOME el robot SI puede moverse en tareas")
+    print("   compatibles con la imagen de J; solo las incompatibles")
+    print("   quedan fuera de alcance instantaneo.\n")
 
     # --- 2. Barrido: velocidad articular exigida
     xd = np.zeros(6)
@@ -200,7 +223,15 @@ if __name__ == "__main__":
     # --- 3. Torque
     taus = torque_muneca(q_base, xd, q5_vals)
     m_t, _ = ley_de_escalado(q5_vals, taus)
-    print("3. Torque inercial de muneca exigido\n")
+    print("3. Torque inercial de muneca  [EXPERIMENTO ADICIONAL]\n")
+    print("   ALCANCE DECLARADO. La guia especifica de Semana 10 pide el")
+    print("   modelo 1R sobre la trayectoria LSPB, no esta divergencia.")
+    print("   Esto se conserva como experimento aparte, y su derivada es")
+    print("   una PARCIAL respecto de q5 sobre una familia de posturas,")
+    print("   no la derivada total qdd = J^-1 (xdd - Jdot qd) de una")
+    print("   trayectoria fisica. Las inercias de rotor son supuestas.")
+    print("   Muestra una tendencia de escalado bajo esas hipotesis; no")
+    print("   es el torque del IRB 120 ni una ley general demostrada.\n")
     print(f"   {'q5 [rad]':>10}  {'|tau|max [N.m]':>16}")
     for q5, t in zip(q5_vals, taus):
         print(f"   {q5:>10.0e}  {t:>16.3e}")

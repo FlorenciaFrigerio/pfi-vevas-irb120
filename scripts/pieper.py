@@ -32,7 +32,7 @@ def _R03(q1, q2, q3):
     return T[:3, :3]
 
 
-def pieper(T_d, tol=1e-9):
+def pieper(T_d, tol=1e-9, tol_s5=1e-12):
     """Devuelve la lista de ramas q (hasta 8) que alcanzan la pose T_d."""
     pw = wrist_center(T_d)
     xw, yw, zw = pw
@@ -63,7 +63,13 @@ def pieper(T_d, tol=1e-9):
             R36 = _R03(q1, q2, q3).T @ T_d[:3, :3]
             c5 = np.clip(R36[2, 2], -1.0, 1.0)
 
-            if abs(abs(c5) - 1.0) < tol:          # SINGULARIDAD q5 = 0
+            # s5 se mide directamente de la matriz, no via arccos(c5).
+            # arccos pierde precision cerca de |c5| = 1: su derivada
+            # diverge ahi, y una tolerancia sobre c5 declara singular una
+            # banda de |q5| < 4.5e-5 rad que en realidad es regular.
+            s5_abs = np.hypot(R36[0, 2], R36[1, 2])
+
+            if s5_abs < tol_s5:                   # SINGULARIDAD q5 = 0
                 q5 = 0.0 if c5 > 0 else np.pi
                 q4 = 0.0
                 q6 = np.arctan2(R36[1, 0], R36[0, 0]) * (1 if c5 > 0 else -1)
@@ -71,7 +77,7 @@ def pieper(T_d, tol=1e-9):
                 continue
 
             for signo_muneca in (+1, -1):
-                q5 = signo_muneca * np.arccos(c5)
+                q5 = signo_muneca * np.arctan2(s5_abs, c5)
                 s5 = np.sin(q5)
                 q4 = np.arctan2(-R36[1, 2]/s5, -R36[0, 2]/s5)
                 q6 = np.arctan2(-R36[2, 1]/s5,  R36[2, 0]/s5)
@@ -80,8 +86,58 @@ def pieper(T_d, tol=1e-9):
     return soluciones
 
 
-def dentro_de_limites(q):
-    return bool(np.all(q >= JOINT_LIMITS[:, 0]) and np.all(q <= JOINT_LIMITS[:, 1]))
+TOL_LIMITE = 1e-9          # rad: ruido de redondeo, no holgura mecanica
+
+
+def dentro_de_limites(q, tol=TOL_LIMITE):
+    """
+    Respeta los limites del fabricante admitiendo ruido de redondeo.
+
+    Por que la tolerancia
+
+        Una solucion que deberia caer EXACTAMENTE sobre el tope sale de
+        atan2 unas unidades de precision por fuera. Sin tolerancia se
+        descarta una configuracion fisicamente valida. Con 1e-9 rad
+        (5.7e-8 grados) se admite el redondeo y se sigue rechazando
+        cualquier violacion mecanica real, que es de otro orden.
+    """
+    return bool(np.all(q >= JOINT_LIMITS[:, 0] - tol)
+                and np.all(q <= JOINT_LIMITS[:, 1] + tol))
+
+
+def recortar_a_limites(q, tol=TOL_LIMITE):
+    """Lleva a la frontera un exceso que solo es redondeo. No corrige violaciones reales."""
+    if not dentro_de_limites(q, tol):
+        return q
+    return np.clip(q, JOINT_LIMITS[:, 0], JOINT_LIMITS[:, 1])
+
+
+def representantes_admisibles(q):
+    """
+    Todas las vueltas q_i + 2*pi*n que caen dentro de los limites.
+
+    J6 admite +-400 grados, pero atan2 devuelve siempre el
+    representante principal en (-pi, pi]. Sin expandir las vueltas, el
+    selector puede planificar un giro completo innecesario para una
+    pose que el robot YA esta alcanzando.
+    """
+    import itertools
+    opciones = []
+    for i in range(6):
+        vals = []
+        n = 0
+        while True:
+            crecio = False
+            for cand in ({q[i] + 2*np.pi*n, q[i] - 2*np.pi*n} if n else {q[i]}):
+                if JOINT_LIMITS[i, 0] - TOL_LIMITE <= cand <= JOINT_LIMITS[i, 1] + TOL_LIMITE:
+                    vals.append(cand); crecio = True
+            if n and not crecio:
+                break
+            n += 1
+            if n > 4:
+                break
+        opciones.append(vals if vals else [q[i]])
+    return [np.array(c) for c in itertools.product(*opciones)]
 
 
 def etiquetar(q):
@@ -95,7 +151,11 @@ def etiquetar(q):
     hombro: si el brazo apunta hacia el objetivo o lo alcanza girando la
           base media vuelta.
     """
-    codo = "arriba" if q[2] >= 0 else "abajo"
+    # El codo NO se lee del signo de q3. La geometria del proyecto usa
+    # el eslabon equivalente, cuyo angulo es gamma = q3 + psi; la rama
+    # cambia con el signo de sin(gamma), no al cruzar q3 = 0. Con psi =
+    # 1.343 rad, usar q3 etiquetaba igual a ramas opuestas.
+    codo = "arriba" if np.sin(q[2] + psi) >= 0 else "abajo"
     muneca = "no invertida" if q[4] >= 0 else "invertida"
 
     # El hombro no se lee de q2: se compara q1 contra el acimut real del
@@ -137,10 +197,16 @@ def filtrar(soluciones, T_d, tol_pose=1e-6):
             continue
         if not dentro_de_limites(q):
             fuera = [f"J{i+1}" for i in range(6)
-                     if not (JOINT_LIMITS[i, 0] <= q[i] <= JOINT_LIMITS[i, 1])]
+                     if not (JOINT_LIMITS[i, 0] - TOL_LIMITE <= q[i]
+                             <= JOINT_LIMITS[i, 1] + TOL_LIMITE)]
             rechazadas.append((q, "fuera de limites: " + ", ".join(fuera)))
             continue
-        admisibles.append(q)
+        # Se acepta: se recorta el exceso de redondeo y se vuelve a
+        # verificar FK, para no introducir error por el recorte.
+        qc = recortar_a_limites(q)
+        if max(error_pose(qc, T_d)) > tol_pose:
+            qc = q
+        admisibles.append(qc)
     return admisibles, rechazadas
 
 
@@ -160,6 +226,15 @@ def elegir(admisibles, q_actual, pesos=None):
     consecutivos de una trayectoria, que en el robot real se traducen en
     movimientos bruscos e impredecibles.
     """
+    # Antes de minimizar se expanden las vueltas equivalentes que caen
+    # dentro de los limites (J6 admite +-400 grados, pero atan2 devuelve
+    # siempre el representante principal). Sin esto el selector puede
+    # planificar un giro completo para una pose ya alcanzada.
+    expandidas = []
+    for q in admisibles:
+        expandidas.extend(representantes_admisibles(q))
+    admisibles = expandidas if expandidas else admisibles
+
     if not admisibles:
         return None, None
     if pesos is None:

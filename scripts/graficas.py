@@ -258,3 +258,58 @@ if __name__ == "__main__":
     for f in (f1, f2, f3, f4):
         print(f"   {f}")
     print()
+
+
+def torque_1r(t, res, tc, T, archivo="fig_torque_1r.pdf"):
+    """
+    Modelo reducido 1R: trayectoria y torque, alineados en el tiempo.
+
+    Tres paneles con el mismo eje de tiempo, porque la rubrica exige
+    "relacionar el comportamiento con la trayectoria" y "graficas
+    alineadas consistentes". Leidos de arriba abajo se ve de un vistazo
+    que el pico de torque NO cae donde la aceleracion es maxima.
+    """
+    fig, axs = plt.subplots(3, 1, figsize=(7.0, 6.2), sharex=True,
+                            gridspec_kw={"height_ratios": [1.0, 1.0, 1.4]})
+
+    axs[0].plot(t, res["q"], color=C[0], lw=2.0)
+    axs[0].set_ylabel(r"$q$  [rad]")
+
+    axs[1].plot(t, res["qdd"], color=C[2], lw=2.0)
+    axs[1].axhline(0, color=TINTA_2, lw=0.8)
+    axs[1].set_ylabel(r"$\ddot{q}$  [rad/s$^2$]")
+
+    tau, ine, gra = res["tau"], res["tau_inercial"], res["tau_gravedad"]
+    axs[2].plot(t, tau, color=C[3], lw=2.4, label=r"total  $\tau$")
+    axs[2].plot(t, gra, color=C[1], lw=1.6, ls="--",
+                label=r"gravedad  $mg\ell_c\sin q$")
+    axs[2].plot(t, ine, color=C[0], lw=1.6, ls=":",
+                label=r"inercial  $J\ddot{q}$")
+    axs[2].axhline(0, color=TINTA_2, lw=0.8)
+
+    k = int(np.argmax(np.abs(tau)))
+    axs[2].plot(t[k], tau[k], "o", color=C[3], ms=7, mec="white", mew=1.5,
+                zorder=5)
+    axs[2].annotate(f"pico {tau[k]:.2f} N·m en $t$ = {t[k]:.2f} s",
+                    xy=(t[k], tau[k]), xytext=(-18, -30),
+                    textcoords="offset points", fontsize=8, color=TINTA_2,
+                    arrowprops=dict(arrowstyle="->", color=TINTA_2, lw=0.8))
+    axs[2].set_ylabel(r"$\tau$  [N$\cdot$m]")
+    axs[2].set_xlabel("$t$  [s]")
+    axs[2].legend(frameon=False, fontsize=8, ncol=3,
+                  loc="lower center", bbox_to_anchor=(0.5, 1.0))
+
+    for ax in axs:
+        _fases(ax, tc, T)
+        _limpiar(ax)
+
+    cr = np.abs(res["qdd"]) < 1e-9
+    nota = (f"Durante el crucero $\\ddot{{q}} = 0$ y aun asi "
+            f"$|\\tau|$ llega a {np.abs(tau[cr]).max():.2f} N·m: "
+            f"velocidad constante no implica torque nulo.") if cr.any() else ""
+    fig.text(0.5, -0.015, nota, ha="center", fontsize=7.5,
+             color=TINTA_2, style="italic")
+    fig.tight_layout()
+    fig.savefig(archivo, bbox_inches="tight")
+    plt.close(fig)
+    return archivo
