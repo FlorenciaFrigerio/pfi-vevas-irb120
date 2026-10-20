@@ -212,9 +212,9 @@ implementa la rama degenerada explícitamente.
 
 ## Guía de estudio del Hito 2
 
-Para preparar la defensa del Hito 2, consulta la [guía navegable de los 15 scripts](docs/hito2/guia_codigo/README.md). Incluye fragmentos de código y explicaciones por bloques, relaciones entre cinemática, trayectoria, ROS 2, visualización y validación, además de preguntas para practicar la defensa.
+Para preparar la defensa del Hito 2, consulta la [guía navegable de los 15 scripts](docs/hito2/guia/README.md). Incluye fragmentos de código y explicaciones por bloques, relaciones entre cinemática, trayectoria, ROS 2, visualización y validación, además de preguntas para practicar la defensa.
 
-Empieza por la [secuencia completa del proyecto](docs/hito2/guia_codigo/00_secuencia_completa.md) para entender cómo se conectan las piezas.
+Empieza por la [secuencia completa del proyecto](docs/hito2/guia/00_secuencia_completa.md) para entender cómo se conectan las piezas.
 
 ---
 
