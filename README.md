@@ -10,6 +10,11 @@ Robótica IMT-342 · Gestión II-2026
 
 ---
 
+## Web interactiva del brazo ABB
+
+La carpeta [web/](web/) contiene el explorador técnico del **ABB IRB 120**:
+modelo 3D, selección de conjuntos, vista de articulaciones y celda de trabajo.
+
 ## Resultado
 
 | Métrica | Valor | Umbral del hito |
