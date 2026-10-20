@@ -1,0 +1,15 @@
+
+   LSPB sincronizado   T = 1.3000 s
+
+  J1  h = +0.800 rad   tc = 0.5000 s   V = 1.0000 rad/s   trapezoidal
+  J2  h = -0.500 rad   tc = 0.2347 s   V = 0.4693 rad/s   trapezoidal
+  J3  h = +0.600 rad   tc = 0.2228 s   V = 0.5570 rad/s   trapezoidal
+  J4  h = +0.300 rad   tc = 0.0821 s   V = 0.2463 rad/s   trapezoidal
+  J5  h = +0.900 rad   tc = 0.3000 s   V = 0.9000 rad/s   trapezoidal
+  J6  h = -0.400 rad   tc = 0.0821 s   V = 0.3284 rad/s   trapezoidal
+
+  salto maximo en q    6.500e-05 rad
+  salto maximo en qd   2.600e-04 rad/s
+  extremos con qd = 0  True
+  q(0) y q(T) exactos  True / True
+

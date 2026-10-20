@@ -1,0 +1,27 @@
+
+   Jacobiano: analitico vs diferencias finitas
+
+  discrepancia maxima  3.249e-08
+  RESULTADO: OK
+
+   Validacion manual: primera columna en q = 0
+
+  calculada por codigo  [-0.     0.374  0.     0.     0.     1.   ]
+  calculada a mano      [0.    0.374 0.    0.    0.    1.   ]
+  discrepancia          2.082e-18
+
+   Contraste con el 2R planar analitico  det = a1 a2 sin(q2)
+
+  q2 = 1.5708   det codigo = +1.000000   det formula = +1.000000   rango = 2
+  q2 = 0.7854   det codigo = +0.707107   det formula = +0.707107   rango = 2
+  q2 = 0.0000   det codigo = +0.000000   det formula = +0.000000   rango = 1
+
+   Singularidad de muneca (q5 -> 0)
+
+  q5 =  0.500   rango 6   det -1.515e-02   sigma_min 1.235e-01   w 1.515e-02
+  q5 =  0.200   rango 6   det -6.280e-03   sigma_min 5.397e-02   w 6.280e-03
+  q5 =  0.050   rango 6   det -1.580e-03   sigma_min 1.340e-02   w 1.580e-03
+  q5 =  0.010   rango 6   det -3.161e-04   sigma_min 2.672e-03   w 3.161e-04
+  q5 =  0.001   rango 6   det -3.161e-05   sigma_min 2.670e-04   w 3.161e-05
+  q5 =  0.000   rango 5   det -1.862e-18   sigma_min 1.952e-17   w 2.311e-18
+

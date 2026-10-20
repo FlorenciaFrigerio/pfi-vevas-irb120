@@ -1,0 +1,491 @@
+%% =====================================================================
+%%  Hito 2 - IMT-342 Robotica - Grupo VEVAS
+%%  Universidad Catolica Boliviana "San Pablo", Sede Tarija
+%%  Depto. de Ciencias de la Tecnologia e Innovacion
+%%  Carrera de Ingenieria Mecatronica
+%%
+%%  Version COMPACTA. El detalle extenso (derivaciones completas,
+%%  tablas de barrido, casos borde) vive en docs/hito2/anexo_tecnico.md
+%%  del repositorio.
+%%
+%%  Overleaf: New Project -> Upload Project -> pdfLaTeX -> compilar 2 veces.
+%% =====================================================================
+
+\documentclass[conference]{IEEEtran}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish, es-noshorthands]{babel}
+\usepackage{amsmath, amssymb, bm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{cite}
+\usepackage{url}
+
+\graphicspath{{img/}}
+
+\begin{document}
+
+\title{Integración de modelos cinemáticos, diferenciales y dinámicos
+       para manipuladores: validación sobre el ABB IRB~120}
+
+\author{
+    \IEEEauthorblockN{Susann A. Baldiviezo Castellanos}
+    \IEEEauthorblockA{\textit{Ing.\ Mecatrónica} \\
+    \textit{Depto.\ de Ciencias de la Tecnología e Innovación} \\
+    Universidad Católica Boliviana ``San Pablo''\\
+    susann.baldiviezo@ucb.edu.bo}
+    \and
+    \IEEEauthorblockN{Alejandro J. Bejarano Romero}
+    \IEEEauthorblockA{\textit{Ing.\ Mecatrónica} \\
+    \textit{Depto.\ de Ciencias de la Tecnología e Innovación} \\
+    Universidad Católica Boliviana ``San Pablo''\\
+    alejandro.bejarano@ucb.edu.bo}
+    \and
+    \IEEEauthorblockN{Florencia Frigerio Arízaga}
+    \IEEEauthorblockA{\textit{Ing.\ Mecatrónica} \\
+    \textit{Depto.\ de Ciencias de la Tecnología e Innovación} \\
+    Universidad Católica Boliviana ``San Pablo''\\
+    florencia.frigerio@ucb.edu.bo}
+    \and
+    \IEEEauthorblockN{Benjamín Soruco Guzmán}
+    \IEEEauthorblockA{\textit{Ing.\ Mecatrónica} \\
+    \textit{Depto.\ de Ciencias de la Tecnología e Innovación} \\
+    Universidad Católica Boliviana ``San Pablo''\\
+    benjamin.soruco@ucb.edu.bo}
+}
+
+\maketitle
+
+\renewcommand{\thefootnote}{}
+\footnotetext{Hito 2 del Proyecto Final Integrador, IMT-342 Robótica,
+M.Sc.\ Ing.\ Bernardo Quiroga Turdera. Tarija, octubre de 2026.
+Derivaciones completas, tablas extendidas y casos borde en el anexo
+técnico del repositorio \cite{b7}.}
+\renewcommand{\thefootnote}{\arabic{footnote}}
+
+\begin{abstract}
+This work implements and validates a complete robotic pipeline on the
+ABB~IRB~120, running from a desired Cartesian pose to the torque
+demanded from the actuator. Inverse kinematics is solved analytically
+by Pieper's decoupling, enumerating the eight branches of the spherical
+wrist and preserving quadrants with \texttt{atan2}; every candidate is
+verified against forward kinematics, giving a maximum position error of
+$4.88\times10^{-16}$~m over 2000 random poses with no failures.
+Extracting wrist angles as $\pm\operatorname{atan2}(s_5,c_5)$ instead of
+through $\arccos$ removes a spurious singular band of
+$|q_5|<4.5\times10^{-5}$~rad, and a $10^{-9}$~rad rounding tolerance on
+joint limits takes a targeted test of 1800 poses on the limits from 193
+rejections of valid configurations to zero. The geometric Jacobian is
+cross-validated against a hand derivation to $2.08\times10^{-18}$. An
+independent experiment approaching the wrist singularity shows rank
+dropping from 6 to 5, a numerically fitted velocity amplification of
+exponent $-1.000$ for the requested task direction, and a least-squares
+residual of $0.442$ left unserved by an incompatible task. The reduced
+1R dynamic model evaluated on the LSPB trajectory agrees with the
+reference analytical result to within rounding ($4.4298$ against
+$4.429$~N$\cdot$m).
+\end{abstract}
+
+\begin{IEEEkeywords}
+Inverse kinematics, Pieper's method, geometric Jacobian, LSPB,
+kinematic singularities, manipulator dynamics.
+\end{IEEEkeywords}
+
+\vspace{0.5em}
+\noindent\textbf{\textit{Resumen}}---Se implementa y valida un pipeline
+robótico completo sobre el ABB~IRB~120, desde una pose cartesiana
+deseada hasta la demanda de torque del actuador. La cinemática inversa
+se resuelve analíticamente por el desacoplamiento de Pieper, con error
+de posición máximo de $4{,}88\times10^{-16}$~m sobre 2000 poses y
+ninguna falla. Tres correcciones de robustez ---extracción de muñeca
+por $\operatorname{atan2}$, tolerancia de redondeo en los topes y
+expansión de vueltas articulares--- resuelven fallos que los ensayos
+aleatorios no detectaron. El Jacobiano se valida contra una derivación
+manual con discrepancia de $2{,}08\times10^{-18}$, y el experimento de
+singularidad documenta la caída de rango, la amplificación de velocidad
+y el residuo que una tarea incompatible deja sin cumplir. El modelo
+reducido 1R sobre la trayectoria LSPB concuerda con la referencia
+analítica dentro del redondeo.
+
+\vspace{0.4em}
+\noindent\textbf{\textit{Palabras clave}}---Cinemática inversa, método
+de Pieper, Jacobiano geométrico, LSPB, singularidades, dinámica de
+manipuladores.
+
+% =====================================================================
+\section{Introducción}
+
+Un manipulador no se comanda indicándole un punto del espacio, sino
+moviendo sus motores. Entre ambas cosas media una cadena de
+traducciones: qué ángulos articulares producen una pose dada, cómo
+recorrerlos en el tiempo sin sacudidas, y qué esfuerzo exige ese
+recorrido a cada actuador. Este trabajo construye y valida esa cadena
+sobre el ABB~IRB~120, un brazo de seis grados de libertad con muñeca
+esférica y alcance de 580~mm \cite{b5}.
+
+Los modelos empleados son clásicos \cite{b1,b2}. La contribución está
+en encadenarlos ---la salida de cada etapa alimenta a la siguiente---,
+en fijar un criterio numérico de aceptación para cada una, y en
+declarar explícitamente qué no prueban esas validaciones. Un resultado
+que no puede verificarse no es un resultado.
+
+Un hallazgo transversal organiza la Sección~\ref{sec:result}: tres
+fallos de robustez sobrevivieron a 2000 ensayos aleatorios y solo
+aparecieron bajo pruebas \emph{dirigidas} a fronteras y singularidades.
+
+% =====================================================================
+\section{Metodología}
+
+\subsection{Cinemática inversa analítica}
+
+El IRB~120 cumple la condición de Pieper \cite{b3}: sus tres últimos
+ejes se cortan en un punto, de modo que el problema inverso se desacopla
+en dos subproblemas de tres incógnitas. El centro de muñeca
+\begin{equation}
+    \bm{p}_W = \bm{p}_d - d_6\,\bm{z}_6
+    \label{eq:pw}
+\end{equation}
+no depende de $q_4,q_5,q_6$, así que $(q_1,q_2,q_3)$ se resuelven solo
+con \eqref{eq:pw} y la muñeca se extrae después de
+${}^{3}R_6 = ({}^{0}R_3)^{T}R_d$.
+
+El brazo se reduce a un mecanismo planar de dos barras agrupando $a_3$ y
+$d_4$, que no son colineales, en un eslabón equivalente:
+\begin{equation}
+\begin{split}
+    k    &= \sqrt{a_3^2+d_4^2} = 0.3100~\text{m},\\
+    \psi &= \operatorname{atan2}(d_4,a_3) = 1.3430~\text{rad}.
+\end{split}
+\label{eq:k}
+\end{equation}
+De ahí el alcance máximo $a_2+k = 0{,}580$~m, coincidente con el dato
+del fabricante: una validación independiente de la geometría.
+
+La enumeración produce ocho ramas, de tres signos binarios (hombro,
+codo, muñeca). Todos los ángulos se recuperan con
+$\operatorname{atan2}$, nunca con $\arctan$, que colapsa cuadrantes
+opuestos y volvería indistinguibles las ramas de hombro.
+
+Los ángulos de muñeca se extraen como
+\begin{equation}
+    q_5 = \pm\operatorname{atan2}(s_5,c_5),
+    \quad s_5=\sqrt{(R^3_6)_{13}^2+(R^3_6)_{23}^2},
+    \label{eq:q5}
+\end{equation}
+y no por $\arccos(c_5)$: la derivada de $\arccos$ diverge en
+$|c_5|=1$, de modo que una tolerancia sobre $c_5$ declara singular una
+banda de $|q_5|<4{,}5\times10^{-5}$~rad que es regular.
+
+Cada candidato se verifica reinyectándolo en la cinemática directa:
+\begin{equation}
+    e_p = \lVert\bm{p}(\bm{q})-\bm{p}_d\rVert_2,\quad
+    e_R = \lVert R^{T}(\bm{q})R_d - I\rVert_F,
+    \label{eq:error}
+\end{equation}
+con umbral $10^{-6}$ en ambos. La forma de $e_R$ no es arbitraria:
+$SO(3)$ no es un espacio vectorial, de modo que la resta de dos
+rotaciones no es una rotación, mientras que $R^{T}R_d$ sí lo es y mide
+cuánto falta para la identidad.
+
+El filtro de límites admite $10^{-9}$~rad de redondeo, recorta ese
+exceso a la frontera y revalida \eqref{eq:error}. Antes de seleccionar
+se expanden los representantes $q_i+2\pi n$ admisibles, porque J6
+acepta $\pm400^\circ$ mientras $\operatorname{atan2}$ devuelve solo el
+principal. La rama se elige por mínimo desplazamiento articular
+ponderado, con pesos decrecientes de la base a la brida: mover la base
+arrastra la inercia de todo el brazo.
+
+\subsection{Trayectoria LSPB}
+
+El perfil tiene tres fases y satisface $\dot q(0)=\dot q(t_f)=0$ por
+construcción. Dado $t_f$ y la aceleración de mezcla, la factibilidad
+exige $|\ddot q_c| \ge 4|q_f-q_i|/t_f^2$, y
+\begin{equation}
+    t_c = \frac{t_f}{2}-\frac12\sqrt{t_f^2-\frac{4(q_f-q_i)}{\ddot q_c}} .
+    \label{eq:tc}
+\end{equation}
+Por debajo de esa aceleración el discriminante se vuelve negativo: el
+perfil no alcanza a cubrir la distancia en el tiempo pedido. Las juntas
+se sincronizan sobre el tiempo de la más lenta.
+
+\subsection{Jacobiano y singularidades}
+
+Para una junta rotacional, la columna $i$ del Jacobiano geométrico es
+\begin{equation}
+    \bm{J}_i = \begin{bmatrix}
+      \bm{z}_{i-1}\times(\bm{p}_e-\bm{p}_{i-1})\\ \bm{z}_{i-1}
+    \end{bmatrix},
+    \label{eq:jac}
+\end{equation}
+donde el producto vectorial es el brazo de palanca de esa junta sobre
+el extremo.
+
+El criterio de singularidad es el \emph{rango}, no el determinante:
+este último solo existe para $J$ cuadrada, hereda la mezcla de unidades
+entre filas lineales y angulares, y además solo indica \emph{que} se
+perdió algo, mientras el rango indica \emph{cuánto}. Como indicadores
+continuos se usan $\sigma_{\min}$ y la manipulabilidad de Yoshikawa
+\cite{b4}. La descomposición $J=U\Sigma V^{T}$ identifica la dirección
+de tarea inalcanzable y las que permanecen.
+
+\subsection{Dinámica reducida}
+
+Se emplea el modelo 1R de la cátedra. De $T=\tfrac12 J\dot q^2$ y
+$V=mg\ell_c(1-\cos q)$, con $q$ desde la vertical inferior,
+Euler--Lagrange da
+\begin{equation}
+    \tau = \underbrace{J\ddot q}_{\text{inercial}}
+         + \underbrace{mg\ell_c\sin q}_{\text{gravitatorio}} .
+    \label{eq:tau}
+\end{equation}
+
+Inyectar $q_2$ del IRB~120 en \eqref{eq:tau} sería un error: en la
+convención D--H, $q_2=0$ sitúa el brazo vertical hacia \emph{arriba},
+de modo que el término gravitatorio resultaría máximo donde debe
+anularse. Midiendo la dirección del eslabón hombro--codo se obtiene
+$\phi=\pi-q_2$, luego $\ddot\phi=-\ddot q_2$, y como
+$\sin(\pi-q_2)=\sin q_2$,
+\begin{equation}
+    \tau(t) = -J\,\ddot q_2(t) + mg\ell_c\sin q_2(t).
+\end{equation}
+
+Los parámetros no se estimaron: ABB no publica masas ni inercias, de
+modo que se usan los valores pedagógicos declarados por la cátedra
+\cite{b6} ($J=0{,}25$~kg$\cdot$m$^2$, $m=1$~kg, $\ell_c=0{,}5$~m). El
+resultado es el torque de un modelo reducido declarado, no una
+identificación del accionamiento real.
+
+% =====================================================================
+\section{Resultados}
+\label{sec:result}
+
+Las cifras provienen de una única ejecución del cuaderno con semilla
+fijada. El registro completo ---salidas literales de cada módulo,
+semillas, entorno y cifras recalculadas--- se versiona en
+\texttt{docs/hito2/resultados/} del repositorio \cite{b7}, generado por
+\texttt{capturar\_resultados.py}. Una captura independiente en otra máquina arroja
+$4{,}98\times10^{-16}$~m: el indicador es el máximo sobre 16\,000
+evaluaciones que valen todas del orden del épsilon de máquina, de modo
+que cuál de ellas resulta mayor depende de la biblioteca de álgebra
+lineal instalada. La diferencia es de último bit, no de modelo, y las
+corridas se declaran por separado en vez de promediarse.
+
+\begin{table}[htbp]
+\caption{Validación del pipeline}
+\label{tab:val}
+\centering
+\footnotesize
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Indicador} & \textbf{Valor} \\
+\midrule
+Ramas por pose, 2000 poses          & $8.00$ \\
+Error de posición máximo $e_p$      & $4.88\times10^{-16}$~m \\
+Error de orientación máximo $e_R$   & $4.55\times10^{-14}$ \\
+Poses sin solución                  & $0$ \\
+Jacobiano, validación manual        & $2.08\times10^{-18}$ \\
+Jacobiano, diferencias finitas      & $3.25\times10^{-8}$ \\
+Alcance $a_2+k$ vs.\ fabricante     & $0.580$ / $0.580$~m \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El error está en el orden del épsilon de máquina porque la solución es
+analítica, no iterativa. Las dos validaciones del Jacobiano difieren en
+seis órdenes: la de diferencias finitas acusa el truncamiento de un
+esquema de primer orden. Dos métodos independientes que coinciden son
+evidencia más fuerte que uno que no falla.
+
+\subsection{Pruebas dirigidas}
+
+La Tabla~\ref{tab:rob} resume el efecto de tres correcciones de
+robustez. Ninguno de los tres fallos fue detectado por los 2000 ensayos
+aleatorios de la Tabla~\ref{tab:val}: una muestra uniforme visita las
+fronteras con probabilidad despreciable.
+
+\begin{table}[htbp]
+\caption{Pruebas dirigidas: efecto de las correcciones}
+\label{tab:rob}
+\centering
+\footnotesize
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Prueba} & \textbf{Antes} & \textbf{Después} \\
+\midrule
+Poses con $q_5\in[10^{-6},3\!\times\!10^{-5}]$ & falla & resuelve \\
+1800 poses sobre los topes, rechazos           & $193$ & $0$ \\
+Giro de J6 ante pose ya alcanzada [rad]        & $6.283$ & $0.000$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Trayectoria}
+
+Sobre el caso de referencia ($q_i=0$, $q_f=2$~rad, $t_f=3$~s,
+$\ddot q_c=1$~rad/s$^2$) resulta $t_c=1{,}0000$~s y crucero
+$1{,}0000$~rad/s, con aceleración mínima factible $0{,}8889$~rad/s$^2$.
+La Fig.~\ref{fig:lspb} muestra los tres perfiles alineados; la
+aceleración es constante a tramos, con discontinuidades de salto en los
+límites de fase inherentes al LSPB.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=0.92\columnwidth]{fig_lspb.pdf}}
+\caption{Perfiles LSPB. Las zonas sombreadas son las mezclas
+parabólicas; se verifica reposo en ambos extremos.}
+\label{fig:lspb}
+\end{figure}
+
+\subsection{Singularidad}
+
+En $q_5=0$ el rango cae de 6 a 5 y $\sigma_{\min}=2{,}83\times10^{-18}$.
+Las cinco direcciones restantes permanecen accesibles, tres con valor
+singular superior a la unidad: el robot no se detiene, pierde un grado
+de libertad instantáneo.
+
+Al aproximarse, la velocidad articular exigida se ajusta a
+$\lVert\dot{\bm q}\rVert \sim q_5^{-1.000}$ sobre seis décadas
+(Fig.~\ref{fig:div}). Es un \emph{ajuste numérico} para la dirección de
+tarea solicitada, no una demostración analítica: la cota correcta es
+\begin{equation}
+    \frac{\lVert\dot{\bm x}\rVert}{\sigma_{\max}}
+    \le \lVert\dot{\bm q}\rVert \le
+    \frac{\lVert\dot{\bm x}\rVert}{\sigma_{\min}},
+    \label{eq:cotas}
+\end{equation}
+de modo que $\sigma_{\min}$ acota por arriba. Como
+$\lVert\dot{\bm q}\rVert^2=\sum_i(\bm u_i^{T}\dot{\bm x})^2/\sigma_i^2$,
+la divergencia depende de la proyección de la tarea sobre el modo que
+pierde capacidad; una tarea compatible permanece acotada.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=0.92\columnwidth]{fig_divergencia.pdf}}
+\caption{Amplificación de la velocidad articular, escala log--log.}
+\label{fig:div}
+\end{figure}
+
+Ante una tarea incompatible, el método de mínimos cuadrados devuelve
+velocidad finita pero con residuo
+$\lVert J\dot{\bm q}-\dot{\bm x}\rVert = 0{,}442$: esa es la parte de la
+tarea abandonada. Ante una compatible el residuo es cero.
+
+La manipulabilidad se anula exactamente en $t=0$ de la trayectoria del
+proyecto. No es ruido: la postura de reposo $\bm q=\bm 0$ incluye
+$q_5=0$, de modo que la configuración de origen del robot \emph{es} la
+singularidad de muñeca.
+
+\subsection{Torque}
+
+\begin{table}[htbp]
+\caption{Modelo 1R en $t=2{,}5$~s frente a la referencia \cite{b6}}
+\label{tab:1r}
+\centering
+\footnotesize
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Magnitud} & \textbf{Referencia} & \textbf{Implementación} \\
+\midrule
+$q$ [rad] / $\ddot q$ [rad/s$^2$] & $1.875$ / $-1$ & $1.8750$ / $-1.0000$ \\
+$\tau_{\text{inercial}}$ [N$\cdot$m] & $-0.250$ & $-0.2500$ \\
+$\tau_{\text{gravedad}}$ [N$\cdot$m] & $4.679$  & $4.6798$ \\
+$\tau_{\text{total}}$ [N$\cdot$m]    & $4.429$  & $4.4298$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El acuerdo es dentro del redondeo: el residuo de $8\times10^{-4}$~N$\cdot$m
+proviene de $\sin(1{,}875)\approx0{,}954$ en el desarrollo publicado, no
+de una discrepancia de modelo.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=0.92\columnwidth]{fig_torque_1r.pdf}}
+\caption{Modelo 1R: posición, aceleración y torque alineados. Durante
+el crucero la aceleración es nula y el torque no.}
+\label{fig:tau}
+\end{figure}
+
+% =====================================================================
+\section{Discusión}
+
+\subsection{Velocidad constante no implica torque nulo}
+
+Entre $t=1{,}002$ y $t=1{,}998$~s la aceleración es exactamente cero,
+de modo que el término inercial de \eqref{eq:tau} se anula; el torque,
+en cambio, recorre $2{,}36$ a $4{,}89$~N$\cdot$m. El término
+gravitatorio no depende de derivada alguna de $q$ sino de la postura.
+El pico, $4{,}89$~N$\cdot$m, ocurre con aceleración nula.
+
+La comparación exige una precaución: en un perfil LSPB la aceleración
+alcanza su magnitud máxima durante un \emph{intervalo}, no en un
+instante, de modo que contrastar índices de $\arg\max$ produce falsos
+negativos. Comparando valores, el resultado depende de la trayectoria:
+en la del proyecto el pico sí cae en aceleración máxima, porque su
+junta 2 tiene perfil triangular y carece de crucero.
+
+\subsection{Singularidad cinemática no es torque alto}
+
+La singularidad es una propiedad de la cinemática diferencial: existe
+aunque el robot no tenga masa. El torque es demanda dinámica. Que sean
+independientes se comprueba en ambos sentidos: el modelo 1R no tiene
+singularidad alguna y exige $4{,}89$~N$\cdot$m, y la singularidad de
+muñeca se alcanza en posturas sin torque gravitatorio notable.
+
+El vínculo, cuando existe, es indirecto: exigir velocidad de tarea con
+componente en la dirección perdida amplifica $\dot{\bm q}$, la
+aceleración hereda esa amplificación, y recién entonces crece el
+término inercial. La distinción importa porque la mitigación difiere
+---replanificar frente a redimensionar.
+
+Que la postura de reposo sea singular no impide moverse bajo control
+cartesiano: las tareas compatibles con la imagen de $J$, de dimensión 5,
+siguen siendo ejecutables. Y el LSPB atraviesa esa configuración sin
+inconveniente porque interpola en el espacio articular y nunca invierte
+$J$.
+
+\subsection{Limitaciones}
+
+La singularidad de hombro se verificó solo por tendencia. En las
+familias singulares exactas el conjunto de soluciones deja de ser
+discreto: en $q_5=0$ se conserva $q_4+q_6$, y con el centro de muñeca
+sobre el eje de la base $q_1$ queda indeterminado; su tratamiento queda
+fuera de este alcance. Las normas parciales del vector singular
+izquierdo (0{,}897 lineal, 0{,}442 angular) no son comparables sin
+declarar una longitud característica, de modo que no se concluye de
+ellas qué clase de movimiento se pierde. Los parámetros dinámicos son
+pedagógicos y el modelo ignora fricción y flexibilidad.
+
+% =====================================================================
+\section{Conclusiones}
+
+Se construyó y validó un pipeline completo desde una pose cartesiana
+hasta la demanda de torque. El punto de mayor contenido ingenieril no
+fue derivar los modelos sino distinguir solución matemática de
+configuración ejecutable: eso exigió extracción numéricamente estable de
+la muñeca, tolerancia de redondeo en los topes y expansión de
+representantes articulares, tres correcciones que los ensayos
+aleatorios no habían detectado.
+
+Las dos conclusiones no triviales son que el torque no sigue al perfil
+de aceleración cuando la gravedad domina, y que singularidad cinemática
+y demanda dinámica son fenómenos independientes. Ambas tienen
+consecuencia directa sobre el dimensionamiento de actuadores y la
+planificación de trayectorias.
+
+\begin{thebibliography}{00}
+\bibitem{b1} B. Siciliano, L. Sciavicco, L. Villani y G. Oriolo,
+\textit{Robotics: Modelling, Planning and Control}. Springer, 2009.
+\bibitem{b2} J. J. Craig, \textit{Introduction to Robotics: Mechanics
+and Control}, 4.ª ed. Pearson, 2018.
+\bibitem{b3} D. L. Pieper, ``The kinematics of manipulators under
+computer control,'' tesis doctoral, Univ.\ de Stanford, 1968.
+\bibitem{b4} T. Yoshikawa, ``Manipulability of robotic mechanisms,''
+\textit{Int.\ J. Robot.\ Res.}, vol.~4, n.º~2, pp.~3--9, 1985.
+\bibitem{b5} ABB Robotics, \textit{Product Specification IRB 120},
+doc.\ 3HAC035960-001, 2023.
+\bibitem{b6} B. Quiroga Turdera, ``Guía oficial y rúbrica: Hito 2,''
+IMT-342, Universidad Católica Boliviana ``San Pablo'', 2026.
+\bibitem{b7} Grupo VEVAS, ``PFI --- ABB IRB 120,'' repositorio, 2026.
+[En línea]. \url{https://github.com/FlorenciaFrigerio/pfi-vevas-irb120}
+\end{thebibliography}
+
+\end{document}

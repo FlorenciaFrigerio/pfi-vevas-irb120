@@ -1,0 +1,117 @@
+{
+  "proyecto": "PFI Hito 2 - ABB IRB 120 - Grupo VEVAS",
+  "fecha_utc": "2026-10-19T23:54:49+00:00",
+  "entorno": {
+    "python": "3.12.3",
+    "numpy": "1.26.4",
+    "plataforma": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39"
+  },
+  "modulos_ejecutados": {
+    "pieper": {
+      "codigo_salida": 0,
+      "lineas": 9
+    },
+    "jacobiano": {
+      "codigo_salida": 0,
+      "lineas": 27
+    },
+    "lspb": {
+      "codigo_salida": 0,
+      "lineas": 15
+    },
+    "singularidad": {
+      "codigo_salida": 0,
+      "lineas": 77
+    },
+    "dinamica_1r": {
+      "codigo_salida": 0,
+      "lineas": 45
+    }
+  },
+  "resultados": {
+    "cobertura_regular": {
+      "semilla": 20261018,
+      "poses": 2000,
+      "ramas_por_pose_media": 8.0,
+      "error_posicion_maximo_m": 4.982493048981751e-16,
+      "error_orientacion_maximo": 1.067272748823192e-13,
+      "poses_sin_solucion": 0
+    },
+    "fronteras_dirigidas": {
+      "semilla": 18026,
+      "poses": 1800,
+      "rechazos": 0,
+      "rechazos_antes_de_la_correccion": 193
+    },
+    "muneca_casi_singular": {
+      "1e-07": {
+        "admisibles": 1,
+        "resuelve": true
+      },
+      "1e-06": {
+        "admisibles": 1,
+        "resuelve": true
+      },
+      "1e-05": {
+        "admisibles": 1,
+        "resuelve": true
+      },
+      "3e-05": {
+        "admisibles": 1,
+        "resuelve": true
+      },
+      "5e-05": {
+        "admisibles": 1,
+        "resuelve": true
+      }
+    },
+    "vueltas_j6": {
+      "q6_actual_rad": 6.0,
+      "q6_elegido_rad": 5.999999999999999,
+      "movimiento_innecesario_rad": 8.881784197001252e-16,
+      "antes_de_la_correccion_rad": 6.283185307179586
+    },
+    "jacobiano": {
+      "validacion_manual_q0": 2.081899558550499e-18,
+      "vs_diferencias_finitas": 3.4199127765810466e-08
+    },
+    "singularidad": {
+      "configuracion": [
+        0.3,
+        0.5,
+        -0.4,
+        0.2,
+        0.0,
+        0.1
+      ],
+      "rango": 5,
+      "sigma_min": 9.778325185781207e-18,
+      "norma_lineal_vector_perdido": 0.8968389987864048,
+      "norma_angular_vector_perdido": 0.4423571071609438,
+      "nota_unidades": "comparar ambas normas mezcla m/s con rad/s; sin una longitud caracteristica no son comparables. El rango SI es invariante.",
+      "valores_singulares_conservados": [
+        1.824421714069983,
+        1.423450776003112,
+        1.1195429699243526,
+        0.34575091651615936,
+        0.10995599940217408
+      ],
+      "residuo_tarea_incompatible": 0.44235710716094395,
+      "residuo_tarea_compatible": 0.0
+    },
+    "lspb_y_dinamica_1r": {
+      "caso": "W10-S01 Tareas 3 y 4D",
+      "tc_s": 1.0,
+      "velocidad_crucero_rad_s": 1.0,
+      "q_2s5_rad": 1.875,
+      "qd_2s5_rad_s": 0.5,
+      "qdd_2s5_rad_s2": -1.0,
+      "tau_inercial_Nm": -0.25,
+      "tau_gravedad_Nm": 4.679790758795549,
+      "tau_total_Nm": 4.429790758795549,
+      "tau_total_referencia_Nm": 4.429,
+      "residuo_Nm": 0.000790758795548463,
+      "nota_residuo": "proviene del redondeo de sin(1.875) ~ 0.954 en el desarrollo publicado, no de discrepancia de modelo"
+    }
+  }
+}

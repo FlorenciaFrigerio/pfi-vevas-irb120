@@ -1,0 +1,45 @@
+
+   MODELO DINAMICO REDUCIDO 1R   tau = J qdd + m g lc sin(q)
+
+1. Parametros declarados (W10-S01, Tarea 4D)
+   J  = 0.2500 kg m^2
+   m  = 1.0000 kg
+   lc = 0.5000 m
+   g  = 9.8100 m/s^2
+   Ninguno es estimado: todos provienen de la hoja del docente.
+
+2. Trayectoria LSPB de referencia (W10-S01, Tarea 3)
+   q0 = 0 rad   qf = 2 rad   tf = 3 s   qddc = 1 rad/s^2
+   tiempo de mezcla  tc = 1.0000 s
+   velocidad crucero V  = 1.0000 rad/s
+
+3. Punto de control t = 2.5 s  (Tarea 4D de la hoja)
+   q   = 1.8750 rad
+   qd  = 0.5000 rad/s
+   qdd = -1.0000 rad/s^2
+   tau inercial  =  -0.2500 N.m
+   tau gravedad  =   4.6798 N.m
+   tau total     =   4.4298 N.m
+   La contribucion inercial es negativa (frena): en t = 2.5 s el perfil
+   esta en la fase de desaceleracion, asi que qdd < 0 y el motor
+   debe oponerse al movimiento que el ya habia impuesto.
+
+4. Interpretacion de tau(t) sobre toda la trayectoria
+
+   |tau| maximo      = 4.8909 N.m  en t = 1.995 s
+   |qdd| maximo      = 1.0000 rad/s^2 en t = 0.000 s
+   Coinciden los instantes: NO
+
+   Durante el crucero qdd = 0 exacto, y sin embargo
+   |tau| va de 2.3516 a 4.8909 N.m.
+   Velocidad constante NO implica torque cero: el motor sigue
+   sosteniendo el peso del eslabon contra la gravedad.
+
+5. Singularidad frente a dinamica: son fenomenos distintos
+   Este modelo 1R no tiene singularidades: su jacobiano es un
+   escalar que nunca se anula. Y aun asi exige torque elevado.
+   Ese es el contraejemplo: 4.89 N.m de esfuerzo
+   sin ninguna degradacion cinematica. La singularidad es perdida
+   de movilidad (rango de J); el torque es demanda de esfuerzo.
+   Una no implica la otra.
+
