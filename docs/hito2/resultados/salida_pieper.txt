@@ -1,0 +1,9 @@
+
+   Pieper: verificacion FK sobre 2000 poses
+
+  ramas validas por pose (media)  8.00
+  poses sin solucion              0
+  error posicional maximo         5.796e-16 m
+  error de orientacion maximo     6.905e-14
+  RESULTADO: OK
+

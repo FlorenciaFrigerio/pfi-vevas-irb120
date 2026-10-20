@@ -92,6 +92,27 @@ Inverse kinematics, Pieper's method, geometric Jacobian, LSPB,
 kinematic singularities, manipulator dynamics.
 \end{IEEEkeywords}
 
+\vspace{0.5em}
+\noindent\textbf{\textit{Resumen}}---Se implementa y valida un pipeline
+robótico completo sobre el ABB~IRB~120, desde una pose cartesiana
+deseada hasta la demanda de torque del actuador. La cinemática inversa
+se resuelve analíticamente por el desacoplamiento de Pieper, con error
+de posición máximo de $4{,}88\times10^{-16}$~m sobre 2000 poses y
+ninguna falla. Tres correcciones de robustez ---extracción de muñeca
+por $\operatorname{atan2}$, tolerancia de redondeo en los topes y
+expansión de vueltas articulares--- resuelven fallos que los ensayos
+aleatorios no detectaron. El Jacobiano se valida contra una derivación
+manual con discrepancia de $2{,}08\times10^{-18}$, y el experimento de
+singularidad documenta la caída de rango, la amplificación de velocidad
+y el residuo que una tarea incompatible deja sin cumplir. El modelo
+reducido 1R sobre la trayectoria LSPB concuerda con la referencia
+analítica dentro del redondeo.
+
+\vspace{0.4em}
+\noindent\textbf{\textit{Palabras clave}}---Cinemática inversa, método
+de Pieper, Jacobiano geométrico, LSPB, singularidades, dinámica de
+manipuladores.
+
 % =====================================================================
 \section{Introducción}
 
@@ -240,7 +261,15 @@ identificación del accionamiento real.
 \label{sec:result}
 
 Las cifras provienen de una única ejecución del cuaderno con semilla
-fijada.
+fijada. El registro completo ---salidas literales de cada módulo,
+semillas, entorno y cifras recalculadas--- se versiona en
+\texttt{docs/hito2/resultados/} del repositorio \cite{b7}, generado por
+\texttt{capturar\_resultados.py}. Una captura independiente en otra máquina arroja
+$4{,}98\times10^{-16}$~m: el indicador es el máximo sobre 16\,000
+evaluaciones que valen todas del orden del épsilon de máquina, de modo
+que cuál de ellas resulta mayor depende de la biblioteca de álgebra
+lineal instalada. La diferencia es de último bit, no de modelo, y las
+corridas se declaran por separado en vez de promediarse.
 
 \begin{table}[htbp]
 \caption{Validación del pipeline}

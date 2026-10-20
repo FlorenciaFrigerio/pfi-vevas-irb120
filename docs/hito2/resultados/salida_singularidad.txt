@@ -1,0 +1,77 @@
+
+   PASAPORTE HITO 2   divergencia en q5 = 0
+
+1. Direccion de tarea perdida en la singularidad
+   sigma_min = 9.778e-18
+   vector    = [ 0.1124 -0.85   -0.2632  0.0693 -0.0781  0.4299]
+   lineal    = [ 0.1124 -0.85   -0.2632]   angular = [ 0.0693 -0.0781  0.4299]
+   norma lineal  = 0.8968   norma angular = 0.4424
+   ADVERTENCIA DE UNIDADES: comparar estas dos normas mezcla
+   m/s con rad/s. Para compararlas haria falta declarar una
+   longitud caracteristica. Lo que SI es incondicional es que
+   el rango cae de 6 a 5: se pierde UNA direccion del twist
+   combinado, no una velocidad puramente angular.
+
+1b. Direcciones de tarea CONSERVADAS en la singularidad
+   rango(J) = 5 de 6  =>  pierde 1 grado de libertad,
+   no los seis. El robot sigue moviendose en el resto.
+   base 1: sigma =   1.8244   dominante: rotacion   |v| = 0.329  |w| = 0.944
+   base 2: sigma =   1.4235   dominante: rotacion   |v| = 0.066  |w| = 0.998
+   base 3: sigma =   1.1195   dominante: rotacion   |v| = 0.447  |w| = 0.894
+   base 4: sigma =   0.3458   dominante: traslacion |v| = 0.949  |w| = 0.316
+   base 5: sigma =   0.1100   dominante: traslacion |v| = 0.992  |w| = 0.130
+
+1c. Residuo de la pseudoinversa, que hay que declarar
+   tarea INCOMPATIBLE: ||J qd - xd|| = 0.442357
+   tarea COMPATIBLE  : ||J qd - xd|| = 0.000e+00
+   lstsq NO resuelve la tarea incompatible: devuelve el mejor
+   ajuste por minimos cuadrados. Una velocidad finita en la
+   singularidad puede significar que se abandono parte de la
+   tarea, y ese residuo es la parte abandonada.
+   Corolario: desde HOME el robot SI puede moverse en tareas
+   compatibles con la imagen de J; solo las incompatibles
+   quedan fuera de alcance instantaneo.
+
+2. Velocidad articular exigida para una velocidad de tarea unitaria
+
+     q5 [rad]  rango    sigma_min      cond(J)   ||qd|| [rad/s]
+        1e-01      6    2.680e-02    6.801e+01        1.648e+01
+        1e-02      6    2.679e-03    6.810e+02        1.652e+02
+        1e-03      6    2.678e-04    6.813e+03        1.652e+03
+        1e-04      6    2.678e-05    6.813e+04        1.652e+04
+        1e-05      6    2.678e-06    6.813e+05        1.652e+05
+        1e-06      6    2.678e-07    6.813e+06        1.652e+06
+
+   Ley de escalado ajustada:  ||qd|| ~ q5^(-1.000)
+   Pendiente -1 => divergencia hiperbolica 1/q5.  CONFIRMADO
+
+3. Torque inercial de muneca  [EXPERIMENTO ADICIONAL]
+
+   ALCANCE DECLARADO. La guia especifica de Semana 10 pide el
+   modelo 1R sobre la trayectoria LSPB, no esta divergencia.
+   Esto se conserva como experimento aparte, y su derivada es
+   una PARCIAL respecto de q5 sobre una familia de posturas,
+   no la derivada total qdd = J^-1 (xdd - Jdot qd) de una
+   trayectoria fisica. Las inercias de rotor son supuestas.
+   Muestra una tendencia de escalado bajo esas hipotesis; no
+   es el torque del IRB 120 ni una ley general demostrada.
+
+     q5 [rad]    |tau|max [N.m]
+        1e-01         1.407e+00
+        1e-02         1.402e+02
+        1e-03         1.402e+04
+        1e-04         1.402e+06
+        1e-05         1.402e+08
+        1e-06         1.402e+10
+
+   Ley de escalado ajustada:  tau ~ q5^(-2.000)
+   Pendiente -2 => el torque diverge con el CUADRADO.  CONFIRMADO
+
+4. Contraejemplo obligatorio: singularidad != torque alto
+
+   Postura regular (q5 = 1.0): rango J = 6, sin divergencia alguna
+   Torque gravitatorio en esa postura: 24.47 N.m
+   Es un torque elevado SIN singularidad: confirma que ambos
+   fenomenos son independientes. La divergencia del punto 3 es
+   indirecta, heredada de qdd, no una propiedad de la postura.
+
