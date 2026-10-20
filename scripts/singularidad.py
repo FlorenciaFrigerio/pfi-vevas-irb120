@@ -155,7 +155,7 @@ if __name__ == "__main__":
 
     q_base = np.array([0.3, 0.5, -0.4, 0.2, 0.0, 0.1])
 
-    print("\n   PASAPORTE HITO 2   divergencia en q5 = 0\n")
+    print("\n   EXPERIMENTO DE SINGULARIDAD   q5 -> 0\n")
 
     # --- 1. Que direccion de tarea se pierde exactamente
     q_sing = q_base.copy(); q_sing[4] = 0.0
