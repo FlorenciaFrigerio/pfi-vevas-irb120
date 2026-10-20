@@ -22,6 +22,12 @@
 \usepackage{cite}
 \usepackage{url}
 
+% babel con opcion spanish traduce el titulo del entorno abstract a
+% "Resumen". Como el abstract de este documento esta en ingles, se
+% fuerza su titulo a "Abstract"; el resumen en espanol va aparte,
+% despues de las palabras clave.
+\addto\captionsspanish{\renewcommand{\abstractname}{Abstract}}
+
 \graphicspath{{img/}}
 
 \begin{document}
@@ -64,6 +70,7 @@ Derivaciones completas, tablas extendidas y casos borde en el anexo
 técnico del repositorio \cite{b7}.}
 \renewcommand{\thefootnote}{\arabic{footnote}}
 
+\renewcommand{\abstractname}{Abstract}
 \begin{abstract}
 This work implements and validates a complete robotic pipeline on the
 ABB~IRB~120, running from a desired Cartesian pose to the torque
