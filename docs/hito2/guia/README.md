@@ -9,7 +9,7 @@ flowchart LR
   A[Pose deseada] --> B[ pieper.py: centro de muñeca y ramas ]
   B --> C[FK + límites: filtrar candidatas]
   C --> D[Seleccionar rama cercana]
-  D --> E[lspb.py: q(t), qdot(t), qddot(t)]
+  D --> E["lspb.py: posición, velocidad y aceleración"]
   E --> F[nodo_hito2.py: publicar en ROS 2]
   B --> G[jacobiano.py: movilidad]
   G --> H[singularidad.py: SVD y rango]
