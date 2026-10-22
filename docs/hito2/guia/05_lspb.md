@@ -3,7 +3,7 @@
 > **Nivel:** Núcleo Hito 2 - dominar
 
 ## Para qué sirve
-Genera q(t), qdot(t) y qddot(t) con fases de aceleración, crucero y desaceleración; sincroniza las seis juntas.
+Genera q(t), qdot(t) y qddot(t) con fases de aceleración, crucero y desaceleración; sincroniza las seis juntas. En `demo_recorrido.py`, esta etapa muestra una trayectoria articular de seis juntas. La etapa de torque posterior usa otro perfil LSPB escalar, de referencia, para el modelo 1R.
 
 **Entrada y salida:** Entrada: q inicial/final y límites de velocidad/aceleración, o tiempo final impuesto. Salida: perfil temporal.
 

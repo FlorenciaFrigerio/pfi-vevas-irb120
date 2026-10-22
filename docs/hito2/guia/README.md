@@ -1,93 +1,99 @@
-# Guía navegable del código - Hito 2 ABB IRB 120
+# Guía navegable del código — Hito 2 ABB IRB 120
 
-> Material organizado para abrir cada script en una pestaña Markdown. Cada capítulo cita bloques reales del archivo, explica el propósito y lo conecta con teoría, pruebas y defensa.
+> Un archivo Markdown por cada uno de los 16 scripts. Los bloques se contrastan con el código vigente en scripts/; la secuencia y el reparto siguen la exposición de 20 diapositivas.
 
-## Secuencia completa
+## Empieza por el recorrido
 
-```mermaid
+El archivo que narra las seis etapas es **demo_recorrido.py**. Se ejecuta desde scripts/, usa Python, NumPy y Matplotlib y **no necesita ROS**:
+
+~~~bash
+cd scripts
+python3 demo_recorrido.py --pose --figuras
+~~~
+
+Por defecto pausa entre etapas. Usa --seguido para recorrerlas sin pausas. Para la ruta más corta a través de las ideas, lee [00_secuencia_completa.md](00_secuencia_completa.md) y luego [16_demo_recorrido.md](16_demo_recorrido.md).
+
+~~~mermaid
 flowchart LR
-  A[Pose deseada] --> B[ pieper.py: centro de muñeca y ramas ]
-  B --> C[FK + límites: filtrar candidatas]
-  C --> D[Seleccionar rama cercana]
-  D --> E["lspb.py: posición, velocidad y aceleración"]
-  E --> F[nodo_hito2.py: publicar en ROS 2]
-  B --> G[jacobiano.py: movilidad]
-  G --> H[singularidad.py: SVD y rango]
-  E --> I[dinamica_1r.py: torque pedagógico]
-  H --> J[graficas.py / capturar_resultados.py]
-  I --> J
-```
+  D["demo_recorrido.py: orquesta seis etapas, sin ROS"] --> A["1. FK: q a pose T"]
+  A --> B["2. Pieper: pose T a ramas q"]
+  B --> C["3. Jacobiano: movilidad local"]
+  C --> E["4. Singularidad: pérdida de rango"]
+  B --> F["5. LSPB multiarticular: transición a q objetivo"]
+  D --> G["6. Dinámica 1R: perfil escalar de referencia"]
+  H["resolver_en_vivo.py: entrada interactiva de pose"] -.-> B
+  I["nodo_hito2.py: integración ROS 2 opcional"] -.-> B
+  I -.-> F
+~~~
 
-### Flujo narrado
+> **Precisión para la defensa:** en demo_recorrido.py, la etapa 6 calcula el torque con un perfil LSPB 1R de referencia de 0 a 2 rad en 3 s. No calcula el torque del movimiento multiarticular de la etapa 5. La dinámica demuestra el modelo reducido y su interpretación.
 
-1. [`fk_irb120.py`](01_fk_irb120.md) define los parámetros geométricos y permite calcular la pose directa.
-2. [`pieper.py`](02_pieper.md) recibe la pose objetivo, resta el offset de herramienta y calcula ramas.
-3. Cada candidata se valida por FK y límites; luego se escoge una cercana a la postura actual.
-4. [`lspb.py`](05_lspb.md) describe el movimiento en el tiempo.
-5. [`nodo_hito2.py`](09_nodo_hito2.md) integra el cálculo con tópicos ROS 2; [`resolver_en_vivo.py`](08_resolver_en_vivo.md) sirve para demostración en consola.
-6. [`jacobiano.py`](03_jacobiano.md) y [`singularidad.py`](04_singularidad.md) describen la movilidad.
-7. [`dinamica_1r.py`](06_dinamica_1r.md) evalúa el modelo de torque pedagógico.
-8. [`graficas.py`](10_graficas.md) presenta resultados y [`capturar_resultados.py`](11_capturar_resultados.md) registra evidencia.
-
-## Los 15 scripts, orden de estudio
+## Los 16 scripts, orden de estudio
 
 | # | Archivo | Enfoque |
 |---:|---|---|
-| 1 | [`fk_irb120.py`](01_fk_irb120.md) | Base compartida - dominar |
-| 2 | [`pieper.py`](02_pieper.md) | Núcleo Hito 2 - dominar |
-| 3 | [`jacobiano.py`](03_jacobiano.md) | Núcleo Hito 2 - dominar |
-| 4 | [`singularidad.py`](04_singularidad.md) | Núcleo Hito 2 - dominar con límites |
-| 5 | [`lspb.py`](05_lspb.md) | Núcleo Hito 2 - dominar |
-| 6 | [`dinamica_1r.py`](06_dinamica_1r.md) | Núcleo Hito 2 - dominar modelo y alcance |
-| 7 | [`dinamica.py`](07_dinamica.md) | Complementario - comprender límites |
-| 8 | [`resolver_en_vivo.py`](08_resolver_en_vivo.md) | Núcleo de demostración - dominar uso |
-| 9 | [`nodo_hito2.py`](09_nodo_hito2.md) | Núcleo de integración - dominar |
-| 10 | [`graficas.py`](10_graficas.md) | Complementario - saber leer |
-| 11 | [`capturar_resultados.py`](11_capturar_resultados.md) | Complementario - entender escritura y reproducibilidad |
-| 12 | [`generate_urdf.py`](12_generate_urdf.md) | Hito 1 - contexto geométrico |
-| 13 | [`add_visuals.py`](13_add_visuals.md) | Hito 1 - contexto visual |
-| 14 | [`compare_urdf.py`](14_compare_urdf.md) | Hito 1 - apoyo de verificación |
-| 15 | [`validate_tf.py`](15_validate_tf.md) | Hito 1 - prueba de integración |
+| 1 | [fk_irb120.py](01_fk_irb120.md) | D-H, cinemática directa y límites |
+| 2 | [pieper.py](02_pieper.md) | IK analítica, ramas, filtros y selección |
+| 3 | [jacobiano.py](03_jacobiano.md) | Jacobiano geométrico y validaciones |
+| 4 | [singularidad.py](04_singularidad.md) | SVD, rango y tarea compatible/incompatible |
+| 5 | [lspb.py](05_lspb.md) | Perfil de posición, velocidad y aceleración; sincronización |
+| 6 | [dinamica_1r.py](06_dinamica_1r.md) | Modelo reducido 1R y procedencia de parámetros |
+| 7 | [dinamica.py](07_dinamica.md) | Modelo 2R complementario, con supuestos |
+| 8 | [resolver_en_vivo.py](08_resolver_en_vivo.md) | Menú de poses, validación e interpretación |
+| 9 | [nodo_hito2.py](09_nodo_hito2.md) | Ruta ROS 2 opcional de pose a trayectoria |
+| 10 | [graficas.py](10_graficas.md) | Gráficas y lectura de unidades |
+| 11 | [capturar_resultados.py](11_capturar_resultados.md) | Evidencia reproducible |
+| 12 | [generate_urdf.py](12_generate_urdf.md) | Generación de URDF desde D-H |
+| 13 | [add_visuals.py](13_add_visuals.md) | Geometría visual del URDF |
+| 14 | [compare_urdf.py](14_compare_urdf.md) | Comparación de URDF manual y derivado |
+| 15 | [validate_tf.py](15_validate_tf.md) | Validación TF de ROS 2 para Hito 1 |
+| 16 | [demo_recorrido.py](16_demo_recorrido.md) | Orquesta y explica las seis etapas |
 
-## ¿Qué estudiar a fondo?
+## Qué dominar y qué ubicar
 
-**Ocho piezas de lógica e integración:** `fk_irb120.py`, `pieper.py`, `jacobiano.py`, `singularidad.py`, `lspb.py`, `dinamica_1r.py`, `resolver_en_vivo.py` y `nodo_hito2.py`.
+**Estudio a fondo:** fk_irb120.py, pieper.py, jacobiano.py, singularidad.py, lspb.py, dinamica_1r.py, resolver_en_vivo.py y demo_recorrido.py.
 
-**Los otros siete:** `dinamica.py`, `graficas.py`, `capturar_resultados.py`, `generate_urdf.py`, `add_visuals.py`, `compare_urdf.py` y `validate_tf.py`. Deben saber explicar responsabilidad, entrada/salida, relación y límites.
+**Conocer propósito, conexión y límites:** dinamica.py, nodo_hito2.py, graficas.py, capturar_resultados.py, generate_urdf.py, add_visuals.py, compare_urdf.py y validate_tf.py.
 
-## Reparto sugerido para cuatro
+La ruta principal de la exposición va de las páginas 3–7 (cinemática), 8–11 (movilidad), 12–15 (pruebas y reproducibilidad) y 16–20 (trayectoria y dinámica). El demo es el hilo común: cada integrante debe conocer la etapa que le toca y saber señalar dónde se ejecuta.
 
-| Persona | Estudio principal | Conexiones que debe explicar |
+## Reparto para cuatro, alineado con las diapositivas
+
+| Persona / diapositivas | Scripts que prepara | Defensa principal |
 |---|---|---|
-| 1 | FK, D-H y scripts URDF | cómo la geometría alimenta Pieper/Jacobiano |
-| 2 | Pieper y resolvedor interactivo | cómo FK valida y límites reducen ramas |
-| 3 | Jacobiano y singularidad | rango, SVD, tarea compatible y residuo |
-| 4 | LSPB, dinámica 1R y nodo ROS | cómo se convierte solución en trayectoria publicada |
+| **1 · págs. 3–7 — Cinemática** | fk_irb120.py, pieper.py, resolver_en_vivo.py, compare_urdf.py | D-H, centro de muñeca, ocho ramas, filtrado y selección |
+| **2 · págs. 8–11 — Movilidad** | jacobiano.py, singularidad.py, graficas.py, validate_tf.py | Jacobiano, SVD, rangos, residuo y lectura de evidencia |
+| **3 · págs. 12–15 — Pruebas y repositorio** | demo_recorrido.py, capturar_resultados.py, generate_urdf.py, add_visuals.py | Cómo reproducir cifras, correr el recorrido y encontrar módulos |
+| **4 · págs. 16–20 — Trayectoria y dinámica** | lspb.py, dinamica_1r.py, dinamica.py, nodo_hito2.py | Sincronización, torque 1R, límites del 2R e integración ROS opcional |
 
-El equipo completo debe poder narrar la secuencia de arriba y defender qué pruebas respaldan cada afirmación.
+Son cuatro scripts por persona. La pieza compartida es demo_recorrido.py: la persona 3 sabe operarla y cada integrante explica su etapa. Para una pregunta cruzada, todos deben saber qué entra y qué sale de la etapa anterior y de la siguiente.
 
-## Hoja común para estudiar cada archivo
+## Ficha común por archivo
 
-- **Propósito:** ¿qué responsabilidad única tiene?
-- **Entrada/salida:** ¿qué datos recibe y qué devuelve/publica?
-- **Bloques:** ¿qué hacen las funciones principales y en qué orden?
-- **Teoría:** ¿qué ecuación o regla implementan?
-- **Relación:** ¿quién lo llama y qué usa?
-- **Evidencia:** ¿qué prueba o cifra lo respalda?
-- **Límite:** ¿qué NO demuestra?
-- **Defensa:** preparar una respuesta oral de 60 segundos y una pregunta cruzada.
+- **Propósito:** ¿qué problema resuelve?
+- **Entrada/salida:** ¿qué recibe y qué devuelve o publica?
+- **Bloques:** ¿qué hacen las funciones en orden?
+- **Relación:** ¿quién lo llama y qué usa después?
+- **Evidencia:** ¿qué cifra, prueba o gráfica respalda la explicación?
+- **Límite:** ¿qué no demuestra?
+- **Defensa:** preparar una respuesta oral de 30–60 segundos.
 
-## Advertencias técnicas que no deben perderse
+## Límites que no deben ocultarse
 
-- Pieper produce **hasta ocho** ramas; las singularidades pueden hacer que algunas coincidan.
-- La cinemática directa vuelve a comprobar las candidatas inversas.
-- En una singularidad se pierden direcciones instantáneas; no necesariamente todo movimiento.
-- La pseudoinversa puede dejar residuo si el twist pedido no pertenece a la imagen del Jacobiano.
-- El modelo 1R usa parámetros docentes. El 2R es complementario y sus masas son estimadas.
-- El experimento de torque cerca de q5=0 usa supuestos; no es torque certificado ABB.
-- El nodo ROS publica estados/trayectoria para integración; no afirmar que controla hardware industrial.
-- `capturar_resultados.py` escribe resultados: revisar los destinos antes de ejecutarlo.
+- Pieper obtiene hasta ocho ramas; en singularidades algunas coinciden.
+- La FK vuelve a comprobar las soluciones inversas; pasar la FK no sustituye revisar límites articulares.
+- Una singularidad reduce direcciones instantáneas; la pseudoinversa puede dejar residuo ante una tarea incompatible.
+- El perfil de posición LSPB es parabólico-lineal-parabólico; el trapezoidal es el de velocidad. La aceleración salta en los empalmes.
+- dinamica_1r.py usa parámetros indicados por cátedra, no una identificación de los seis ejes del ABB.
+- demo_recorrido.py calcula el torque 1R sobre un perfil escalar de referencia separado del perfil sincronizado de seis juntas.
+- dinamica.py es un experimento 2R con parámetros estimados.
+- nodo_hito2.py requiere ROS 2 y publica mensajes; no es control industrial de hardware.
+- capturar_resultados.py escribe archivos de resultados; revisar su destino antes de correrlo.
 
-## Fuentes
+## Documentación relacionada
 
-Los bloques de código se extraen del contenido actual de `scripts/`. Los resultados y límites se contrastan con `notebooks/Hito2_VEVAS.ipynb`, `docs/hito2/anexo_tecnico.md` y `docs/hito2/resultados/`. El README raíz conserva texto antiguo del Hito 1, por lo que no debe ser el único índice del Hito 2.
+- [Secuencia completa](00_secuencia_completa.md)
+- [Manual de estudio y defensa](../manuales/MANUAL_HITO2.md)
+- [Módulos y comandos de scripts](../../../scripts/README.md)
+- [Anexo técnico](../anexo_tecnico.md)
+- [Resultados reproducibles](../resultados/)

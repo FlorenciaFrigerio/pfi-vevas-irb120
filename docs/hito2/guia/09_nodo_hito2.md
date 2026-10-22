@@ -1,9 +1,9 @@
-# Script 09 - `nodo_hito2.py`: Nodo ROS 2 del Hito 2
+# Script 09 — nodo_hito2.py: ruta de integración ROS 2 opcional
 
-> **Nivel:** Núcleo de integración - dominar
+> **Nivel:** Complementario. Estúdialo a fondo solo si van a mostrar esta ruta ROS 2.
 
 ## Para qué sirve
-Recibe una pose, calcula una rama ejecutable, produce LSPB y publica estado/diagnóstico en tópicos ROS.
+Es una ruta opcional de integración: recibe una pose, calcula una rama ejecutable, produce LSPB y publica estado/diagnóstico en tópicos ROS. No es necesario para ejecutar demo_recorrido.py ni para la exposición numérica por consola.
 
 **Entrada y salida:** Suscribe /pose_objetivo; publica /joint_states, /trayectoria_hito2 y /diagnostico_hito2.
 

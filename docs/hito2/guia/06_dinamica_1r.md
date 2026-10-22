@@ -3,9 +3,9 @@
 > **Nivel:** Núcleo Hito 2 - dominar modelo y alcance
 
 ## Para qué sirve
-Calcula el torque pedagógico 1R prescrito para la trayectoria LSPB y separa sus contribuciones.
+Calcula el torque pedagógico 1R sobre una trayectoria LSPB escalar de referencia (0 a 2 rad en 3 s, en la demo) y separa sus contribuciones. Ese torque no corresponde a la trayectoria de seis juntas de la etapa anterior ni representa el modelo dinámico completo del ABB IRB 120.
 
-**Entrada y salida:** Entrada: q y qddot. Salida: torque total, inercial y gravitatorio.
+**Entrada y salida:** Entrada: q y qddot de un perfil escalar 1R. Salida: torque total, inercial y gravitatorio.
 
 ## Recorrido por bloques
 

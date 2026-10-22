@@ -1,8 +1,6 @@
 # Módulos
 
-Todos corren con Python 3, NumPy y Matplotlib. **El Hito 2 no requiere
-ROS.** Los módulos se importan entre sí como hermanos, así que se
-ejecutan desde esta carpeta.
+Los módulos numéricos y el demo corren con Python 3 y NumPy. Matplotlib se usa al generar figuras. **La ruta por consola no requiere ROS.** El nodo opcional nodo_hito2.py sí requiere ROS 2. Los módulos se importan entre sí como hermanos, así que se ejecutan desde esta carpeta.
 
 ```bash
 cd scripts
@@ -15,7 +13,7 @@ python3 demo_recorrido.py
 
 | Archivo | Qué hace |
 | --- | --- |
-| **`demo_recorrido.py`** | **El recorrido completo, narrado.** Seis etapas encadenadas: directa, inversa, Jacobiano, singularidad, trayectoria y dinámica. Explica antes de cada una qué va a hacer y después qué significa el resultado. |
+| **`demo_recorrido.py`** | **El recorrido narrado.** Explica seis etapas: directa, inversa, Jacobiano, singularidad, trayectoria y dinámica. La etapa de torque usa su propio perfil LSPB 1R de referencia. Explica qué hace cada bloque y qué significa el resultado. |
 
 ```bash
 python3 demo_recorrido.py              # pausa entre etapas

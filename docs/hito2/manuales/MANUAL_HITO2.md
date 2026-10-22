@@ -31,7 +31,7 @@ ejemplo resuelto a mano de punta a punta.
 9. [Bloque 6 — Singularidades](#9-bloque-6--singularidades)
 10. [Bloque 7 — Dinámica](#10-bloque-7--dinámica-y-torque)
 11. [Resultados medidos](#11-resultados-medidos)
-12. [Guía de presentación: las 6 opciones del menú](#12-guía-de-presentación-las-6-opciones-del-menú)
+12. [Guía de presentación: formatos, casos borde y glosario](#12-guía-de-presentación-formatos-casos-borde-y-glosario)
 13. [Ejemplo resuelto y defendido](#13-ejemplo-resuelto-y-defendido)
 14. [Banco de preguntas](#14-banco-de-preguntas)
 15. [Errores que bajan la nota](#15-errores-que-bajan-la-nota)
@@ -1154,12 +1154,12 @@ distinguir nada.
 
 ---
 
-# 12. Guía de presentación: las 6 opciones del menú
+# 12. Guía de presentación: formatos, casos borde y glosario
 
 El resolvedor en vivo se abre así:
 
 ```bash
-cd ~/ros2_ws/src/irb120_description/scripts
+cd pfi-vevas-irb120/scripts
 python3 resolver_en_vivo.py
 ```
 
@@ -1172,8 +1172,11 @@ Y muestra:
   4) Posicion + RPY en grados (x y z roll pitch yaw)
   5) Posicion + eje z6 (x y z zx zy zz)
   6) Casos borde de demostracion
+  7) Glosario: que significa cada numero del informe
   0) Salir
 ```
+
+El menú tiene cinco formatos de pose (1–5), los casos borde (6), el glosario de salida (7) y salir (0). Las cifras se pueden pegar en una línea o por filas: el lector pide las que falten.
 
 **IMPORTANTE:** primero se aprieta el número de la opción y **Enter**.
 Recién después se pegan las coordenadas. Si pegás las coordenadas en el

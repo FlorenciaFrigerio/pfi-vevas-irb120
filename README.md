@@ -29,18 +29,18 @@ cd scripts
 python3 demo_recorrido.py
 ```
 
-Seis etapas encadenadas —directa, inversa, Jacobiano, singularidad,
-trayectoria, dinámica— explicando antes de cada una qué va a hacer y
-después qué significa el resultado.
+Seis etapas narradas —directa, inversa, Jacobiano, singularidad, trayectoria y dinámica— explican qué hace cada bloque. El torque 1R se calcula sobre un perfil LSPB de referencia independiente.
 
 ---
 
 # HITO 2 — Cinemática inversa, trayectorias, singularidades y dinámica
 
 ```
-pose T_d → Pieper → validación FK → LSPB → Jacobiano → singularidad
-                                       ↓
-                                  dinámica 1R → τ(t)
+T_d → Pieper → FK + límites → q*
+                     ├── Jacobiano → singularidad
+                     └── LSPB sincronizado de seis juntas
+
+Perfil LSPB 1R de referencia → dinámica reducida → τ(t)
 ```
 
 ## Resultados
@@ -78,8 +78,7 @@ buscarlo ahí. El detalle está en
 
 ## Módulos
 
-Todos en [`scripts/`](scripts/), en Python con NumPy y Matplotlib.
-**No requieren ROS.**
+La ruta numérica por consola usa Python 3 y NumPy; Matplotlib se necesita para generar gráficas. El nodo opcional nodo_hito2.py requiere ROS 2.
 
 | Archivo | Qué hace |
 | --- | --- |
@@ -90,7 +89,7 @@ Todos en [`scripts/`](scripts/), en Python con NumPy y Matplotlib.
 | `singularidad.py` | experimento de aproximación a la singularidad |
 | `dinamica_1r.py` | modelo reducido 1R sobre la trayectoria LSPB |
 | `graficas.py` | figuras, con paleta validada para daltonismo |
-| `demo_recorrido.py` | **recorrido narrado del pipeline completo** |
+| `demo_recorrido.py` | **seis etapas narradas; torque 1R con perfil de referencia separado** |
 | `resolver_en_vivo.py` | resolvedor interactivo para la defensa |
 | `capturar_resultados.py` | genera el registro reproducible de resultados |
 

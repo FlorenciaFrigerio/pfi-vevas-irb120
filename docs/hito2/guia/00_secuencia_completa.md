@@ -1,182 +1,93 @@
-# Secuencia completa: cómo se une el proyecto
+# Secuencia completa: cómo se conectan los scripts del Hito 2
 
-Esta es la vista de extremo a extremo. Si te preguntan “¿qué archivo integra el Hito 2?”, la respuesta principal es **`nodo_hito2.py`**: recibe la pose, llama al resolvedor, crea LSPB y publica los mensajes ROS. `resolver_en_vivo.py` ofrece una ruta paralela para demostrar el cálculo desde consola.
+La demostración por consola está en **scripts/demo_recorrido.py**. Orquesta seis etapas con funciones importadas de los módulos: directa, inversa por Pieper, Jacobiano, singularidad, trayectoria y dinámica. Es la ruta recomendada para exponer el flujo y no requiere ROS.
 
-## Diagrama
+## Mapa de ejecución
 
-```mermaid
+~~~mermaid
 flowchart TD
-  U[PoseStamped en /pose_objetivo] --> N[cb_pose de nodo_hito2.py]
-  N --> Q[Cuaternión a matriz R y T homogénea]
-  Q --> R[resolver de pieper.py]
-  R --> W[Centro de muñeca pW]
-  W --> I[Hasta ocho ramas IK]
-  I --> V[FK + error de pose + límites]
-  V -->|no admisible| X[Diagnóstico de pose rechazada]
-  V -->|admisible| S[Elegir rama cercana a q actual]
-  S --> J[Jacobiano: detectar condición singular]
-  S --> L[LSPB sincronizada]
-  L --> P[/joint_states + /trayectoria_hito2/]
-  L --> D[Modelo de torque 1R para análisis]
-  J --> G[Figuras / métricas]
-  D --> G
-  P --> O[robot_state_publisher / RViz]
-```
+  D["demo_recorrido.py: demo narrada, sin ROS"] --> A["1. FK: q inicial a T"]
+  A --> B["2. Pieper: T a ramas, filtrado y selección"]
+  B --> C["3. Jacobiano en la postura elegida"]
+  C --> E["4. Tendencia de singularidad de muñeca"]
+  B --> F["5. LSPB sincronizado hasta q objetivo"]
+  D --> G["6. Torque 1R en perfil escalar de referencia"]
+  R["resolver_en_vivo.py: cinco formatos de pose"] -.pose alternativa.-> B
+  N["nodo_hito2.py: extensión con ROS 2"] -.-> B
+  N -.publica trayectoria.-> F
+~~~
 
-## Paso a paso
+Las ramas desde demo_recorrido.py indican qué etapas coordina. **No** significan que el perfil de seis juntas de la etapa 5 se reutilice en el torque de la etapa 6: el código crea un perfil escalar 1R independiente, como se explica más abajo.
 
-### 1. El modelo común calcula la pose
-`fk_irb120.py` es la referencia analítica. Convierte los seis ángulos a una pose homogénea y proporciona los límites. En sentido inverso, la FK vuelve a comprobar cada candidata.
+## Ejecutar la demostración
 
-### 2. Entra una pose objetivo
-`nodo_hito2.py` recibe `geometry_msgs/PoseStamped` por `/pose_objetivo`. Convierte el cuaternión a R y ensambla la matriz T. La ruta de consola hace un trabajo parecido con entradas interactivas en `resolver_en_vivo.py`.
+Desde scripts/:
 
-```python
-# nodo_hito2.py líneas 109-156
-    def cb_pose(self, msg):
-        """Pose recibida -> Pieper -> filtrado -> LSPB."""
-        p = msg.pose.position
-        o = msg.pose.orientation
-        try:
-            R = quat_a_matriz(o.x, o.y, o.z, o.w)
-        except ValueError as e:
-            self.avisar(f"RECHAZADA: {e}")
-            return
+~~~bash
+python3 demo_recorrido.py
+python3 demo_recorrido.py --seguido
+python3 demo_recorrido.py --pose --figuras
+~~~
 
-        T_d = np.eye(4)
-        T_d[:3, :3] = R
-        T_d[:3, 3] = [p.x, p.y, p.z]
+- Por defecto pausa con Enter entre etapas.
+- --seguido quita las pausas.
+- --pose permite dictar una pose en cinco formatos; Enter vacío conserva el ejemplo.
+- --figuras guarda las figuras generadas en figuras_recorrido/.
+- Es una demostración numérica de consola; no mueve el ABB ni requiere ROS.
 
-        q_obj, admisibles, rechazadas = resolver(T_d, q_actual=self.q_actual)
+## Etapas que ejecuta
 
-        if q_obj is None:
-            motivos = {}
-            for _, m in rechazadas:
-                clave = m.split(":")[0]
-                motivos[clave] = motivos.get(clave, 0) + 1
-            detalle = ", ".join(f"{k} x{v}" for k, v in motivos.items())
-            self.avisar(
-                f"POSE INALCANZABLE  p=[{p.x:.3f}, {p.y:.3f}, {p.z:.3f}]  "
-                f"8 ramas calculadas, 0 admisibles ({detalle})")
-            return
+| Etapa | Función | Código que usa | Resultado que debes explicar |
+|---:|---|---|---|
+| 1 | etapa_1() | forward_kinematics de fk_irb120.py | Una configuración q determina una pose T; comprueba ortogonalidad y determinante de R |
+| 2 | etapa_2() | pieper, filtrar, elegir, error_pose | Centro de muñeca, hasta ocho ramas, errores FK y selección por costo |
+| 3 | etapa_3() | jacobiano.py | Jacobiano 6×6, rango, valores singulares y manipulabilidad |
+| 4 | etapa_4() | jacobiano.py | Al acercarse q5 a cero, cae sigma_min y el rango llega a 5 |
+| 5 | etapa_5(q_destino) | LSPBSincronizado y comprobar_continuidad de lspb.py | Trayectoria desde reposo hasta q objetivo; junta más lenta fija el tiempo total |
+| 6 | etapa_6() | LSPB y funciones de dinamica_1r.py | Torque inercial más gravitatorio para un perfil 1R de referencia |
 
-        ep, eR = error_pose(q_obj, T_d)
+## Cómo la orquesta main()
 
-        # Advertencia de singularidad ANTES de mover: si la pose objetivo
-        # esta cerca de q5 = 0, la cinematica diferencial inversa exigiria
-        # velocidades articulares desmedidas.
-        w = medida_manipulabilidad(q_obj)
-        aviso_sing = ""
-        if abs(q_obj[4]) < 0.05 or w < UMBRAL_W:
-            aviso_sing = (f"  [!] CERCA DE SINGULARIDAD: q5 = {q_obj[4]:+.4f} "
-                          f"rad, w = {w:.3e}")
+El programa mantiene una postura de ejemplo para la directa, permite sustituir la pose de entrada y detiene el flujo si IK no devuelve una solución admisible:
 
-        self.traj = LSPBSincronizado(self.q_actual, q_obj, V_MAX, A_MAX)
-        self.t0 = self.get_clock().now()
+~~~python
+q_orig, T = etapa_1()
+if T_dictada is not None:
+    T = T_dictada
 
-        self.avisar(
-            f"ACEPTADA  {len(admisibles)}/8 ramas admisibles  |  "
-            f"elegida: {etiquetar(q_obj)}  |  "
-            f"dE = {ep:.2e} m, dR = {eR:.2e}  |  "
-            f"T = {self.traj.T:.3f} s{aviso_sing}")
+q_sel = etapa_2(q_orig, T, dictada=T_dictada is not None)
+if q_sel is None:
+    return
 
-        self.publicar_trayectoria(q_obj)
-```
+etapa_3(q_sel)
+etapa_4()
+etapa_5(q_sel)
+etapa_6()
+cierre()
+~~~
 
-### 3. Pieper calcula, verifica y elige
-`resolver(T, q_actual)` es el coordinador algorítmico de `pieper.py`: llama al cálculo de ramas, las filtra y aplica el costo de selección. Una rama no queda aceptada hasta reproducir la pose y respetar los topes.
+La pose dictada sustituye la T de ejemplo para la IK. La selección q_sel alimenta el Jacobiano y el perfil sincronizado de la etapa 5. Si todas las ramas se rechazan, no se calculan las etapas posteriores.
 
-```python
-# pieper.py líneas 248-264
-def resolver(T_d, q_actual=None, verbose=False):
-    """Pipeline completo: Pieper -> filtrado -> seleccion."""
-    if q_actual is None:
-        q_actual = np.zeros(6)
-    crudas = pieper(T_d)
-    admisibles, rechazadas = filtrar(crudas, T_d)
-    q_sel, costo = elegir(admisibles, q_actual)
+## El detalle importante del torque
 
-    if verbose:
-        print(f"  ramas calculadas  {len(crudas)}")
-        print(f"  admisibles        {len(admisibles)}")
-        print(f"  rechazadas        {len(rechazadas)}")
-        for q, motivo in rechazadas:
-            print(f"     - {motivo}")
-        if q_sel is not None:
-            print(f"  elegida           {etiquetar(q_sel)}  (costo {costo:.4f})")
-    return q_sel, admisibles, rechazadas
-```
+La etapa 5 arma un movimiento de seis juntas de q0=[0,…,0] a q_sel, con límites V y A por junta. La etapa 6, en cambio, crea explícitamente este perfil:
 
-### 4. La postura se vuelve trayectoria
-Con q objetivo admisible, el nodo crea `LSPBSincronizado(q_actual, q_obj, V_MAX, A_MAX)`. El perfil proporciona q, qdot y qddot en cada tiempo.
+~~~python
+perfil = LSPB.desde_tiempo_final(0.0, 2.0, tf=3.0, acc=1.0)
+~~~
 
-```python
-# nodo_hito2.py líneas 159-176
-    def cb_timer(self):
-        """Muestrea el perfil LSPB y publica el estado articular."""
-        if self.traj is None:
-            return
-        t = (self.get_clock().now() - self.t0).nanoseconds * 1e-9
-        if t >= self.traj.T:
-            t = self.traj.T
-            q, _, _ = self.traj(t)
-            self.q_actual = q[0]
-            self.publicar_estado(self.q_actual)
-            self.avisar(f"TRAYECTORIA COMPLETA  q_final = "
-                        f"{np.round(self.q_actual, 4).tolist()}")
-            self.traj = None
-            return
+Luego evalúa el torque de la junta 2 con parámetros de la hoja W10-S01 de cátedra. El control en t=2.5 s corresponde a ese ejemplo escalar 0→2 rad, no a q_sel[1] ni a la trayectoria sincronizada de la etapa 5. Por eso describe la demo como **seis bloques de análisis conectados por tema**, no como un cálculo dinámico completo del movimiento IK seleccionado.
 
-        q, qd, _ = self.traj(t)
-        self.q_actual = q[0]
-        self.publicar_estado(q[0], qd[0])
-```
+## Dos interfaces y una ruta ROS opcional
 
-### 5. ROS recibe el resultado
-El timer publica el estado articular mientras avanza. Además, `publicar_trayectoria` emite una trayectoria muestreada para inspección. RViz puede visualizar estados a través de los componentes ROS; eso no convierte el nodo en un controlador de hardware.
+- resolver_en_vivo.py recibe la pose del docente, muestra alcance, ramas, descartes, errores y etiquetas. La opción 6 corre casos borde y la 7 muestra un glosario.
+- nodo_hito2.py es una segunda ruta de integración que requiere ROS 2: recibe PoseStamped, usa el resolvedor, crea LSPB desde la postura actual y publica /joint_states, /trayectoria_hito2 y diagnóstico.
+- El demo narrado es la opción portátil para la defensa de cálculo. El nodo ROS es complementario y no convierte el proyecto en controlador de hardware.
 
-```python
-# nodo_hito2.py líneas 188-202
-    def publicar_trayectoria(self, q_obj, n=50):
-        """Publica la trayectoria completa, para quien quiera inspeccionarla."""
-        msg = JointTrajectory()
-        msg.header.stamp = self.get_clock().now().to_msg()
-        msg.joint_names = NOMBRES
-        for t in np.linspace(0.0, self.traj.T, n):
-            q, qd, qdd = self.traj(t)
-            pt = JointTrajectoryPoint()
-            pt.positions = [float(v) for v in q[0]]
-            pt.velocities = [float(v) for v in qd[0]]
-            pt.accelerations = [float(v) for v in qdd[0]]
-            pt.time_from_start = Duration(
-                sec=int(t), nanosec=int((t % 1.0) * 1e9))
-            msg.points.append(pt)
-        self.pub_traj.publish(msg)
-```
+## Guion oral breve
 
-### 6. Análisis y evidencia
+“demo_recorrido.py enlaza la cinemática directa con la inversa: construye una pose y después calcula y filtra ramas de Pieper. Sobre una rama válida analiza el Jacobiano y la singularidad, y genera un perfil LSPB multiarticular. La etapa final ilustra por separado el modelo 1R con el caso de referencia de cátedra; no es el torque de la trayectoria de seis juntas. El código no comanda el robot físico.”
 
-| Momento | Código | Pregunta |
-|---|---|---|
-| Antes o al elegir | `jacobiano.py` y `singularidad.py` | ¿Qué rango y movilidad tiene la postura? |
-| Sobre la trayectoria 1R | `dinamica_1r.py` | ¿Qué parte del torque es inercial y cuál gravitatoria? |
-| Comunicación | `graficas.py` | ¿Cómo se leen curvas y unidades? |
-| Reproducibilidad | `capturar_resultados.py` | ¿Qué semillas, cifras y versiones se registraron? |
-| Modelo ROS heredado | `generate_urdf.py`, `compare_urdf.py`, `validate_tf.py` | ¿Cómo se derivó y contrastó el gemelo digital? |
+## Lectura siguiente
 
-> **Evitar dos publicadores en competencia:** para visualizar el estado que publica el nodo, lanzar la descripción con `gui:=false`; de lo contrario, `joint_state_publisher_gui` también puede publicar `/joint_states`.
-
-## Qué script “une todo” y cuáles son demostradores
-
-- **Integración principal Hito 2:** `nodo_hito2.py` (ROS 2: entrada de pose, resolvedor, trayectoria y tópicos).
-- **Demostrador interactivo:** `resolver_en_vivo.py` (construye poses, lista ramas y explica descartes en consola).
-- **Reproducción de cifras:** `capturar_resultados.py` (corre módulos y escribe artefactos de resultados; revisar su carpeta de salida antes de ejecutarlo).
-- **Cuaderno narrativo:** `notebooks/Hito2_VEVAS.ipynb` reúne el desarrollo teórico, cálculos y salidas registradas.
-
-## Guion oral de 60 segundos
-
-“La pose objetivo llega al nodo ROS. Convertimos su orientación y posición en una transformación homogénea. Pieper retrocede al centro de muñeca, calcula hasta ocho ramas y las valida con cinemática directa y límites ABB. Elegimos una cercana a la postura actual. LSPB describe cómo llegar y el nodo publica estados y trayectoria. El Jacobiano/SVD explica la movilidad de esa postura y el modelo 1R estima el esfuerzo pedagógico. Las pruebas respaldan el cálculo bajo sus escenarios; no son una identificación completa ni control industrial del ABB.”
-
-## Siguiente lectura
-
-Empieza en [`README.md`](README.md) y sigue `01_fk_irb120.md` → `02_pieper.md` → `03_jacobiano.md` → `04_singularidad.md` → `05_lspb.md` → `06_dinamica_1r.md` → `09_nodo_hito2.md`. Los demás scripts complementan visualización, evidencia y gemelo del Hito 1.
+[01_fk_irb120.md](01_fk_irb120.md) → [02_pieper.md](02_pieper.md) → [03_jacobiano.md](03_jacobiano.md) → [04_singularidad.md](04_singularidad.md) → [05_lspb.md](05_lspb.md) → [06_dinamica_1r.md](06_dinamica_1r.md) → [16_demo_recorrido.md](16_demo_recorrido.md).
