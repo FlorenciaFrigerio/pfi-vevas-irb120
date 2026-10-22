@@ -11,7 +11,7 @@ cd scripts
 python3 demo_recorrido.py --pose --figuras
 ~~~
 
-Por defecto pausa entre etapas. Usa --seguido para recorrerlas sin pausas. Para la ruta más corta a través de las ideas, lee [00_secuencia_completa.md](00_secuencia_completa.md) y luego [16_demo_recorrido.md](16_demo_recorrido.md).
+Por defecto pausa entre etapas. Usa --seguido para recorrerlas sin pausas. Para exponer el recorrido con transiciones y justificación del orden, consulta el [guion de exposición](guion_recorrido_exposicion.md), la [secuencia técnica](00_secuencia_completa.md) y la guía del [demo](16_demo_recorrido.md).
 
 ~~~mermaid
 flowchart LR
