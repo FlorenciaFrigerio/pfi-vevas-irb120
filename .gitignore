@@ -7,3 +7,4 @@ __pycache__/
 notebooks/*.pdf
 
 .ipynb_checkpoints/
+figuras_recorrido/

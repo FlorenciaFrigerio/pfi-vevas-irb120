@@ -179,6 +179,7 @@ def resolver_y_mostrar(T_d, q_actual=None, titulo=""):
               f"{etiquetar(q)}{marca}{alerta}")
     print("\n  Angulos en grados. Criterio de aceptacion: "
           f"e_p < {TOL_POSE:.0e} m y e_R < {TOL_POSE:.0e}.")
+    print("  (opcion 7 del menu: que significa cada columna)")
 
     # Ramas que colapsan entre si: es la firma de una singularidad, no
     # un fallo. En la singularidad de codo las ramas "codo arriba" y
@@ -223,25 +224,154 @@ def resolver_y_mostrar(T_d, q_actual=None, titulo=""):
 #  Menu
 # ---------------------------------------------------------------------
 
-def _leer(mensaje, n):
-    """Lee n numeros de una linea, tolerando comas, corchetes y espacios."""
-    crudo = input(mensaje).replace(",", " ").replace("[", " ").replace("]", " ")
-    vals = [float(v) for v in crudo.split()]
-    if len(vals) != n:
-        raise ValueError(f"se esperaban {n} numeros, llegaron {len(vals)}")
+def _limpiar_numeros(linea):
+    """Extrae los numeros de una linea, tolerando los separadores usuales."""
+    for simbolo in (",", ";", "[", "]", "(", ")", "{", "}", "|"):
+        linea = linea.replace(simbolo, " ")
+    return linea.split()
+
+
+def _leer(mensaje, n, ayuda=None):
+    """
+    Lee n numeros, aceptandolos en UNA linea o repartidos en varias.
+
+    El operador no tiene por que saber de antemano que las dieciseis
+    cifras de una matriz homogenea van todas en un renglon. Esta
+    version acumula lo que se vaya tecleando y solo devuelve cuando
+    junto los n valores, informando cuantos le faltan. Asi se puede
+    pegar la matriz fila por fila, que es como esta escrita en el
+    papel, o entera de una vez.
+
+    Tolera comas, puntos y comas, corchetes, parentesis y barras.
+    """
+    if ayuda:
+        print(ayuda)
+    vals = []
+    while len(vals) < n:
+        faltan = n - len(vals)
+        if vals:
+            prompt = f"  ... faltan {faltan}> "
+        else:
+            prompt = mensaje
+        crudo = input(prompt).strip()
+        if not crudo:
+            continue
+        if crudo.lower() in ("q", "cancelar", "salir"):
+            raise ValueError("entrada cancelada por el operador")
+        for token in _limpiar_numeros(crudo):
+            try:
+                vals.append(float(token))
+            except ValueError:
+                raise ValueError(
+                    f"'{token}' no es un numero. Escriba 'cancelar' "
+                    f"para volver al menu.")
+        if len(vals) > n:
+            raise ValueError(
+                f"se esperaban {n} numeros y llegaron {len(vals)}. "
+                f"Vuelva a intentarlo.")
     return vals
+
+
+GLOSARIO = """
+   QUE SIGNIFICA CADA NUMERO DEL INFORME
+
+  p_d          Posicion deseada del extremo de la herramienta, en metros,
+               referida a la base del robot. Es lo que se le pide alcanzar.
+
+  ||p_d||      Distancia en linea recta desde la base hasta esa posicion.
+
+  p_W          Centro de muneca. Es el punto donde se cortan los tres
+               ultimos ejes. Se obtiene retrocediendo d6 = 0.072 m desde
+               p_d a lo largo del eje de la herramienta. Su valor NO
+               depende de q4, q5 ni q6: ese es el desacople de Pieper, y
+               es lo que permite resolver la posicion por un lado y la
+               orientacion por el otro.
+
+  r_W          Distancia desde el hombro hasta el centro de muneca.
+               Se compara contra 0.5800 m, que es el alcance maximo del
+               brazo. Ese numero no viene del catalogo: sale de a2 + k,
+               con k = raiz(a3^2 + d4^2), y coincide con los 580 mm que
+               publica ABB. Si r_W lo supera, la pose es inalcanzable.
+
+  ramas        Pieper entrega hasta OCHO soluciones exactas, todas
+               validas: las ocho ponen la herramienta en la misma pose.
+               Son 2 (hombro) x 2 (codo) x 2 (muneca).
+
+  admisibles   Las que ademas respetan los topes articulares del robot.
+
+  rechazadas   Las que no, con el motivo indicado al pie.
+
+  q1 ... q6    Los seis angulos de cada rama, en GRADOS.
+
+  e_p          Error de posicion al reconstruir la pose por cinematica
+               directa, en metros. Es la prueba de que la rama es
+               correcta: se resuelve la inversa y se vuelve con la
+               directa. Del orden de 1e-16 porque la solucion es
+               analitica, no iterativa: no converge, resuelve.
+
+  e_R          Error de orientacion, medido como ||R^T R_d - I||_F.
+               Se usa esa norma y no una resta de angulos porque las
+               matrices de rotacion no forman un espacio vectorial:
+               restarlas no da una rotacion.
+
+  w            Manipulabilidad de Yoshikawa, w = raiz(det(J J^T)).
+               Mide cuanta movilidad le queda al robot en esa postura.
+               Si tiende a cero, el brazo pierde la capacidad de moverse
+               en alguna direccion: esta en una singularidad.
+
+  etiqueta     La identidad de la rama: hombro adelante o atras, codo
+               arriba o abajo, muneca directa o volteada.
+               El codo se etiqueta por el signo de sin(q3 + psi), no por
+               el signo de q3: el eslabon equivalente esta inclinado
+               psi = 76.95 grados respecto de a3.
+
+  SELECCIONADA Entre todas las admisibles hay que elegir una. Se elige
+               la que exige MENOS MOVIMIENTO desde la postura actual.
+
+  costo        El criterio de esa eleccion:
+  ponderado
+                   costo = suma_i  w_i * (q_i_rama - q_i_actual)^2
+
+               Los pesos son w = [4, 3, 2, 1, 1, 0.5] de J1 a J6. J1 pesa
+               ocho veces mas que J6 porque mover la base arrastra todo
+               el brazo, mientras que girar la brida casi no cuesta.
+               Sin pesos, el criterio elegiria ramas que giran media
+               vuelta la base para ahorrar unos grados en la muneca.
+               El numero en si no tiene unidad util (son radianes al
+               cuadrado ponderados): solo sirve para comparar ramas
+               entre si. Gana el menor.
+
+  rango(J)     Numero de direcciones independientes en las que el
+               extremo puede moverse. Debe ser 6. Si baja a 5, hay una
+               direccion perdida: eso es exactamente una singularidad.
+
+  [!] cerca    Aviso, no error. La pose se resuelve igual, pero la
+  de singu-    movilidad esta degradada y conviene declararlo.
+  laridad
+
+  ramas que    Tampoco es un error. En una singularidad dos ramas que
+  coinciden    se diferenciaban por un signo convergen a la misma
+               configuracion: por eso las soluciones distintas pasan a
+               ser menos de ocho. Esa reduccion ES el sintoma.
+"""
 
 
 def menu():
     print("\n   RESOLVEDOR DE POSES EN VIVO   Hito 2 - Grupo VEVAS\n")
     while True:
-        print("  1) Matriz homogenea T_d (4x4)")
-        print("  2) Posicion + cuaternion (x y z qx qy qz qw)")
-        print("  3) Posicion + matriz R (3x3)")
-        print("  4) Posicion + RPY en grados (x y z roll pitch yaw)")
-        print("  5) Posicion + eje z6 (x y z zx zy zz)")
+        print("  COMO DAR LA POSE  (elija el formato que tenga a mano)")
+        print("  1) Matriz homogenea T_d, 4x4        16 cifras")
+        print("  2) Posicion + cuaternion            x y z qx qy qz qw")
+        print("  3) Posicion + matriz R, 3x3         3 cifras + 9 cifras")
+        print("  4) Posicion + RPY en grados         x y z roll pitch yaw")
+        print("  5) Posicion + eje z6                x y z zx zy zz")
+        print()
         print("  6) Casos borde de demostracion")
+        print("  7) Glosario: que significa cada numero del informe")
         print("  0) Salir")
+        print()
+        print("  Las cifras pueden ir juntas o repartidas en varias")
+        print("  lineas; el programa pide las que falten.")
         try:
             op = input("\n  opcion> ").strip()
         except (EOFError, KeyboardInterrupt):
@@ -252,8 +382,15 @@ def menu():
             if op == "0":
                 return
             elif op == "1":
-                print("  Pegue las 16 cifras de T_d (por filas):")
-                T = np.array(_leer("  T_d> ", 16)).reshape(4, 4)
+                ayuda = (
+                    "\n  Escriba las 16 cifras de T_d, por filas.\n"
+                    "  Puede pegarlas todas juntas o fila por fila:\n"
+                    "  el programa va pidiendo las que falten.\n"
+                    "  Ejemplo de una fila:   0 -1 0 0.3\n")
+                T = np.array(_leer("  T_d (fila 1)> ", 16, ayuda)).reshape(4, 4)
+                print("\n  T_d recibida:")
+                for fila in T:
+                    print("    " + "  ".join(f"{v:+9.4f}" for v in fila))
                 T = T_desde_R_p(T[:3, :3], T[:3, 3])
                 resolver_y_mostrar(T, titulo="Pose por matriz homogenea")
             elif op == "2":
@@ -262,7 +399,9 @@ def menu():
                                    titulo="Pose por cuaternion")
             elif op == "3":
                 p = _leer("  x y z> ", 3)
-                R = np.array(_leer("  R (9 cifras por filas)> ", 9))
+                R = np.array(_leer(
+                    "  R (fila 1)> ", 9,
+                    "\n  Nueve cifras de R, por filas. Juntas o de a una fila."))
                 resolver_y_mostrar(T_desde_R_p(R.reshape(3, 3), p),
                                    titulo="Pose por matriz de rotacion")
             elif op == "4":
@@ -279,8 +418,12 @@ def menu():
                                    titulo="Pose por eje z6")
             elif op == "6":
                 casos_borde()
+            elif op == "7":
+                print(GLOSARIO)
             else:
-                print("  opcion no reconocida.")
+                print(f"  '{op}' no es una opcion. Escriba un numero")
+                print("  del 0 al 7 y pulse Enter. Los datos de la pose")
+                print("  se piden DESPUES de elegir el formato.")
         except Exception as exc:
             print(f"\n  ERROR de entrada: {exc}")
             print("  Revise el formato y vuelva a intentar.\n")
