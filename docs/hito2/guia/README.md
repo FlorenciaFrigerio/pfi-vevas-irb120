@@ -2,6 +2,10 @@
 
 > Un archivo Markdown por cada uno de los 16 scripts. Los bloques se contrastan con el código vigente en scripts/; la secuencia y el reparto siguen la exposición de 20 diapositivas.
 
+## Guion por integrante
+
+- [Guion de diapositivas — Integrante 1](guion_integrante_1_diapos.md): portada y diapositivas 3–7.
+
 ## Empieza por el recorrido
 
 El archivo que narra las seis etapas es **demo_recorrido.py**. Se ejecuta desde scripts/, usa Python, NumPy y Matplotlib y **no necesita ROS**:
