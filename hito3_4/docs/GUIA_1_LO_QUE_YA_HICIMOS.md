@@ -22,6 +22,14 @@ Y los niveles de evidencia que pide el docente (rúbrica ECI-3/4):
 | S2 | El dato del controlador llega a ROS y se puede rastrear | `/joint_states` real con el driver |
 | S3 | Movimiento físico autorizado y observado | El video del robot moviéndose con la consola |
 
+## Revisión del 17/11/2026 y siguiente paso
+
+Esta guía conserva la historia de VEVAS. La revisión actual verificó las 18 pruebas originales y agregó tres casos de regresión, con 21 pruebas pasando. Los registros están en [revision_2026-11-17](datos/revision_2026-11-17/). Se incorporó lectura ROS sin interfaces de comando y selección del tópico de estados. Hay dos capturas históricas de Marcelo con sus fuentes para comparar la FK de VEVAS offline.
+
+Hasta aquí se verificó software y simulación interna en la computadora de trabajo. La siguiente prueba es SIM-ROS-001 en el Ubuntu del grupo con ros2_control simulado. Luego sigue S2 de VEVAS con estados del IRC5 y el cierre de movimiento por EGM. El video físico de VEVAS queda pendiente. El movimiento RWS/RAPID documentado por Marcelo se cita con su autor y alcance en la [Guía 9](GUIA_9_REFERENCIA_Y_DIAGNOSTICO.md).
+
+La [Guía 0](GUIA_0_RUTA_COMPLETA.md) ordena cada ejecución, resultado esperado y producto que guardar. Usar la carpeta exterior `hito3_4`, donde se aplicó esta revisión.
+
 ## Parte A. Hito 1: el gemelo digital (setiembre)
 
 Qué se pedía: describir el IRB 120 con la convención Denavit-Hartenberg (D-H), calcular la cinemática directa, armar el modelo URDF para ROS y comprobar en RViz que el modelo y la matemática coinciden.

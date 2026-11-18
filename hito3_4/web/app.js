@@ -371,7 +371,8 @@ function actualizar(v) {
   est.nVivo++;
   const m = v.modo || {};
   const banda = $("#banda-modo");
-  if (m.tipo === "sim") { banda.className = "banda sim"; banda.textContent = "SIMULACIÓN INTERNA · NO ES EL ROBOT REAL"; }
+  if (m.solo_lectura) { banda.className = "banda lectura"; banda.textContent = m.texto; }
+  else if (m.tipo === "sim") { banda.className = "banda sim"; banda.textContent = "SIMULACIÓN INTERNA · NO ES EL ROBOT REAL"; }
   else if (m.real === false) { banda.className = "banda mock"; banda.textContent = "ROS 2 · HARDWARE SIMULADO (use_fake_hardware) · NO ES EL ROBOT REAL"; }
   else if (m.exige_go && !m.permitir_real) { banda.className = "banda lectura"; banda.textContent = `${m.real ? "ROBOT REAL" : "HARDWARE SIN IDENTIFICAR"} · SOLO LECTURA (abre con --real y el GO para mover)`; }
   else { banda.className = "banda real"; banda.textContent = "ROBOT REAL · MOVIMIENTO HABILITADO · PARO DE EMERGENCIA A MANO"; }
@@ -478,11 +479,13 @@ function actualizarTuberia() {
 
 function cajaArmado(v) {
   const m = v.modo || {};
-  const clave = [v.armado, m.exige_go, m.permitir_real, v.motivo_desarmado].join("|");
+  const clave = [v.armado, m.exige_go, m.permitir_real, m.solo_lectura, v.motivo_desarmado].join("|");
   if (clave === est.ultimoCaja) return;
   est.ultimoCaja = clave;
   const c = $("#caja-armado");
-  if (v.armado) {
+  if (m.solo_lectura) {
+    c.textContent = "Solo lectura ROS. Se pueden consultar estados y calcular planes. El armado está deshabilitado.";
+  } else if (v.armado) {
     c.innerHTML = `<b style="color:#ff9b3d">MOVIMIENTO ARMADO.</b> El botón ENVIAR y las flechas mueven el robot.<br><button id="btn-desarmar" class="btn-desarmar" style="margin-top:6px">Desarmar</button>`;
   } else if (m.exige_go && !m.permitir_real) {
     c.innerHTML = `<b style="color:#f2c14e">Solo lectura.</b> Se detectó un robot real (o un hardware que no se pudo identificar). Se ven todos los cálculos y la posición real, pero no se puede mover. Para mover: cerrar y abrir con <code>--real --go GO_VEVAS.json</code>.`;

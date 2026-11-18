@@ -43,7 +43,7 @@ Requisitos: Python 3 con numpy (viene con ROS 2 Jazzy). Para las gráficas de lo
 sudo apt install -y python3-numpy python3-matplotlib python3-pytest
 ```
 
-Comprobar que todo calcula bien (18 pruebas, tarda 10 s):
+Comprobar que todo calcula bien (21 pruebas, tarda 10 s):
 
 ```bash
 python3 -m pytest -q tests/
@@ -153,7 +153,7 @@ La banda debe decir **ROS 2 · HARDWARE SIMULADO**. Desde acá todo funciona igu
 Ver la Guía 2 (conexión) y la Guía 6 (GO y video). Resumen:
 
 ```bash
-python3 consola_vevas.py --modo ros                              # solo lectura
+python3 consola_vevas.py --modo ros --solo-lectura              # solo lectura
 python3 consola_vevas.py --modo ros --real --go GO_VEVAS.json    # movimiento habilitado
 ```
 
@@ -190,3 +190,14 @@ python3 herramientas/analizar_sesion.py --ultima
 | Aborta apenas se envía, por la interfaz | El navegador estaba en segundo plano: dejar la pestaña de la consola visible |
 | El 3D se ve en negro | El navegador no tiene WebGL activado: usar Chrome o Firefox actualizados |
 | Pantalla chica (1366×768) | Pantalla completa con F11 y zoom al 80–90 % (Ctrl −) |
+
+
+## 10. Lectura de estados desde el puente RWS
+
+Con el puente de referencia activo en el mismo dominio ROS, ejecutar lo siguiente.
+
+```bash
+python3 consola_vevas.py --modo ros --solo-lectura --topico-estado /irb120/real/joint_states --abrir
+```
+
+El modo crea una suscripción de estados y deshabilita el armado. Se pueden calcular planes y observar FK y Jacobiano. PARAR y cerrar la consola conservan el modo de lectura. La identidad y vigencia de la fuente se comprueban en el puente y con el FlexPendant. Ver [Guía 9](GUIA_9_REFERENCIA_Y_DIAGNOSTICO.md).

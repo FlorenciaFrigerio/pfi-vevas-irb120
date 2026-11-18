@@ -69,3 +69,16 @@ Si el docente lo sigue pidiendo: 4 a 6 páginas a dos columnas con el método (m
 3. **Explicar con la consola, no con diapositivas:** pasar el mouse por las 8 ramas, apretar F para los marcos D-H, llevar el robot con las flechas cerca de q5 = 0 para que salte el aviso de singularidad.
 4. **Datos propios:** retardo medido, error típico a cada velocidad, repetibilidad. Nadie más los va a tener.
 5. **Cada integrante domina su parte y la de otro** (dominio 5 de la rúbrica): usar el banco de preguntas de `PRESENTACION.md`.
+
+
+## Orden para una presentación más completa
+
+1. Cerrar la evidencia física del pipeline principal y conservar el video y los registros.
+2. Repetir tres movimientos con el mismo objetivo y comparar error final, tiempo y dispersión entre ensayos.
+3. Mostrar un fallo reproducible en simulación, su log, una corrección comprobada y la repetición del caso.
+4. Armar una tarea de tablero con transformación de celda a base, posiciones identificadas y TCP de herramienta medido.
+5. Implementar y validar el camino cartesiano de la sección 1.1, midiendo desviación máxima respecto a la recta.
+6. Agregar torque estimado con parámetros y alcance declarados. La dinámica del Hito 2 está disponible para análisis offline. Su visualización en vivo requiere implementación adicional.
+7. Añadir visión con cámara cuando la tarea y los marcos estén validados. Medir error de calibración y tasa de aciertos sobre un conjunto de pruebas.
+
+Para cada mejora declarar entrada, salida, criterio, datos y resultado. La elección de las siguientes extensiones depende de qué se logre demostrar de forma repetible con el tiempo disponible.

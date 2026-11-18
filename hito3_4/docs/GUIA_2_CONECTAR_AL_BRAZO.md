@@ -193,7 +193,7 @@ Terminal 3:
 ```bash
 cd ~/abb_ws/src/pfi-vevas-irb120/hito3_4
 source /opt/ros/jazzy/setup.bash && source ~/abb_ws/install/setup.bash
-python3 consola_vevas.py --modo ros --abrir
+python3 consola_vevas.py --modo ros --solo-lectura --abrir
 ```
 
 La banda de arriba debe decir **ROBOT REAL · SOLO LECTURA**. Se ve el robot real en 3D, la FK en vivo, el Jacobiano en vivo y se pueden calcular planes, pero no se puede armar el movimiento. Mover el robot con el joystick del FlexPendant y ver que el modelo 3D lo sigue: eso es una gran evidencia S2 para el video.

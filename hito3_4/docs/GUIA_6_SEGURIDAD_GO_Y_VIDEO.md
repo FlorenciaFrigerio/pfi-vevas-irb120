@@ -13,7 +13,7 @@ Cómo queda repartido, para que esté claro en la bitácora y en la defensa:
 | La plantilla del GO y el checklist | Generados con IA a partir del checklist oficial del docente (W12-S01) |
 | La trayectoria de demostración | Generada con IA (`vevas/secuencias.py`), revisada en simulación por el grupo |
 | Revisar que cada ítem del checklist se cumple, llenar el GO y firmarlo | **El grupo**, el mismo día, en el laboratorio |
-| Autorizar que el robot se mueva | **El docente** (dio la instrucción). La IA no autoriza nada |
+| Autorizar que el robot se mueva | El operador y los responsables del laboratorio verifican el alcance autorizado del ensayo del día |
 | Parar el robot si algo no está bien | **La persona del FlexPendant**, siempre, sin preguntar |
 
 Recomendación: pedirle al docente que confirme la instrucción por escrito (un mensaje de WhatsApp alcanza) y guardar esa captura en `docs/datos/`. Así el campo "autoriza" del GO tiene respaldo y nadie del grupo queda expuesto si algo sale mal.
@@ -118,9 +118,16 @@ Edición (opcional): la pantalla grande y el celular en una ventanita en una esq
 | 2:00 | Las 6 a la vez; gráfica de error | LSPB sincronizado; e_p y e_R en vivo. |
 | 2:40 | Pose A: Cálculo paso a paso | Centro de muñeca, q1, triángulo, muñeca, verificación FK 1e-16. |
 | 3:20 | Las 8 ramas, pasando el mouse | 8 soluciones, solo una dentro de límites; por qué gana. |
-| 3:50 | ENVIAR; robot moviéndose; error en vivo | Recién ahora se manda. Error de seguimiento menor a 1°. |
+| 3:50 | ENVIAR; robot moviéndose; error en vivo | Recién ahora se manda. Leer el error de seguimiento observado y su umbral propuesto. |
 | 4:30 | Poses B y C | Lo mismo, más rápido. |
 | 5:10 | Pestaña Bitácora; informe | Errores máximos y finales, sesión guardada, análisis automático. |
 | 5:40 | Cierre | Qué falta y qué sigue (Guía 8). |
 
 Al final, guardar el video, la sesión (`sesiones/...`), el informe y el GO juntos, y anotar los nombres de los archivos en la bitácora.
+
+
+## 7. Datos que deben acompañar al video
+
+Registrar ID del plan, hora, commit, configuración, GO del día, modo de transporte y carpeta de sesión. Mostrar los errores medidos por la consola y citar si proceden de FK con juntas medidas o de una referencia cartesiana independiente del controlador. En la secuencia junta por junta, leer cuál coordenada cambia. Para la pose, explicar el filtro de error de cada rama y el criterio de selección.
+
+El GO se completa con las condiciones verificadas y las personas responsables del ensayo. La captura de mensajes de Florencia describe los requisitos de la demostración. La revisión de alcance y condiciones del movimiento se documenta el día del laboratorio.

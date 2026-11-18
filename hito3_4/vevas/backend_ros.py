@@ -28,21 +28,16 @@ import numpy as np
 class BackendROS:
     tipo = "ros"
 
-    def __init__(self, cfg: dict, avisar):
+    def __init__(self, cfg: dict, avisar, solo_lectura: bool = False):
         import rclpy
-        from rclpy.action import ActionClient
         from rclpy.executors import MultiThreadedExecutor
         from rclpy.node import Node
         from rclpy.qos import qos_profile_sensor_data
 
-        from control_msgs.action import FollowJointTrajectory
         from sensor_msgs.msg import JointState
-        from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
         self._rclpy = rclpy
-        self._FJT = FollowJointTrajectory
-        self._JT = JointTrajectory
-        self._JTP = JointTrajectoryPoint
+        self.solo_lectura = solo_lectura
         self._avisar = avisar
         self._cfg = cfg
         rc = cfg["robot"]
@@ -55,8 +50,18 @@ class BackendROS:
         self.node = Node("consola_vevas")
         rosc = cfg["ros"]
         self.node.create_subscription(JointState, rosc["topico_estado"], self._cb_estado, qos_profile_sensor_data)
-        self._ac = ActionClient(self.node, FollowJointTrajectory, rosc["accion_trayectoria"])
-        self._pub = self.node.create_publisher(JointTrajectory, rosc["topico_trayectoria"], 10)
+        self._ac = None
+        self._pub = None
+        if not solo_lectura:
+            from rclpy.action import ActionClient
+            from control_msgs.action import FollowJointTrajectory
+            from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+
+            self._FJT = FollowJointTrajectory
+            self._JT = JointTrajectory
+            self._JTP = JointTrajectoryPoint
+            self._ac = ActionClient(self.node, FollowJointTrajectory, rosc["accion_trayectoria"])
+            self._pub = self.node.create_publisher(JointTrajectory, rosc["topico_trayectoria"], 10)
 
         self._lock = threading.Lock()
         self._q = None
@@ -73,7 +78,8 @@ class BackendROS:
     # Arranque y diagnóstico
     def iniciar(self):
         self._hilo.start()
-        threading.Thread(target=self._detectar_hardware, daemon=True).start()
+        if not self.solo_lectura:
+            threading.Thread(target=self._detectar_hardware, daemon=True).start()
 
     def detener(self):
         try:
@@ -119,6 +125,10 @@ class BackendROS:
     def info(self) -> dict:
         with self._lock:
             d = dict(self._hardware)
+        d["solo_lectura"] = self.solo_lectura
+        d["topico_estado"] = self._cfg["ros"]["topico_estado"]
+        if self.solo_lectura:
+            d["texto"] = "ROS 2 · SOLO LECTURA · " + d["topico_estado"]
         d["nombres_juntas_vistos"] = list(self._nombres_vistos)
         return d
 
@@ -133,7 +143,11 @@ class BackendROS:
                 if not cand:
                     return
                 idx.append(cand[0])
+        if max(idx) >= len(msg.position):
+            return
         q_ros = np.array([msg.position[i] for i in idx], dtype=float)
+        if not np.all(np.isfinite(q_ros)):
+            return
         q = self.signos * q_ros + self.offsets
         with self._lock:
             self._q = q
@@ -155,6 +169,8 @@ class BackendROS:
 
     # Comandos
     def ejecutar_trayectoria(self, ts, Q, QD=None) -> tuple[bool, str]:
+        if self.solo_lectura:
+            return False, "Backend ROS en solo lectura."
         if not self._ac.wait_for_server(timeout_sec=2.0):
             return False, "La acción follow_joint_trajectory no está disponible (¿controlador activo?)."
         goal = self._FJT.Goal()
@@ -194,6 +210,8 @@ class BackendROS:
 
     def enviar_punto(self, q, horizonte: float) -> None:
         """Jog: un solo punto que reemplaza la trayectoria actual (interfaz por tópico)."""
+        if self.solo_lectura:
+            return
         msg = self._JT()
         msg.joint_names = list(self.nombres)
         p = self._JTP()
@@ -210,6 +228,8 @@ class BackendROS:
         - Si se estaba moviendo con flechas (tópico), se manda un último punto en q
           (la última referencia) para que termine el pasito y se quede ahí.
         """
+        if self.solo_lectura:
+            return
         gh = self._goal_handle
         self._goal_handle = None
         if gh is not None:

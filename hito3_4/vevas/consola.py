@@ -226,6 +226,8 @@ class Consola:
     def armar(self, checklist: dict, frase: str) -> tuple[bool, str]:
         with self.lock:
             m = self.modo()
+            if m.get("solo_lectura"):
+                return False, "La consola se abrió en SOLO LECTURA."
             if m["exige_go"]:
                 if not self.permitir_real:
                     return False, (

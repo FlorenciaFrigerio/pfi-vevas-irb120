@@ -111,3 +111,17 @@ limitaciones / hipotesis descartadas:
 proxima accion y responsable:
 revision docente/laboratorio requerida:
 ```
+
+## Revisión del 17/11/2026 desde Codex
+
+ID REV-001. Se revisaron el main de VEVAS `9d62ae9991b801ccb34a7505e484f0182ab8cba1` y la referencia de Marcelo `194c0778d51754fc20f492d1a7d67c30d7f5c9be`. Se incorporaron las guías 0 y 9, se actualizaron las guías existentes y se documentaron los mensajes de Florencia como criterio de demostración. Se eligió actualizar la carpeta exterior hito3_4. La copia anidada conservaba 117 archivos idénticos al comenzar. Próxima acción del grupo, ejecutar SIM-ROS-001 en Ubuntu y guardar el ensayo.
+
+ID REV-002. Hipótesis, VEVAS puede consumir el tópico de estados del puente RWS conservando lectura explícita. Se agregaron --solo-lectura y --topico-estado. Se probó con sustitutos de ROS que se reciben seis valores finitos, se rechazan muestras incompletas/no finitas, se bloquea el armado y se omiten interfaces de comando, PARAR y cierre de lectura incluidos. Resultado, prueba pasada. Alcance parcialmente verificado, sin instalación ROS en la nube. Pendiente repetir con ROS Jazzy y el publicador real.
+
+ID REV-003. Se reprocesaron offline dos posturas históricas de la referencia con FK VEVAS en tool0. Se guardó procedencia y criterios exploratorios por caso en datos/referencia_marcelo/posturas_historicas.json. Resultado, ambas pruebas pasadas, errores aproximados 0,000075 mm / 0,000012 grados para RWS del 04/11 y 0,0051 mm / 0,00040 grados para FlexPendant del 29/10. Siguiente acción, capturas nuevas de VEVAS que ejerciten J4–J6. Alcance del reprocesamiento, S0 con datos históricos.
+
+ID REV-004. Se ejecutó la suite desde un entorno Python aislado de trabajo. Las 18 pruebas originales pasaron. Con las tres regresiones incorporadas, resultado 21 passed. Evidencia en datos/revision_2026-11-17/pytest.txt. Se verificó sintaxis de app.js con node --check. Pendiente ROS y revisión visual en el Ubuntu del grupo.
+
+ID REV-005. Ensayo por HTTP desde la entrada normal consola_vevas.py --modo sim. Se calculó y ejecutó J6 relativo +5 grados y luego Pose A (350,150,400 mm, Ry=180 grados), manteniendo el pulso de interfaz durante cada movimiento. Ambos completaron. J6, error final máximo 0,0051 grados. Pose A, error final máximo 0,0048 grados, seguimiento máximo 0,5525 grados, error final de posición 0,0412 mm. Evidencia en datos/revision_2026-11-17/sim_api.json y sim_servidor.txt. Alcance S0, simulador interno. Próxima acción, repetir con ros2_control simulado y luego la ruta física por etapas.
+
+ID REV-006. Publicación. Se intentó crear la rama en FlorenciaFrigerio/pfi-vevas-irb120 mediante el conector y mediante git push por HTTPS. Ambos recibieron 403 por autorización de escritura. Los cambios se prepararon en la rama local feature/eci34-complemento-marcelo. El repo de Marcelo se utilizó como referencia de lectura. La publicación remota queda pendiente de corregir la autorización de GitHub. Se prepara un parche para aplicarlo desde una PC autorizada.

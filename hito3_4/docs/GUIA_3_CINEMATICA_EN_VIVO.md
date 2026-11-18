@@ -202,7 +202,7 @@ $$\text{puntaje} = \sum_i w_i\,|q_i - q_{i,\text{actual}}|,\qquad w = [1, 1, 1, 
 
 Los pesos hacen que mover las juntas grandes (1, 2, 3, que cargan todo el brazo) "cueste" más que mover la muñeca. El error FK no decide entre ramas válidas porque en todas es ~1e-16; lo que decide es la cercanía.
 
-Es lo que pidió el docente: **primero se calcula todo, se elige la mejor rama comprobando que el error sea el mínimo, y recién ahí se manda al robot**. La consola no deja enviar nada si no hay rama válida o si el plan no pasa la revisión.
+El flujo verifica los residuos de cada rama antes del envío. La selección actual filtra por error, límites y singularidad, y luego minimiza distancia ponderada con una penalización por cercanía a límites. Los residuos de todas las candidatas se muestran para explicar la elección en la demostración. La consola no deja enviar nada si no hay rama válida o si el plan no pasa la revisión.
 
 ## 5. Jacobiano y singularidades
 

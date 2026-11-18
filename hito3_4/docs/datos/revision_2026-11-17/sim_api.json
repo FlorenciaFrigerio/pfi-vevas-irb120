@@ -1,0 +1,67 @@
+{
+  "alcance": "S0 simulador interno, recorrido HTTP real de la consola",
+  "resultados": [
+    {
+      "entrada": {
+        "junta": 6,
+        "valor_deg": 5,
+        "relativo": true
+      },
+      "ultimo_resumen": {
+        "plan_id": 1,
+        "descripcion": "Solo J6 +5.0° (relativo)",
+        "inicio": "2026-11-17T22:30:53",
+        "duracion_s": 1.5,
+        "error_final_juntas_deg": [
+          -0.004918377970203273,
+          0.0017420141175300376,
+          -0.00016542074867422344,
+          0.000925229589188678,
+          -0.0050930540811006874,
+          -0.0010962417757824105
+        ],
+        "error_final_max_deg": 0.0050930540811006874,
+        "e_p_final_mm": 0.024903282923165182,
+        "e_R_final_deg": 0.005511683261606339,
+        "err_seguimiento_max_deg": 0.19283134361384652,
+        "e_p_seguimiento_max_mm": 0.05436622032616269,
+        "e_R_seguimiento_max_deg": 0.1961474884794499,
+        "resultado_controlador": "terminada",
+        "estado": "completado"
+      }
+    },
+    {
+      "entrada": {
+        "x": 350,
+        "y": 150,
+        "z": 400,
+        "rz": 0,
+        "ry": 180,
+        "rx": 0
+      },
+      "ultimo_resumen": {
+        "plan_id": 2,
+        "descripcion": "Pose (350, 150, 400) mm, Rz 0° Ry 180° Rx 0°",
+        "inicio": "2026-11-17T22:30:55",
+        "duracion_s": 3.9757240004693566,
+        "error_final_juntas_deg": [
+          -0.004752842440202712,
+          9.24655655529727e-05,
+          -0.0038399786447120515,
+          -0.0036311691277632,
+          0.0027476855419435804,
+          -0.0020500736989846075
+        ],
+        "error_final_max_deg": 0.004752842440202712,
+        "e_p_final_mm": 0.04118361443963512,
+        "e_R_final_deg": 0.0035379513750686646,
+        "e_p_vs_pose_pedida_mm": 0.04118361443968777,
+        "err_seguimiento_max_deg": 0.5524653125695288,
+        "e_p_seguimiento_max_mm": 3.1826675209203805,
+        "e_R_seguimiento_max_deg": 0.6203391742433948,
+        "resultado_controlador": "terminada",
+        "estado": "completado"
+      }
+    }
+  ]
+}

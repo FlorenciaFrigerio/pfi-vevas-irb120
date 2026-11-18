@@ -8,9 +8,19 @@ Esta carpeta tiene todo lo del Hito 3/4: la **consola VEVAS** (interfaz gráfica
 
 ```bash
 cd ~/abb_ws/src/pfi-vevas-irb120/hito3_4
-python3 -m pytest -q tests/                 # 18 pruebas, deben pasar todas
+python3 -m pytest -q tests/                 # 21 pruebas, deben pasar todas
 python3 consola_vevas.py --modo sim --abrir # abre http://127.0.0.1:8000
 ```
+
+## Recorrido completo actualizado
+
+Empezar por [Guía 0, desde la preparación hasta el video físico](docs/GUIA_0_RUTA_COMPLETA.md). La revisión incorpora [la referencia de Marcelo y su diagnóstico](docs/GUIA_9_REFERENCIA_Y_DIAGNOSTICO.md), capturas históricas con procedencia y un modo ROS explícito de lectura.
+
+```bash
+python3 consola_vevas.py --modo ros --solo-lectura --topico-estado /irb120/real/joint_states --abrir
+```
+
+Este comando presupone un puente RWS que publique ese tópico. El envío físico desde VEVAS sigue pendiente de comprobación en laboratorio por la ruta EGM. Los resultados locales de esta revisión están en [docs/datos/revision_2026-11-17](docs/datos/revision_2026-11-17/).
 
 ## Guías (leer en este orden)
 
@@ -48,7 +58,7 @@ python3 consola_vevas.py --modo sim --abrir # abre http://127.0.0.1:8000
 | Dominio de la rúbrica | Evidencia lista | Falta |
 |---|---|---|
 | 1. Sistema y compatibilidad (20 %) | Inventario, opciones del IRC5, arquitectura y matriz A/B, manifiesto | Guardar fotos y salidas de `curl` en `docs/datos/gate1/` |
-| 2. Modelos y validación (25 %) | FK/IK/J propios, 18 pruebas, validación S0 contra URDF ROS-I (6e-16) | FK propia vs controlador (S1) con `verificar_convencion_rws.py` |
+| 2. Modelos y validación (25 %) | FK/IK/J propios, 21 pruebas, validación S0 contra URDF ROS-I (6e-16) | FK propia vs controlador (S1) con `verificar_convencion_rws.py` |
 | 3. Integración ROS–ABB (25 %) | Consola probada en simulación; driver y paquete del IRB 120 en el Ubuntu | Probar con `use_fake_hardware`, después robot real (S2, S3) |
 | 4. Seguridad y reproducibilidad (20 %) | GO, límites, abortos automáticos, registro de sesiones, análisis automático | Bitácora del día de prueba, sesiones reales analizadas |
 | 5. Defensa (10 %) | Guion y banco de preguntas | Ensayar |

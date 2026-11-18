@@ -40,6 +40,8 @@ def main():
     ap = argparse.ArgumentParser(description="Consola VEVAS para el ABB IRB 120")
     ap.add_argument("--modo", choices=["sim", "ros"], default="sim", help="sim = simulador interno; ros = ROS 2")
     ap.add_argument("--real", action="store_true", help="permite mover un robot REAL (exige --go y el checklist)")
+    ap.add_argument("--solo-lectura", action="store_true", help="ROS sin interfaces de comando")
+    ap.add_argument("--topico-estado", help="tópico JointState, por ejemplo /irb120/real/joint_states")
     ap.add_argument("--go", default=None, help="archivo GO_VEVAS.json lleno por el grupo")
     ap.add_argument("--config", default=os.path.join(AQUI, "config.json"))
     ap.add_argument("--puerto", type=int, default=None)
@@ -47,7 +49,14 @@ def main():
     ap.add_argument("--abrir", action="store_true", help="abrir el navegador automáticamente")
     args = ap.parse_args()
 
+    if args.solo_lectura and (args.modo != "ros" or args.real):
+        ap.error("--solo-lectura requiere --modo ros y es incompatible con --real")
+    if args.topico_estado and args.modo != "ros":
+        ap.error("--topico-estado requiere --modo ros")
+
     cfg = cargar_config(args.config)
+    if args.topico_estado:
+        cfg["ros"]["topico_estado"] = args.topico_estado
     puerto = args.puerto or cfg["servidor"]["puerto"]
     go = None
     if args.go:
@@ -66,7 +75,7 @@ def main():
         except ImportError as e:
             print(f"No se pudo importar rclpy ({e}). ¿Hiciste 'source /opt/ros/jazzy/setup.bash'?")
             sys.exit(1)
-        backend = BackendROS(cfg, lambda t: avisos_previos.append(t))
+        backend = BackendROS(cfg, lambda t: avisos_previos.append(t), solo_lectura=args.solo_lectura)
 
     consola = Consola(cfg, backend, registro, permitir_real=args.real, go=go)
     if args.modo == "ros":
@@ -76,17 +85,17 @@ def main():
 
     backend.iniciar()
     consola.iniciar()
-    registro.evento("inicio", modo=args.modo, real=args.real, config=cfg, go=go)
+    registro.evento("inicio", modo=args.modo, real=args.real, config=cfg, go=go, solo_lectura=args.solo_lectura)
     consola.avisar(f"Consola iniciada en modo {args.modo.upper()}. Registro en {registro.carpeta}", "ok")
 
     servidor = crear_servidor(consola, os.path.join(AQUI, "web"), cfg["servidor"]["host"], puerto, cfg["servidor"]["hz_estado"])
     url = f"http://{cfg['servidor']['host']}:{puerto}"
     print(f"\n  Consola VEVAS lista: abre {url} en el navegador.")
     print(f"  Modo: {args.modo}{' (ROBOT REAL PERMITIDO)' if args.real else ''}.  Registro: {registro.carpeta}")
-    print("  Ctrl+C para salir (el robot se detiene).\n")
+    print("  Ctrl+C para cerrar y guardar el registro.\n")
 
     def salir(*_):
-        print("\nCerrando: se detiene el robot y se guarda el registro.")
+        print("\nCerrando la consola y guardando el registro.")
         try:
             consola.parar("cierre de la consola")
         finally:

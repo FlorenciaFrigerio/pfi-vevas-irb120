@@ -1,0 +1,7 @@
+
+  Consola VEVAS lista: abre http://127.0.0.1:18080 en el navegador.
+  Modo: sim.  Registro: /workspace/work/sesiones_revision/2026-11-17_22-30-53_sim
+  Ctrl+C para cerrar y guardar el registro.
+
+
+Cerrando la consola y guardando el registro.

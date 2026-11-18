@@ -1,0 +1,59 @@
+{
+  "origen": "Marcelo767n/robotica-IMT342",
+  "commit_origen": "194c0778d51754fc20f492d1a7d67c30d7f5c9be",
+  "alcance": "Reprocesamiento offline de capturas históricas del controlador. Pendiente ensayo de VEVAS en laboratorio.",
+  "casos": [
+    {
+      "id": "RWS-2026-11-04",
+      "fuente": "https://raw.githubusercontent.com/Marcelo767n/robotica-IMT342/194c0778d51754fc20f492d1a7d67c30d7f5c9be/2-2026/IMT342/equipo/proyecto/docs/conexion_abb/evidencias/fk_real_2026-11-04_224412Z_resumen.json",
+      "fecha_utc": "2026-11-04T22:44:12.693478+00:00",
+      "q_deg": [
+        -73.2051544189453,
+        -12.1486206054688,
+        9.91144466400146,
+        91.8839874267578,
+        31.7478084564209,
+        -134.498596191406
+      ],
+      "xyz_mm": [
+        123.9005,
+        -279.4678,
+        639.3236
+      ],
+      "cuaternion_wxyz": [
+        0.532165,
+        -0.01589103,
+        0.6888447,
+        -0.4919764
+      ],
+      "tol_p_mm": 0.001,
+      "tol_R_rad": 1e-06
+    },
+    {
+      "id": "FP-2026-10-29",
+      "fuente": "https://raw.githubusercontent.com/Marcelo767n/robotica-IMT342/194c0778d51754fc20f492d1a7d67c30d7f5c9be/2-2026/IMT342/equipo/proyecto/docs/conexion_abb/evidencias/g2_fk_vs_controlador_pose1_2026-10-29.json",
+      "fecha": "2026-10-29",
+      "q_deg": [
+        55.3010673522949,
+        16.9463996887207,
+        0.643334805965424,
+        -45.4281921386719,
+        -63.6680183410645,
+        9.13182830810547
+      ],
+      "xyz_mm": [
+        208.05,
+        381.23,
+        557.26
+      ],
+      "cuaternion_wxyz": [
+        0.73949,
+        -0.48944,
+        0.16639,
+        0.43119
+      ],
+      "tol_p_mm": 0.02,
+      "tol_R_rad": 2e-05
+    }
+  ]
+}
