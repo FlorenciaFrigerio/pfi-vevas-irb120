@@ -1,0 +1,51 @@
+// Configuración de la consola VEVAS. Las líneas que empiezan con // son comentarios.
+// Unidades: metros, radianes y segundos, salvo que el nombre diga _deg, _mm o _pct.
+{
+  "robot": {
+    // Herramienta montada en tool0. Sin herramienta: todo en cero (TCP = brida).
+    "tcp_xyz_m": [0.0, 0.0, 0.0],
+    "tcp_rpy_rad": [0.0, 0.0, 0.0],
+    // Nombres de las juntas en /joint_states (abb_ros2 usa joint_1 ... joint_6)
+    "nombres_juntas": ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"],
+    // Convención: q_DH = signo * q_ROS + offset. Se verifica con herramientas/verificar_convencion_rws.py
+    "signos": [1, 1, 1, 1, 1, 1],
+    "offsets_deg": [0, 0, 0, 0, 0, 0]
+  },
+  "ik": {
+    // Una rama es válida si su error FK está bajo estas tolerancias (umbrales propuestos, pendientes del docente)
+    "tol_e_p_m": 1e-6,
+    "tol_e_R_rad": 1e-5,
+    "margen_limite_deg": 5.0,
+    // Valor singular mínimo (J escalado con L = 0.3 m) para no acercarse a una singularidad
+    "sigma_min": 0.02
+  },
+  "trayectoria": {
+    "kappa": 0.25,
+    "t_acel_s": 0.5,
+    "t_min_s": 1.5,
+    "dt_envio_s": 0.02
+  },
+  "seguridad": {
+    "velocidad_sim_max_pct": 100,
+    "velocidad_real_max_pct": 10,
+    "velocidad_inicial_pct": 5,
+    // Altura mínima del TCP, brida, muñeca y codo sobre la base (mesa) [m]
+    "z_min_m": 0.08,
+    "error_seguimiento_max_deg": 3.0,
+    "inicio_max_deg": 1.0,
+    "watchdog_estado_s": 0.5,
+    "watchdog_interfaz_s": 1.0,
+    "jog_junta_deg_s": 5.0,
+    "jog_cartesiano_mm_s": 20.0,
+    "jog_real_junta_max_deg_s": 5.0,
+    "jog_real_cartesiano_max_mm_s": 25.0
+  },
+  "ros": {
+    "topico_estado": "/joint_states",
+    "accion_trayectoria": "/joint_trajectory_controller/follow_joint_trajectory",
+    "topico_trayectoria": "/joint_trajectory_controller/joint_trajectory",
+    "servicio_hardware": "/controller_manager/list_hardware_components"
+  },
+  "postura_inicial_deg": [0, -20, 30, 0, 40, 0],
+  "servidor": { "host": "127.0.0.1", "puerto": 8000, "hz_estado": 20 }
+}

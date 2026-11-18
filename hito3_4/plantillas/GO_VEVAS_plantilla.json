@@ -1,0 +1,24 @@
+{
+  "_instrucciones": "Copiar como GO_VEVAS.json, completar TODOS los campos el MISMO DIA de la prueba y poner cada item del checklist en true solo si se verifico de verdad. La consola rechaza el archivo si falta algo o si la fecha no es la de hoy. Este archivo NO reemplaza las normas de ABB ni del laboratorio.",
+  "fecha": "AAAA-MM-DD",
+  "decision": "NO-GO",
+  "autoriza": "COMPLETAR: nombre del docente o encargado que autorizo, y como (en persona, mensaje, etc.)",
+  "operador_pendant": "COMPLETAR: quien sostiene el FlexPendant con la mano en el paro de emergencia",
+  "responsable_consola": "COMPLETAR: quien maneja la consola VEVAS en la PC",
+  "supervisor": "COMPLETAR: quien supervisa (docente o encargado, si esta presente)",
+  "alcance": "COMPLETAR: por ejemplo 'secuencia demo: juntas +-5 grados a 3 grados/s y 3 poses IK a 10 %'",
+  "velocidad_max_pct": 10,
+  "checklist": {
+    "1_identidad_controlador_manual": false,
+    "2_autorizacion_acceso_robot": false,
+    "3_operador_y_supervisor_presentes": false,
+    "4_modo_operativo_permitido": false,
+    "5_zona_despejada": false,
+    "6_paro_emergencia_y_parada_normal_probados": false,
+    "7_trayectoria_revisada_en_simulacion": false,
+    "8_limites_velocidad_tool_base_revisados": false,
+    "9_sin_pieza_ni_herramienta_peligrosa": false,
+    "10_registro_y_aborto_funcionando": false,
+    "11_condiciones_de_aborto_y_recuperacion_acordadas": false
+  }
+}
