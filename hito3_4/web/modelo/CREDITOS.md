@@ -1,0 +1,1 @@
+Mallas ABB IRB120 de ROS-Industrial abb_irb120_support 1.5.0, Apache-2.0. Autores del paquete: Mark Culleton, Kevin Kelly, Levi Armstrong y comunidad ROS-Industrial. Fuente/commit por archivo en PROCEDENCIA.json. La geometría usa los marcos visuales del Xacro público; comparar con la configuración URDF instalada antes de afirmar identidad con el RViz local.

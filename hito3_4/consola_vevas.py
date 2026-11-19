@@ -12,6 +12,11 @@ Ejemplos:
     # Con el robot real (driver abb_ros2 con use_fake_hardware:=false y EGM corriendo)
     python3 consola_vevas.py --modo ros --real --go GO_VEVAS.json
 
+    # Con el robot real por RWS (sin ROS ni EGM): módulo RAPID VEVAS_RWS ya corriendo (VevasServidor)
+    python3 consola_vevas.py --modo rws --real --go GO_VEVAS.json
+    python3 consola_vevas.py --modo rws --real --go GO_VEVAS.json --preparar-rapid   # además instala y arranca el servidor (AUTO)
+    python3 consola_vevas.py --modo rws --solo-lectura                               # solo mira la postura
+
 Después abre http://127.0.0.1:8000 en el navegador.
 """
 
@@ -38,16 +43,48 @@ from vevas.servidor import crear_servidor  # noqa: E402
 
 def main():
     ap = argparse.ArgumentParser(description="Consola VEVAS para el ABB IRB 120")
-    ap.add_argument("--modo", choices=["sim", "ros"], default="sim", help="sim = simulador interno; ros = ROS 2")
+    ap.add_argument("--modo", choices=["sim", "ros", "rws"], default="sim",
+                    help="sim = simulador interno; ros = ROS 2; rws = IRC5 por RWS (módulo RAPID VEVAS_RWS)")
     ap.add_argument("--real", action="store_true", help="permite mover un robot REAL (exige --go y el checklist)")
+    ap.add_argument("--solo-lectura", action="store_true", help="ROS sin interfaces de comando")
+    ap.add_argument("--topico-estado", help="tópico JointState, por ejemplo /irb120/real/joint_states")
     ap.add_argument("--go", default=None, help="archivo GO_VEVAS.json lleno por el grupo")
+    ap.add_argument("--ip", help="IP del IRC5 (solo --modo rws; por defecto la de config.json)")
+    ap.add_argument("--rws-puerto", type=int, help="puerto HTTP de RWS (solo --modo rws; por defecto 80)")
+    ap.add_argument("--usuario", help="usuario RWS (solo --modo rws)")
+    ap.add_argument("--clave", help="clave RWS (solo --modo rws; también se lee VEVAS_RWS_CLAVE)")
+    ap.add_argument("--preparar-rapid", action="store_true",
+                    help="--modo rws: instala VEVAS_RWS si falta, pone el PP en VevasServidor y arranca RAPID (solo AUTO)")
     ap.add_argument("--config", default=os.path.join(AQUI, "config.json"))
     ap.add_argument("--puerto", type=int, default=None)
     ap.add_argument("--sesiones", default=os.path.join(AQUI, "sesiones"))
     ap.add_argument("--abrir", action="store_true", help="abrir el navegador automáticamente")
     args = ap.parse_args()
+    if args.real and args.modo not in ("ros", "rws"):
+        ap.error("--real requiere --modo ros o --modo rws")
+    if args.real and not args.go:
+        ap.error("--real exige --go GO_VEVAS.json (archivo completo y del día)")
+
+    if args.solo_lectura and (args.modo not in ("ros", "rws") or args.real):
+        ap.error("--solo-lectura requiere --modo ros o rws y es incompatible con --real")
+    if args.modo == "rws" and not args.real and not args.solo_lectura:
+        print("Aviso: --modo rws sin --real: se abre en SOLO LECTURA (para mover hace falta --real y --go).")
+    if (args.ip or args.usuario or args.clave or args.rws_puerto or args.preparar_rapid) and args.modo != "rws":
+        ap.error("--ip, --usuario, --clave y --preparar-rapid requieren --modo rws")
+    if args.preparar_rapid and (not args.real or args.solo_lectura):
+        ap.error("--preparar-rapid arranca RAPID: exige --real y --go (y no vale con --solo-lectura)")
+    if args.topico_estado and args.modo != "ros":
+        ap.error("--topico-estado requiere --modo ros")
 
     cfg = cargar_config(args.config)
+    if args.topico_estado:
+        cfg["ros"]["topico_estado"] = args.topico_estado
+    if args.modo == "rws":
+        for k, v in (("ip", args.ip), ("puerto", args.rws_puerto), ("usuario", args.usuario), ("clave", args.clave or os.environ.get("VEVAS_RWS_CLAVE"))):
+            if v:
+                cfg["rws"][k] = v
+        # La postura llega por HTTP a ~10 Hz: el watchdog de 0.5 s se sube al valor de cfg["rws"] (nunca se baja).
+        cfg["seguridad"]["watchdog_estado_s"] = max(cfg["seguridad"]["watchdog_estado_s"], cfg["rws"]["watchdog_estado_s"])
     puerto = args.puerto or cfg["servidor"]["puerto"]
     go = None
     if args.go:
@@ -60,33 +97,50 @@ def main():
     if args.modo == "sim":
         q0 = [math.radians(v) for v in cfg["postura_inicial_deg"]]
         backend = BackendSim(q0)
+    elif args.modo == "rws":
+        from vevas.backend_rws import BackendRWS
+        solo = args.solo_lectura or not args.real
+        backend = BackendRWS(cfg, lambda t: avisos_previos.append(t), solo_lectura=solo)
     else:
         try:
             from vevas.backend_ros import BackendROS
         except ImportError as e:
             print(f"No se pudo importar rclpy ({e}). ¿Hiciste 'source /opt/ros/jazzy/setup.bash'?")
             sys.exit(1)
-        backend = BackendROS(cfg, lambda t: avisos_previos.append(t))
+        backend = BackendROS(cfg, lambda t: avisos_previos.append(t), solo_lectura=args.solo_lectura)
 
     consola = Consola(cfg, backend, registro, permitir_real=args.real, go=go)
-    if args.modo == "ros":
+    if args.modo in ("ros", "rws"):
         backend._avisar = lambda t: consola.avisar(t, "info")
     for t in avisos_previos:
         consola.avisar(t)
 
     backend.iniciar()
+    if args.preparar_rapid:
+        from vevas.rws_cliente import Falla
+        ruta_mod = cfg["rws"]["modulo_rapid"]
+        ruta_mod = ruta_mod if os.path.isabs(ruta_mod) else os.path.join(AQUI, ruta_mod)
+        print(f"Preparando RAPID en {cfg['rws']['ip']} (módulo {ruta_mod})...")
+        try:
+            backend.preparar_rapid(ruta_mod)
+        except Falla as e:
+            print(f"\nERROR al preparar RAPID: {e}\nNo se abre la consola. Resolvelo (llave en AUTO, motores apagados, RAPID detenido) y reintentá.")
+            backend.detener()
+            registro.cerrar()
+            sys.exit(1)
+        print("RAPID listo: VevasServidor activo.")
     consola.iniciar()
-    registro.evento("inicio", modo=args.modo, real=args.real, config=cfg, go=go)
+    registro.evento("inicio", modo=args.modo, real=args.real, config=cfg, go=go, solo_lectura=args.solo_lectura)
     consola.avisar(f"Consola iniciada en modo {args.modo.upper()}. Registro en {registro.carpeta}", "ok")
 
     servidor = crear_servidor(consola, os.path.join(AQUI, "web"), cfg["servidor"]["host"], puerto, cfg["servidor"]["hz_estado"])
     url = f"http://{cfg['servidor']['host']}:{puerto}"
     print(f"\n  Consola VEVAS lista: abre {url} en el navegador.")
     print(f"  Modo: {args.modo}{' (ROBOT REAL PERMITIDO)' if args.real else ''}.  Registro: {registro.carpeta}")
-    print("  Ctrl+C para salir (el robot se detiene).\n")
+    print("  Ctrl+C para cerrar y guardar el registro.\n")
 
     def salir(*_):
-        print("\nCerrando: se detiene el robot y se guarda el registro.")
+        print("\nCerrando la consola y guardando el registro.")
         try:
             consola.parar("cierre de la consola")
         finally:

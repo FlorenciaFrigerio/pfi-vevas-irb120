@@ -1,10 +1,10 @@
 // Gráficas con uPlot: error en vivo (ventana deslizante) y trayectorias LSPB.
 
-export const COLORES_JUNTAS = ["#ff9b3d", "#4cc2ff", "#3fd17a", "#f2c14e", "#c792ea", "#ff5a5f"];
+export const COLORES_JUNTAS = ["#c98425", "#2187a4", "#25866b", "#898427", "#9366aa", "#c04b65"];
 
 const ejesOscuros = (etiqueta) => [
-  { stroke: "#9aa7b4", grid: { stroke: "#222b36" }, ticks: { stroke: "#2a3441" }, font: "11px sans-serif" },
-  { stroke: "#9aa7b4", grid: { stroke: "#222b36" }, ticks: { stroke: "#2a3441" }, font: "11px sans-serif", label: etiqueta, labelSize: 14, labelFont: "11px sans-serif", size: 52 },
+  { stroke: "#748a9b", grid: { stroke: "#e9eef4" }, ticks: { stroke: "#dce5ed" }, font: "11px sans-serif" },
+  { stroke: "#748a9b", grid: { stroke: "#e9eef4" }, ticks: { stroke: "#dce5ed" }, font: "11px sans-serif", label: etiqueta, labelSize: 14, labelFont: "11px sans-serif", size: 52 },
 ];
 
 function medida(cont) {
@@ -26,11 +26,11 @@ export class GraficaDeslizante {
       cursor: { show: false },
       scales: { x: { time: false }, y: { range: (u, min, max) => this._rango(min, max) } },
       axes: ejesOscuros(unidad),
-      series: [{ label: "t [s]" }, ...series.map((s) => ({ label: s.nombre, stroke: s.color, width: 1.6, points: { show: false } }))],
+      series: [{ label: "t [s]" }, ...series.map((s) => ({ label: s.nombre, stroke: s.color, width: 1.6, dash: s.dash, points: { show: false } }))],
       hooks: { draw: [(u) => this._dibujarLineas(u)] },
     };
     this.u = new uPlot(opts, this.datos, cont);
-    new ResizeObserver(() => this.u.setSize(medida(cont))).observe(cont);
+    this.observador=new ResizeObserver(() => this.u.setSize(medida(cont)));this.observador.observe(cont);
   }
 
   _rango(min, max) {
@@ -63,6 +63,7 @@ export class GraficaDeslizante {
   }
 
   dibujar() { this.u.setData(this.datos); }
+  destruir() { this.observador.disconnect(); this.u.destroy(); }
 }
 
 export class GraficaTrayectoria {
@@ -98,7 +99,7 @@ export class GraficaTrayectoria {
     const x = u.valToPos(this.tActual, "x", true);
     const ctx = u.ctx;
     ctx.save();
-    ctx.strokeStyle = "#ffffff";
+    ctx.strokeStyle = "#13778a";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(x, u.bbox.top);

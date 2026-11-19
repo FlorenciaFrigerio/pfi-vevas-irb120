@@ -153,6 +153,8 @@ ORDENES = {
     "calcular_pose": lambda c, b: _ok(plan=c.calcular_pose({k: float(b[k]) for k in ("x", "y", "z", "rz", "ry", "rx")})),
     "calcular_articular": lambda c, b: _ok(plan=c.calcular_articular([float(v) for v in b["q_deg"]])),
     "calcular_junta": lambda c, b: _ok(plan=c.calcular_junta(int(b["junta"]), float(b["valor_deg"]), bool(b.get("relativo")))),
+    "ik_vivo": lambda c, b: _ok(ik=c.ik_vivo_rapido({k: float(b[k]) for k in ("x", "y", "z", "rz", "ry", "rx")}, b.get("q_ref_deg"))),
+    "calcular_home": lambda c, b: _ok(plan=c.calcular_home(str(b.get("destino", "cero")))),
     "elegir_rama": lambda c, b: _ok(plan=c.elegir_rama_manual(int(b["indice"]))),
     "ejecutar": lambda c, b: _res(c.ejecutar()),
     "parar": lambda c, b: (c.parar(b.get("motivo", "botón PARAR")), _ok("Parado."))[1],

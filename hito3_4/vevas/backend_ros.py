@@ -28,21 +28,16 @@ import numpy as np
 class BackendROS:
     tipo = "ros"
 
-    def __init__(self, cfg: dict, avisar):
+    def __init__(self, cfg: dict, avisar, solo_lectura: bool = False):
         import rclpy
-        from rclpy.action import ActionClient
         from rclpy.executors import MultiThreadedExecutor
         from rclpy.node import Node
         from rclpy.qos import qos_profile_sensor_data
 
-        from control_msgs.action import FollowJointTrajectory
         from sensor_msgs.msg import JointState
-        from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
         self._rclpy = rclpy
-        self._FJT = FollowJointTrajectory
-        self._JT = JointTrajectory
-        self._JTP = JointTrajectoryPoint
+        self.solo_lectura = solo_lectura
         self._avisar = avisar
         self._cfg = cfg
         rc = cfg["robot"]
@@ -55,8 +50,18 @@ class BackendROS:
         self.node = Node("consola_vevas")
         rosc = cfg["ros"]
         self.node.create_subscription(JointState, rosc["topico_estado"], self._cb_estado, qos_profile_sensor_data)
-        self._ac = ActionClient(self.node, FollowJointTrajectory, rosc["accion_trayectoria"])
-        self._pub = self.node.create_publisher(JointTrajectory, rosc["topico_trayectoria"], 10)
+        self._ac = None
+        self._pub = None
+        if not solo_lectura:
+            from rclpy.action import ActionClient
+            from control_msgs.action import FollowJointTrajectory
+            from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+
+            self._FJT = FollowJointTrajectory
+            self._JT = JointTrajectory
+            self._JTP = JointTrajectoryPoint
+            self._ac = ActionClient(self.node, FollowJointTrajectory, rosc["accion_trayectoria"])
+            self._pub = self.node.create_publisher(JointTrajectory, rosc["topico_trayectoria"], 10)
 
         self._lock = threading.Lock()
         self._q = None
@@ -64,6 +69,7 @@ class BackendROS:
         self._nombres_vistos = []
         self._goal_handle = None
         self.ultimo_resultado = None
+        self._resultado_exitoso = None
         self._hardware = {"tipo": "ros", "hardware": "desconocido", "real": None, "texto": "ROS 2 · hardware sin identificar"}
 
         self._executor = MultiThreadedExecutor()
@@ -73,7 +79,8 @@ class BackendROS:
     # Arranque y diagnóstico
     def iniciar(self):
         self._hilo.start()
-        threading.Thread(target=self._detectar_hardware, daemon=True).start()
+        if not self.solo_lectura:
+            threading.Thread(target=self._detectar_hardware, daemon=True).start()
 
     def detener(self):
         try:
@@ -119,6 +126,10 @@ class BackendROS:
     def info(self) -> dict:
         with self._lock:
             d = dict(self._hardware)
+        d["solo_lectura"] = self.solo_lectura
+        d["topico_estado"] = self._cfg["ros"]["topico_estado"]
+        if self.solo_lectura:
+            d["texto"] = "ROS 2 · SOLO LECTURA · " + d["topico_estado"]
         d["nombres_juntas_vistos"] = list(self._nombres_vistos)
         return d
 
@@ -133,7 +144,11 @@ class BackendROS:
                 if not cand:
                     return
                 idx.append(cand[0])
+        if max(idx) >= len(msg.position):
+            return
         q_ros = np.array([msg.position[i] for i in idx], dtype=float)
+        if not np.all(np.isfinite(q_ros)):
+            return
         q = self.signos * q_ros + self.offsets
         with self._lock:
             self._q = q
@@ -155,6 +170,8 @@ class BackendROS:
 
     # Comandos
     def ejecutar_trayectoria(self, ts, Q, QD=None) -> tuple[bool, str]:
+        if self.solo_lectura:
+            return False, "Backend ROS en solo lectura."
         if not self._ac.wait_for_server(timeout_sec=2.0):
             return False, "La acción follow_joint_trajectory no está disponible (¿controlador activo?)."
         goal = self._FJT.Goal()
@@ -168,32 +185,79 @@ class BackendROS:
             goal.trajectory.points.append(p)
         evento = threading.Event()
         caja = {}
+        respuesta_lock = threading.Lock()
+        vencido = False
 
         def respuesta(fut):
-            caja["gh"] = fut.result()
-            evento.set()
+            try:
+                gh = fut.result()
+                with respuesta_lock:
+                    cancelar = vencido
+                    if not cancelar:
+                        caja["gh"] = gh
+                if cancelar and gh is not None and gh.accepted:
+                    gh.cancel_goal_async()
+            except Exception as ex:  # noqa: BLE001
+                with respuesta_lock:
+                    caja["error"] = str(ex)
+            finally:
+                evento.set()
 
-        self.ultimo_resultado = None
-        self._ac.send_goal_async(goal).add_done_callback(respuesta)
+        with self._lock:
+            self._goal_handle = None
+            self.ultimo_resultado = None
+            self._resultado_exitoso = None
+        try:
+            self._ac.send_goal_async(goal).add_done_callback(respuesta)
+        except Exception as ex:  # noqa: BLE001
+            return False, f"No se pudo enviar la trayectoria: {ex}"
         if not evento.wait(3.0):
+            with respuesta_lock:
+                vencido = True
+                tardio = caja.get("gh")
+            if tardio is not None and tardio.accepted:
+                tardio.cancel_goal_async()
             return False, "El controlador no respondió a la trayectoria en 3 s."
-        gh = caja["gh"]
-        if not gh.accepted:
+        if "error" in caja:
+            return False, "Falló la respuesta del controlador: " + caja["error"]
+        gh = caja.get("gh")
+        if gh is None or not gh.accepted:
             return False, "El joint_trajectory_controller RECHAZÓ la trayectoria."
-        self._goal_handle = gh
+        with self._lock:
+            self._goal_handle = gh
 
         def fin(fut):
             try:
-                r = fut.result().result
-                self.ultimo_resultado = f"código {r.error_code} {r.error_string}".strip()
-            except Exception as e:  # noqa: BLE001
-                self.ultimo_resultado = f"error: {e}"
+                from action_msgs.msg import GoalStatus
 
-        gh.get_result_async().add_done_callback(fin)
+                respuesta_final = fut.result()
+                r = respuesta_final.result
+                exito = respuesta_final.status == GoalStatus.STATUS_SUCCEEDED and r.error_code == 0
+                texto = f"estado {respuesta_final.status}, código {r.error_code} {r.error_string}".strip()
+            except Exception as e:  # noqa: BLE001
+                exito, texto = False, f"error al recibir resultado: {e}"
+            with self._lock:
+                # Un resultado anterior no puede finalizar una orden nueva.
+                if self._goal_handle is gh:
+                    self.ultimo_resultado = texto
+                    self._resultado_exitoso = exito
+
+        try:
+            gh.get_result_async().add_done_callback(fin)
+        except Exception as ex:  # noqa: BLE001
+            self.mantener()
+            return False, f"No se pudo vigilar el resultado de la trayectoria: {ex}"
         return True, "trayectoria aceptada por joint_trajectory_controller"
+
+    def resultado_trayectoria(self) -> tuple[bool | None, str | None]:
+        """None: pendiente; True: éxito ROS y FJT; False: fallo o cancelación."""
+        with self._lock:
+            return self._resultado_exitoso, self.ultimo_resultado
 
     def enviar_punto(self, q, horizonte: float) -> None:
         """Jog: un solo punto que reemplaza la trayectoria actual (interfaz por tópico)."""
+        if self.solo_lectura:
+            return
         msg = self._JT()
         msg.joint_names = list(self.nombres)
         p = self._JTP()
@@ -210,6 +274,8 @@ class BackendROS:
         - Si se estaba moviendo con flechas (tópico), se manda un último punto en q
           (la última referencia) para que termine el pasito y se quede ahí.
         """
+        if self.solo_lectura:
+            return
         gh = self._goal_handle
         self._goal_handle = None
         if gh is not None:
