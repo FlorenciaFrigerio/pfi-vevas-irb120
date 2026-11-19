@@ -1,0 +1,24 @@
+{
+  "_instrucciones": "Copiar a GO_VEVAS.json. Completar TODOS los campos con COMPLETAR, poner la fecha de HOY y marcar true solo lo verificado en persona. La consola rechaza el archivo si falta algo.",
+  "fecha": "AAAA-MM-DD (hoy)",
+  "decision": "GO",
+  "autoriza": "COMPLETAR: quién autoriza (docente o responsable del laboratorio)",
+  "operador_pendant": "COMPLETAR: quién tiene la mano en el paro del FlexPendant",
+  "responsable_consola": "COMPLETAR: quién maneja esta consola",
+  "supervisor": "COMPLETAR: supervisor presente",
+  "alcance": "COMPLETAR: qué se va a mover, p. ej. 'J1 ±5° a velocidad baja'",
+  "velocidad_max_pct": 5,
+  "checklist": {
+    "1_identidad_controlador_manual": false,
+    "2_autorizacion_acceso_robot": false,
+    "3_operador_y_supervisor_presentes": false,
+    "4_modo_operativo_permitido": false,
+    "5_zona_despejada": false,
+    "6_paro_emergencia_y_parada_normal_probados": false,
+    "7_trayectoria_revisada_en_simulacion": false,
+    "8_limites_velocidad_tool_base_revisados": false,
+    "9_sin_pieza_ni_herramienta_peligrosa": false,
+    "10_registro_y_aborto_funcionando": false,
+    "11_condiciones_de_aborto_y_recuperacion_acordadas": false
+  }
+}

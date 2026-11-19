@@ -35,8 +35,9 @@ from .robot_irb120 import (
     error_posicion,
     pose_desde_xyz_euler,
 )
-from .secuencias import pasos_demo
-from .seguridad import revisar_plan, semaforo
+from .secuencias import POSTURA_INICIAL_DEG, pasos_demo
+from .revision import nivel_singularidad, problemas_de, revisar_trayectoria
+from .seguridad import semaforo
 from .trayectoria import comprobar_continuidad, planificar
 
 FRASE_REAL = "MOVER ROBOT REAL"
@@ -78,6 +79,8 @@ class Consola:
         self.t0 = time.monotonic()
         self.activo = False
         self.ultimo_resumen = None
+        self.envio_pendiente = False
+        self._cancelar_envio = False
 
     # Utilidades
     def avisar(self, texto: str, nivel: str = "info", **datos):
@@ -91,13 +94,22 @@ class Consola:
     def modo(self) -> dict:
         info = self.backend.info()
         real = info.get("real")
-        es_real = (self.backend.tipo == "ros") and (real is True or real is None)
+        es_real = (self.backend.tipo in ("ros", "rws")) and (real is True or real is None)
         info["exige_go"] = es_real
         info["permitir_real"] = self.permitir_real
-        info["vel_max_pct"] = (
-            self.cfg["seguridad"]["velocidad_real_max_pct"] if es_real else self.cfg["seguridad"]["velocidad_sim_max_pct"]
-        )
+        info["vel_max_pct"] = self._tope_vel_pct(es_real)
         return info
+
+    def _tope_vel_pct(self, es_real: bool) -> float:
+        """Tope de velocidad [% de la hoja de datos]. Con robot real manda el menor entre config.json y el GO."""
+        s = self.cfg["seguridad"]
+        if not es_real:
+            return float(s["velocidad_sim_max_pct"])
+        tope = float(s["velocidad_real_max_pct"])
+        v_go = (self.go or {}).get("velocidad_max_pct")
+        if isinstance(v_go, (int, float)) and not isinstance(v_go, bool) and v_go > 0:
+            tope = min(tope, float(v_go))
+        return tope
 
     def _q_medida(self):
         q, t = self.backend.leer()
@@ -137,13 +149,45 @@ class Consola:
             elif moviendo and now - self.pulso_t > s["watchdog_interfaz_s"]:
                 self._abortar("La interfaz dejó de responder (watchdog del navegador). Se detuvo por seguridad.")
 
-            if self.ejec is not None:
+            # Backends cuyo robot corre a su propia velocidad (RWS/MoveAbsJ): el tiempo del plan LSPB no se
+            # cumple, así que no hay error de seguimiento temporal; se termina por llegada informada.
+            por_llegada = bool(getattr(self.backend, "seguimiento_por_llegada", False))
+            if self.ejec is not None and por_llegada:
+                e = self.ejec
+                e["t"] = now - e["t0"]
+                if q_med is not None:
+                    self.q_ref = np.asarray(q_med, dtype=float).copy()  # sin referencia temporal: error 0
+                exito, detalle = self.backend.resultado_trayectoria()
+                if exito is False:
+                    self._abortar(f"El robot no completó la trayectoria: {detalle}")
+                elif exito is True:
+                    err_fin = None if q_med is None else float(np.max(np.abs(np.degrees(np.asarray(q_med) - e["q_obj"]))))
+                    if err_fin is None or err_fin > s["inicio_max_deg"]:
+                        self._abortar(
+                            "El backend informó llegada, pero la postura medida difiere del destino en "
+                            + ("un valor desconocido." if err_fin is None else f"{err_fin:.2f}° (> {s['inicio_max_deg']}°).")
+                        )
+                    else:
+                        self._terminar_ejecucion(q_med)
+                elif e["t"] > e["limite_s"]:
+                    self._abortar(f"Tiempo límite ({e['limite_s']:.0f} s) sin que el robot informe la llegada.")
+            elif self.ejec is not None:
                 e = self.ejec
                 t = now - e["t0"]
                 q_cmd, _, _ = e["tray"].evaluar(t)
                 self.q_ref = q_cmd
                 e["t"] = t
-                if t >= e["tray"].tf + 0.4:
+                resultado_ros = getattr(self.backend, "resultado_trayectoria", None)
+                if resultado_ros is not None:
+                    exito, detalle = resultado_ros()
+                    if exito is False:
+                        self._abortar(f"La acción del controlador no terminó con éxito: {detalle}")
+                    elif t >= e["tray"].tf + 0.4:
+                        if exito is True:
+                            self._terminar_ejecucion(q_med)
+                        elif t >= e["tray"].tf + 5.0:
+                            self._abortar("No llegó resultado de la acción ROS en los 5 s posteriores al plan.")
+                elif t >= e["tray"].tf + 0.4:
                     self._terminar_ejecucion(q_med)
             elif self.jog is not None:
                 if now - self.jog["t_ultimo"] > 0.3:
@@ -160,6 +204,7 @@ class Consola:
                 v["tcp_med"] = describir_pose(T_med)
                 v["marcos_med"] = [_m16(T) for T in M] + [_m16(T_med)]
                 v["sing"] = {k: sing[k] for k in ("sigma", "sigma_min", "rango", "condicion", "det_J", "muneca_sin_q5", "codo_sin_delta", "hombro_r_w_m")}
+                v["sing"]["nivel"] = nivel_singularidad(sing["sigma_min"], float(self.cfg["ik"]["sigma_min"]))
                 if self._ciclo_n % 10 == 0 or "J" not in (self.vivo.get("sing") or {}):
                     v["sing"]["J"] = [[round(x, 5) for x in fila] for fila in sing["J"]]
                 else:
@@ -187,7 +232,7 @@ class Consola:
                             self.ejec["err_max_deg"] = max(self.ejec["err_max_deg"], emax)
                             self.ejec["e_p_max_mm"] = max(self.ejec["e_p_max_mm"], e_p)
                             self.ejec["e_R_max_deg"] = max(self.ejec["e_R_max_deg"], e_R)
-                        if emax > s["error_seguimiento_max_deg"]:
+                        if not por_llegada and emax > s["error_seguimiento_max_deg"]:
                             j = int(np.argmax(np.abs(err))) + 1
                             self._abortar(
                                 f"Error de seguimiento en J{j}: {emax:.2f}° > {s['error_seguimiento_max_deg']}° permitido."
@@ -226,6 +271,8 @@ class Consola:
     def armar(self, checklist: dict, frase: str) -> tuple[bool, str]:
         with self.lock:
             m = self.modo()
+            if m.get("solo_lectura"):
+                return False, "La consola se abrió en SOLO LECTURA."
             if m["exige_go"]:
                 if not self.permitir_real:
                     return False, (
@@ -240,6 +287,9 @@ class Consola:
                     return False, "Falta marcar en la lista: " + ", ".join(faltan)
                 if (frase or "").strip().upper() != FRASE_REAL:
                     return False, f'Escribe exactamente la frase "{FRASE_REAL}" para armar el robot real.'
+            q_med, t_est = self._q_medida()
+            if q_med is None or time.monotonic() - t_est > self.cfg["seguridad"]["watchdog_estado_s"]:
+                return False, "No se arma: no llega el estado del robot o está desactualizado."
             self.armado = True
             self.vel_pct = min(self.vel_pct, m["vel_max_pct"])
             self.avisar(f"Movimiento ARMADO ({m['texto']}). Velocidad {self.vel_pct:.0f} %.", "ok", checklist=checklist)
@@ -247,6 +297,8 @@ class Consola:
 
     def desarmar(self, motivo: str = "desarmado por el usuario"):
         with self.lock:
+            if self.envio_pendiente:
+                self._cancelar_envio = True
             if self.ejec is not None or self.jog is not None:
                 self._abortar(motivo)
             self.armado = False
@@ -272,17 +324,27 @@ class Consola:
             f = min(f, vel_cap_deg_s / min(VEL_MAX_DEG))
         return f
 
-    def _armar_plan(self, tipo, descripcion, q0, q_obj, extra: dict, vel_cap_deg_s=None) -> dict:
+    def _armar_plan(self, tipo, descripcion, q0, q_obj, extra: dict, vel_cap_deg_s=None, permitir_singular_destino=False) -> dict:
         tcfg = self.cfg["trayectoria"]
         tray = planificar(
             q0, q_obj, self.robot.vel_max, self._factor(vel_cap_deg_s), tcfg["t_acel_s"], tcfg["kappa"], tcfg["t_min_s"]
         )
         ts, Q, QD, _ = tray.muestrear(0.02)
-        problemas = revisar_plan(self.robot, Q, q0, self.cfg)
+        m = self.modo()
+        revision = revisar_trayectoria(self.robot, ts, Q, QD, q0, self.cfg, m["vel_max_pct"], m["exige_go"],
+                                       permitir_singular_destino=permitir_singular_destino)
+        problemas = problemas_de(revision)
         T_obj = self.robot.fk_tcp(q_obj)
         sing = analisis_singularidad(self.robot, q_obj)
-        # vista previa: marcos de ~40 muestras y el camino del TCP
+        # vista previa: marcos de ~40 muestras y el camino del TCP (siempre incluye la muestra de la falla)
         idx = np.linspace(0, len(ts) - 1, min(len(ts), 45)).astype(int)
+        falla = revision["falla"]
+        if falla is not None:
+            idx = np.unique(np.append(idx, falla["k"]))
+            k_f = int(falla["k"])
+            falla["marcos"] = [_m16(A) for A in self.robot.marcos(Q[k_f])] + [_m16(self.robot.fk_tcp(Q[k_f]))]
+            falla["tcp"] = [float(v) for v in self.robot.fk_tcp(Q[k_f])[:3, 3]]
+            falla["k_preview"] = int(np.where(idx == k_f)[0][0])
         frames = []
         camino = []
         for k in idx:
@@ -308,7 +370,8 @@ class Consola:
             "fk_obj": {"A": [_m16(A) for A in self.robot.matrices_eslabon(q_obj)], "T06": _m16(self.robot.fk6(q_obj)), "T_tcp": _m16(T_obj)},
             "preview": {"frames": frames, "camino": camino, "t": [float(ts[k]) for k in idx]},
             "problemas": problemas,
-            "ejecutable": not problemas,
+            "revision": revision,
+            "ejecutable": not revision["bloquea_envio"],
             "vel_pct": self.vel_pct,
             "vel_cap_deg_s": vel_cap_deg_s,
         }
@@ -420,13 +483,13 @@ class Consola:
             self.avisar(f"Plan {plan['id']}: rama {indice} elegida a mano.", "info")
             return publico(plan)
 
-    def calcular_articular(self, q_deg, descripcion=None, vel_cap_deg_s=None) -> dict:
+    def calcular_articular(self, q_deg, descripcion=None, vel_cap_deg_s=None, permitir_singular_destino=False) -> dict:
         with self.lock:
             q0 = self._q_inicio()
             q_obj = np.radians(np.asarray(q_deg, dtype=float))
             fuera = [i + 1 for i, ok in enumerate(self.robot.dentro_de_limites(q_obj)) if not ok]
             desc = descripcion or "Juntas " + ", ".join(f"{v:.1f}" for v in q_deg) + " °"
-            plan = self._armar_plan("articular", desc, q0, q_obj, {}, vel_cap_deg_s)
+            plan = self._armar_plan("articular", desc, q0, q_obj, {}, vel_cap_deg_s, permitir_singular_destino)
             if fuera:
                 plan["problemas"].insert(0, "Fuera de límites en J" + ", J".join(map(str, fuera)) + ".")
                 plan["ejecutable"] = False
@@ -437,6 +500,81 @@ class Consola:
                 "ok" if plan["ejecutable"] else "aviso",
             )
             return publico(plan)
+
+    def calcular_home(self, destino: str = "cero") -> dict:
+        """Plan articular a q = 0 («cero») o a la postura inicial. El destino singular de q = 0 es aviso."""
+        if destino == "cero":
+            return self.calcular_articular([0.0] * 6, "Volver a cero", permitir_singular_destino=True)
+        if destino == "inicial":
+            return self.calcular_articular(list(self.cfg.get("postura_inicial_deg", POSTURA_INICIAL_DEG)),
+                                           "Volver a la postura inicial", permitir_singular_destino=True)
+        raise ValueError("destino debe ser 'cero' o 'inicial'.")
+
+    def ik_vivo_rapido(self, pose: dict, q_ref_deg=None) -> dict:
+        """IK de consulta (sin plan, sin registro, sin lock): para el panel en vivo de la interfaz."""
+        ik = self.cfg["ik"]
+        sigma_umbral = float(ik["sigma_min"])
+        margen = math.radians(ik["margen_limite_deg"])
+        T_d = pose_desde_xyz_euler(pose["x"], pose["y"], pose["z"], pose["rz"], pose["ry"], pose["rx"])
+        if q_ref_deg is not None:
+            q_ref = np.radians(np.asarray(q_ref_deg, dtype=float))
+        else:
+            q_ref, _ = self._q_medida()
+            q_ref = np.zeros(6) if q_ref is None else np.asarray(q_ref, dtype=float)
+        res = pp.resolver(self.robot, T_d, q_ref)
+        mejor, _ = pp.elegir_rama(res["ramas"], ik["tol_e_p_m"], ik["tol_e_R_rad"], margen, sigma_umbral)
+        motivos = []
+        ramas = []
+        for r in res["ramas"]:
+            d = r.a_dict()
+            ramas.append({"indice": r.indice, "nombre": d["nombre"], "existe": r.existe, "valida": r.valida,
+                          "q_deg": d.get("q_deg"),
+                          "motivo": r.motivo_no_existe if not r.existe else "; ".join(r.motivos)})
+        alcanzable = any(r.existe for r in res["ramas"])
+        if not alcanzable:
+            motivos.append("La pose está fuera del alcance del robot.")
+        # rama de referencia para singularidad: la elegida o, si no hay, la más cercana que exista
+        ref = mejor
+        if ref is None:
+            ex = [r for r in res["ramas"] if r.existe and r.q is not None]
+            ref = min(ex, key=lambda r: r.distancia) if ex else None
+        sigma_min = None
+        sing = {"tipo": None, "cerca": False, "detalle": "Sin postura para evaluar."}
+        marcos = ver = q_deg = delta = None
+        nivel = "ok"
+        if ref is not None:
+            q = np.asarray(ref.q, dtype=float)
+            a = analisis_singularidad(self.robot, q)
+            sigma_min = a["sigma_min"]
+            nivel = nivel_singularidad(sigma_min, sigma_umbral)
+            ratios = {"muñeca": a["muneca_sin_q5"] / 0.09, "codo": a["codo_sin_delta"] / 0.09, "hombro": a["hombro_r_w_m"] / 0.03}
+            tipo = min(ratios, key=ratios.get) if nivel != "ok" else None
+            if nivel == "ok":
+                det = f"σ_min = {sigma_min:.3f}: lejos de singularidades."
+            else:
+                det = (f"σ_min = {sigma_min:.3f} ({'singular' if nivel == 'singular' else 'cerca de singularidad'}, "
+                       f"umbral {sigma_umbral:g}); singularidad de {tipo}.")
+            sing = {"tipo": tipo, "cerca": nivel != "ok", "detalle": det}
+            delta = float(np.degrees(np.abs(q - q_ref)).max())
+        if mejor is not None:
+            q = np.asarray(mejor.q, dtype=float)
+            q_deg = [float(v) * GRAD for v in q]
+            marcos = [_m16(T) for T in self.robot.marcos(q)] + [_m16(self.robot.fk_tcp(q))]
+            T_fin = self.robot.fk_tcp(q)
+            ver = {"e_p_mm": error_posicion(T_fin, T_d) * 1000.0, "e_R_deg": error_orientacion(T_fin[:3, :3], T_d[:3, :3]) * GRAD}
+        elif alcanzable:
+            n_ex = sum(1 for r in res["ramas"] if r.existe)
+            motivos.append(f"Ninguna rama de la IK es válida ({n_ex} de 8 existen, pero todas fallan por límites articulares, "
+                           "singularidad o error de verificación).")
+        if nivel != "ok":
+            motivos.append(f"Cerca de una singularidad: {sing['detalle']}")
+        if ver is not None and (ver["e_p_mm"] > 1e-3 or ver["e_R_deg"] > 1e-3):
+            motivos.append(f"La verificación FK no cierra (e_p = {ver['e_p_mm']:.4f} mm, e_R = {ver['e_R_deg']:.4f}°).")
+        motivos = list(dict.fromkeys(motivos))
+        admisible = bool(alcanzable and mejor is not None and nivel == "ok" and not motivos)
+        return {"alcanzable": alcanzable, "ramas": ramas, "elegida": mejor.indice if mejor else None, "q_deg": q_deg,
+                "marcos": marcos, "verificacion": ver, "sigma_min": sigma_min, "singular": sing,
+                "delta_max_deg": delta if mejor is not None else None, "admisible": admisible, "motivos": motivos}
 
     def calcular_junta(self, junta: int, valor_deg: float, relativo: bool) -> dict:
         with self.lock:
@@ -450,6 +588,8 @@ class Consola:
     # Ejecución
     def ejecutar(self) -> tuple[bool, str]:
         with self.lock:
+            if self.envio_pendiente:
+                return False, "Ya hay un envío en curso."
             if not self.armado:
                 return False, "Primero hay que ARMAR el movimiento (botón Armar)."
             if self.ejec is not None or self.jog is not None:
@@ -457,9 +597,26 @@ class Consola:
             plan = self.plan
             if plan is None or "_tray" not in plan:
                 return False, "No hay un plan calculado."
-            q_med, _ = self._q_medida()
+            m = self.modo()
+            if m.get("solo_lectura"):
+                return False, "La consola está en SOLO LECTURA."
+            if m["exige_go"]:
+                if not self.permitir_real:
+                    return False, "Robot real sin --real: la consola solo lee."
+                ok_go, msg_go = validar_go(self.go)  # el GO se vuelve a comprobar en cada envío
+                if not ok_go:
+                    return False, "No se envía: " + msg_go
+            q_med, t_est = self._q_medida()
             if q_med is None:
                 return False, "No llega la posición del robot."
+            edad = time.monotonic() - t_est
+            if edad > self.cfg["seguridad"]["watchdog_estado_s"]:
+                return False, (
+                    f"No se envía: el último estado del robot tiene {edad:.2f} s "
+                    f"(máximo {self.cfg['seguridad']['watchdog_estado_s']} s)."
+                )
+            if plan.get("vel_pct", 0.0) > m["vel_max_pct"] + 1e-9:
+                return False, f"No se envía: el plan se calculó al {plan['vel_pct']:.0f} % y el tope vigente es {m['vel_max_pct']:.0f} %. Recalculalo."
             dif = np.degrees(np.abs(np.asarray(q_med) - plan["_tray"].q0)).max()
             if dif > self.cfg["seguridad"]["inicio_max_deg"]:
                 self.avisar(f"El robot se movió {dif:.2f}° desde que se calculó el plan: se recalcula desde la postura actual.", "aviso")
@@ -470,17 +627,44 @@ class Consola:
                 )
             tray = plan["_tray"]
             ts, Q, QD, _ = tray.muestrear(self.cfg["trayectoria"]["dt_envio_s"])
-            problemas = revisar_plan(self.robot, Q, q_med, self.cfg)
+            revision = revisar_trayectoria(self.robot, ts, Q, QD, q_med, self.cfg, m["vel_max_pct"], m["exige_go"])
+            problemas = problemas_de(revision)
             if plan["tipo"] == "pose" and plan.get("ik", {}).get("elegida") is None:
                 problemas.append("No hay rama válida.")
-            if problemas:
+            if revision["bloquea_envio"] or problemas:
+                self.reg.evento("envio_rechazado", plan_id=plan["id"], problemas=problemas)
                 return False, "No se envía: " + " ".join(problemas)
-        ok, msg = self.backend.ejecutar_trayectoria(ts[1:], Q[1:], QD[1:])
+            self.envio_pendiente = True
+            self._cancelar_envio = False
+        try:
+            ok, msg = self.backend.ejecutar_trayectoria(ts[1:], Q[1:], QD[1:])
+        except Exception as ex:  # noqa: BLE001
+            ok, msg = False, f"error al enviar: {ex}"
         with self.lock:
+            self.envio_pendiente = False
+            cancelar = self._cancelar_envio or not self.armado
+            self._cancelar_envio = False
             if not ok:
                 self.avisar(f"Plan {plan['id']}: el envío falló: {msg}", "error")
                 return False, msg
+            if cancelar:
+                # Se desarmó o se pidió PARAR mientras la orden viajaba: se cancela lo que haya llegado.
+                try:
+                    self.backend.mantener(None)
+                except Exception:  # noqa: BLE001
+                    pass
+                self.reg.evento("aborto", motivo="desarmado o PARAR durante el envío")
+                self.avisar("Envío cancelado: se desarmó o se pidió PARAR mientras se enviaba.", "error")
+                return False, "Se desarmó o se pidió PARAR mientras se enviaba: el movimiento se canceló."
+            limite_s = tray.tf * 6 + 30  # solo se usa con seguimiento por llegada
+            est = getattr(self.backend, "duracion_estimada_s", None)
+            if est is not None:
+                try:
+                    limite_s = max(limite_s, float(est(Q[1:])))
+                except Exception:  # noqa: BLE001
+                    pass
             self.ejec = {
+                "limite_s": limite_s,
                 "plan_id": plan["id"],
                 "tray": tray,
                 "t0": time.monotonic(),
@@ -494,7 +678,8 @@ class Consola:
                 "inicio": dt.datetime.now().isoformat(timespec="seconds"),
             }
             self.q_ref = tray.q0.copy()
-            self.reg.evento("envio", plan_id=plan["id"], tf=tray.tf, n_puntos=len(ts) - 1, vel_pct=self.vel_pct, mensaje=msg)
+            self.reg.evento("envio", plan_id=plan["id"], tf=tray.tf, n_puntos=len(ts) - 1, vel_pct=self.vel_pct, mensaje=msg,
+                            revision=revision["estado"])
             self.avisar(f"Plan {plan['id']} ENVIADO al robot ({msg}). Duración {tray.tf:.2f} s.", "ok")
             return True, msg
 
@@ -529,6 +714,8 @@ class Consola:
 
     def _abortar(self, motivo: str):
         """Detener todo, dejar el robot quieto y desarmar. Se registra el motivo."""
+        if self.envio_pendiente:
+            self._cancelar_envio = True
         en_ejec = self.ejec
         self.ejec = None
         self.jog = None
@@ -561,6 +748,8 @@ class Consola:
 
     def parar(self, motivo="botón PARAR"):
         with self.lock:
+            if self.envio_pendiente:
+                self._cancelar_envio = True
             if self.secuencia is not None and self.secuencia.get("estado") in ("corriendo", "esperando"):
                 self._sec_cmd = "cancelar"
             if self.ejec is not None or self.jog is not None:
@@ -578,6 +767,9 @@ class Consola:
                 if self.jog is not None:
                     self._parar_jog("tecla soltada")
                 return True, "ok"
+            if self.backend.tipo == "rws":
+                return False, ("El jog continuo con flechas no existe con RWS (el robot recibe waypoints con MoveAbsJ). "
+                               "Usá «Calcular y verificar» y luego Enviar.")
             if not self.armado:
                 return False, "Para mover con flechas primero hay que ARMAR."
             if self.ejec is not None:
@@ -588,9 +780,11 @@ class Consola:
             if mismo:
                 self.jog["t_ultimo"] = now
                 return True, "ok"
-            q_med, _ = self._q_medida()
+            q_med, t_est = self._q_medida()
             if q_med is None:
                 return False, "No llega la posición del robot."
+            if time.monotonic() - t_est > self.cfg["seguridad"]["watchdog_estado_s"]:
+                return False, "El estado del robot está desactualizado: no se mueve."
             base = np.asarray(q_med, dtype=float) if self.jog is None else self.q_ref
             self.q_ref = base.copy()
             self.jog = {
@@ -824,19 +1018,52 @@ def publico(plan: dict) -> dict:
     return {k: v for k, v in plan.items() if not k.startswith("_")}
 
 
+CHECKLIST_GO = (
+    "1_identidad_controlador_manual",
+    "2_autorizacion_acceso_robot",
+    "3_operador_y_supervisor_presentes",
+    "4_modo_operativo_permitido",
+    "5_zona_despejada",
+    "6_paro_emergencia_y_parada_normal_probados",
+    "7_trayectoria_revisada_en_simulacion",
+    "8_limites_velocidad_tool_base_revisados",
+    "9_sin_pieza_ni_herramienta_peligrosa",
+    "10_registro_y_aborto_funcionando",
+    "11_condiciones_de_aborto_y_recuperacion_acordadas",
+)
+CAMPOS_GO = ("autoriza", "operador_pendant", "responsable_consola", "supervisor", "alcance")
+
+
+def _texto_lleno(v) -> bool:
+    t = str(v or "").strip()
+    return bool(t) and "COMPLETAR" not in t.upper()
+
+
 def validar_go(go: dict | None) -> tuple[bool, str]:
-    """El archivo GO lo llena el grupo. La consola solo comprueba que esté completo y sea de hoy."""
-    if not go:
-        return False, "No se cargó ningún archivo GO (usa --go GO_VEVAS.json)."
+    """El archivo GO lo llena el grupo. Se exige completo, de hoy y con todo el checklist en true.
+
+    Un GO vacío, sin checklist, con campos sin completar o con algún ítem faltante NO vale.
+    """
+    if not isinstance(go, dict) or not go:
+        return False, "No se cargó ningún archivo GO (usa --go GO_VEVAS.json) o está vacío."
     hoy = dt.date.today().isoformat()
     if go.get("fecha") != hoy:
         return False, f"El GO es de la fecha {go.get('fecha')} y hoy es {hoy}: llénalo de nuevo."
-    for campo in ("autoriza", "operador_pendant", "responsable_consola", "alcance"):
-        if not str(go.get(campo, "")).strip() or "COMPLETAR" in str(go.get(campo, "")):
+    for campo in CAMPOS_GO:
+        if not _texto_lleno(go.get(campo)):
             return False, f"Falta completar el campo '{campo}' del GO."
-    pend = [k for k, v in go.get("checklist", {}).items() if v is not True]
+    check = go.get("checklist")
+    if not isinstance(check, dict) or not check:
+        return False, "El GO no tiene 'checklist'."
+    faltan = [k for k in CHECKLIST_GO if k not in check]
+    if faltan:
+        return False, "Al checklist del GO le faltan ítems: " + ", ".join(faltan)
+    pend = [k for k in CHECKLIST_GO if check.get(k) is not True]
     if pend:
         return False, "Ítems del checklist GO sin confirmar: " + ", ".join(pend)
+    v = go.get("velocidad_max_pct")
+    if isinstance(v, bool) or not isinstance(v, (int, float)) or not (0 < v <= 100):
+        return False, "El GO debe indicar 'velocidad_max_pct' (número entre 0 y 100)."
     if go.get("decision") != "GO":
         return False, "La decisión del archivo GO no es 'GO'."
     return True, "GO válido."
