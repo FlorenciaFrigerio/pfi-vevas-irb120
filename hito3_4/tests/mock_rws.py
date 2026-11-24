@@ -42,7 +42,7 @@ def fmt6(v):
 
 class MockIRC5:
     def __init__(self, opmode="AUTO", vel_deg_s=400.0, confirma_pendant=True, auth=None, q=None,
-                 mechunits=True, acepta_home_var=True, modulos=None):
+                 mechunits=True, acepta_home_var=True, modulos=None, perfil_tiempo=False, escala_tiempo=1.0):
         self.lock = threading.RLock()
         self.opmode = opmode
         self.ctrlstate = "motoroff"
@@ -50,10 +50,17 @@ class MockIRC5:
         self.modulos = list(modulos or ["BASE", "user", "Module1"])
         self.textos = {}
         self.elog = []
+        self.niega_motoron = False   # True: como el IRC5 tras reiniciar en AUTO (403 a motores ON)
+        self.fallas_texto = 0   # >0: contesta HTTP 500 «Error registering callback» esas veces
         self.fileservice = {}
         self.pp = ("Module1", "main")
         self.q = list(q or [0.0, -20.0, 30.0, 0.0, 40.0, 0.0])
         self.vel = vel_deg_s
+        # perfil_tiempo: imita MoveAbsJ \T como el RAPID C02 (t = max(0.5, kPico·|Δq|/vLim), perfil 3s²−2s³,
+        # pico = 1.5 × media). escala_tiempo < 1 simula un controlador que NO respeta el tiempo pedido.
+        self.perfil_tiempo = perfil_tiempo
+        self.escala_tiempo = escala_tiempo
+        self._mov = None
         self.confirma_pendant = confirma_pendant
         self.mechunits = mechunits
         self.acepta_home_var = acepta_home_var
@@ -61,7 +68,7 @@ class MockIRC5:
         self.mastership = False
         self.rmmp = "NONE"
         self.rmmp_auto = True
-        self.pers = {"vvPcTarget": None, "vvPcSeq": 0, "vvPcFin": 0, "vvRbSeq": 0, "vvRbCodigo": 0, "vvRbActivo": 0}
+        self.pers = {"vvPcTarget": None, "vvPcSeq": 0, "vvPcFin": 0, "vvRbSeq": 0, "vvRbCodigo": 0, "vvRbActivo": 0, "vvRbTiempo": 0}
         self.ordenes = []      # objetivos recibidos y ejecutados con llegada
         self.rechazos = []     # (codigo, objetivo)
         self.log = []
@@ -134,6 +141,26 @@ class MockIRC5:
                     p["vvRbSeq"] = seq
                     return
                 p["vvRbCodigo"] = 1
+            if self.perfil_tiempo:
+                ahora = time.monotonic()
+                if self._mov is None or self._mov[0] != seq:
+                    from vevas.rws_cliente import limites_c02, tiempo_movimiento
+                    txt = self.textos.get("VEVAS_RWS")
+                    vlim, k = limites_c02(txt) if txt and "vLim{6}" in txt else limites_c02(None)
+                    T = tiempo_movimiento(objetivo, self.q, vlim, k)
+                    p["vvRbTiempo"] = round(T, 6)
+                    self._mov = (seq, ahora, list(self.q), list(objetivo), T * self.escala_tiempo)
+                _, t0, q0, qf, T = self._mov
+                u = min(1.0, (ahora - t0) / T)
+                f = 3 * u * u - 2 * u * u * u
+                self.q = [a + (b - a) * f for a, b in zip(q0, qf)]
+                if u >= 1.0:
+                    self.q = list(qf)
+                    p["vvRbCodigo"] = 2
+                    self.ordenes.append(list(qf))
+                    p["vvRbSeq"] = seq
+                    self._mov = None
+                return
             # mover (straight line en el espacio articular)
             dist = [t - a for t, a in zip(objetivo, self.q)]
             mayor = max(abs(d) for d in dist)
@@ -250,6 +277,9 @@ class MockIRC5:
                     return self._r(200, estado({"_type": "rap-execution", "ctrlexecstate": S.exec, "cycle": "once"}))
                 if p == "/rw/rapid/modules" and q.get("task") == ["T_ROB1"]:
                     return self._r(200, json.dumps({"_embedded": {"_state": [{"_type": "rap-module-info-li", "_title": m, "name": m} for m in S.modulos]}}))
+                if p.startswith("/rw/rapid/modules/") and q.get("resource") == ["module-text"] and S.fallas_texto > 0:
+                    S.fallas_texto -= 1
+                    return self._err(500, "rws_resource_rapid_module.cpp[2017] Error registering callback")
                 if p.startswith("/rw/rapid/modules/") and q.get("resource") == ["module-text"]:
                     n = p.rsplit("/", 1)[1]
                     if n not in S.textos:
@@ -321,6 +351,8 @@ class MockIRC5:
                     if est == "motoron":
                         if S.seguridad_abierta:
                             return self._err(403, "cadena de seguridad abierta")
+                        if S.niega_motoron:
+                            return self._err(403, "rws_component_panel.cpp[116]: org_code: -4507")
                         S.ctrlstate = "motoron"
                     else:
                         S.ctrlstate = "motoroff"

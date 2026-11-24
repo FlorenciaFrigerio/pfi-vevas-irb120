@@ -343,3 +343,38 @@ if __name__ == "__main__":
                 traceback.print_exc()
                 print("FALLA", nombre, e)
     sys.exit(1 if fallas else 0)
+
+
+def test_salir_de_singularidad_de_muneca_en_robot_real():
+    """24/11: el robot real quedó en J5 = 0 y la revisión rechazaba incluso J5 → 30°. Salir alejándose es aviso;
+    entrar o quedarse en la singularidad sigue rechazado."""
+    c = cfg()
+    R = Robot()
+
+    def rev(qa_deg, qb_deg):
+        qa, qb = np.radians(qa_deg), np.radians(qb_deg)
+        tray = planificar(qa, qb, R.vel_max, 0.05, 0.5, 0.25, 1.0)
+        ts, Q, QD, _ = tray.muestrear(0.02)
+        inf = revisar_trayectoria(R, ts, Q, QD, qa, c, 5.0, exige_go=True)
+        return next(x for x in inf["chequeos"] if x["id"] == "singularidad")
+
+    assert rev([0, 0, -25.2, 0, 0, 0], [0, 0, -25.2, 0, 30, 0])["estado"] == "aviso"
+    assert rev([0, 0, -25.2, 0, 30, 0], [0, 0, -25.2, 0, 0, 0])["estado"] == "rechazado"
+    assert rev([0, 0, -25.2, 0, 0, 0], [10, 0, -25.2, 0, 0, 0])["estado"] == "rechazado"     # se queda singular
+    assert rev([0, 0, -25.2, 0, 0, 0], [0, 0, -25.2, 0, 1, 0])["estado"] == "rechazado"      # no se aleja lo suficiente
+
+
+def test_salir_de_singularidad_cruzando_cero():
+    """J5 leído por RWS apenas negativo (−0.3°) y destino +30°: el camino cruza q5 = 0 al principio y después se aleja."""
+    c = cfg()
+    R = Robot()
+    for q5 in (-0.05, -0.3):
+        qa, qb = np.radians([0, 0, -25.2, 0, q5, 0]), np.radians([0, 0, -25.2, 0, 30, 0])
+        ts, Q, QD, _ = planificar(qa, qb, R.vel_max, 0.05, 0.5, 0.25, 1.0).muestrear(0.02)
+        inf = revisar_trayectoria(R, ts, Q, QD, qa, c, 5.0, exige_go=True)
+        assert next(x for x in inf["chequeos"] if x["id"] == "singularidad")["estado"] == "aviso", q5
+    # cruzar 0 desde lejos (σ inicial fuera de la zona singular) sigue rechazado
+    qa, qb = np.radians([0, 0, -25.2, 0, -30, 0]), np.radians([0, 0, -25.2, 0, 30, 0])
+    ts, Q, QD, _ = planificar(qa, qb, R.vel_max, 0.05, 0.5, 0.25, 1.0).muestrear(0.02)
+    inf = revisar_trayectoria(R, ts, Q, QD, qa, c, 5.0, exige_go=True)
+    assert next(x for x in inf["chequeos"] if x["id"] == "singularidad")["estado"] == "rechazado"

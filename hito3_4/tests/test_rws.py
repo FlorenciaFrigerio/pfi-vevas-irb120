@@ -73,9 +73,15 @@ def cfg_rws(e, **extra):
     return c
 
 
-def consola_rws(e, go=None):
+class BackendRWSDeEnsayo(BackendRWS):
+    """Solo para el IRC5 de tests, con el límite de velocidad del integrador simulado."""
+    velocidad_articular_verificada = True
+
+
+def consola_rws(e, go=None, backend_cls=BackendRWSDeEnsayo):
     c = cfg_rws(e)
-    b = BackendRWS(c, lambda t: None, cliente=e.cli)
+    e.mock.vel = min(e.mock.vel, 5.0)  # °/s por junta del integrador del mock
+    b = backend_cls(c, lambda t: None, cliente=e.cli)
     con = Consola(c, b, Registro(tempfile.mkdtemp(), "test_rws"), permitir_real=True, go=go or tr.go_valido())
     b.iniciar()
     con.iniciar()
@@ -380,6 +386,7 @@ def test_manual_reducido_pide_rmmp_y_envia():
 def test_consola_ejecuta_una_trayectoria_multiwaypoint_sin_abortar_por_seguimiento():
     e = Escenario(vel_deg_s=6.0)  # robot MÁS LENTO que el plan LSPB: por tiempo habría abortado (> 3° de error)
     con, b = consola_rws(e)
+    b.paso_deg = 10.0   # este ensayo fuerza varios tramos (por defecto ahora son de hasta 40°)
     try:
         assert b.tipo == "rws" and b.seguimiento_por_llegada
         assert con.modo()["exige_go"] and con.armar(CHECK, FRASE)[0]
@@ -391,6 +398,9 @@ def test_consola_ejecuta_una_trayectoria_multiwaypoint_sin_abortar_por_seguimien
         assert esperar(lambda: con.ejec is None, 40), "no terminó"
         r = con.ultimo_resumen
         assert r["estado"] == "completado", r
+        assert r["err_seguimiento_max_deg"] is None and r["e_p_seguimiento_max_mm"] is None
+        assert r["e_R_seguimiento_max_deg"] is None
+        assert r["duracion_s"] >= 4.5 and r["duracion_s"] != r["duracion_planificada_s"]
         assert r["error_final_max_deg"] < 0.1, r
         assert abs(e.mock.q[0] - 25.0) < 0.01
         assert len(e.mock.ordenes) >= 3 and all(
@@ -531,6 +541,37 @@ def test_tiempo_limite_global_si_el_robot_nunca_informa():
         e.cerrar()
 
 
+def lanzar_hasta_consola_lista(comando, timeout):
+    """Recoge stdout sin bloquear el plazo de arranque y cierra solo el proceso de prueba."""
+    p = subprocess.Popen([comando[0], "-u", *comando[1:]], stdout=subprocess.PIPE,
+                         stderr=subprocess.STDOUT, text=True)
+    salida = []
+    aviso = threading.Event()
+
+    def leer():
+        for linea in p.stdout:
+            salida.append(linea)
+            if "Consola VEVAS lista" in linea:
+                aviso.set()
+        aviso.set()
+
+    lector = threading.Thread(target=leer, daemon=True)
+    lector.start()
+    try:
+        assert aviso.wait(timeout), "".join(salida)
+    finally:
+        if p.poll() is None:
+            p.send_signal(2)
+        try:
+            p.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.wait(timeout=5)
+        lector.join(2)
+        p.stdout.close()
+    return "".join(salida)
+
+
 def test_consola_vevas_modo_rws_exige_real_o_solo_lectura_y_arranca_en_solo_lectura():
     e = Escenario(listo=False)
     try:
@@ -542,22 +583,13 @@ def test_consola_vevas_modo_rws_exige_real_o_solo_lectura_y_arranca_en_solo_lect
                            capture_output=True, text=True, timeout=20)
         assert r.returncode == 2 and "rws" in r.stderr
         # arranca (solo lectura), imprime la URL y se cierra con SIGINT
-        p = subprocess.Popen(base + ["--solo-lectura"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        salida = []
-        t0 = time.monotonic()
-        while time.monotonic() - t0 < 15:
-            l = p.stdout.readline()
-            salida.append(l)
-            if "Consola VEVAS lista" in l:
-                break
-        p.send_signal(2)
-        p.wait(timeout=15)
-        assert any("Consola VEVAS lista" in l for l in salida), "".join(salida)
+        salida = lanzar_hasta_consola_lista(base + ["--solo-lectura"], timeout=15)
+        assert "Consola VEVAS lista" in salida, salida
     finally:
         e.cerrar()
 
 
-def test_consola_vevas_preparar_rapid_instala_y_arranca():
+def test_consola_vevas_preparar_rapid_bloqueado_sin_velocidad_verificada():
     e = Escenario(listo=False)
     try:
         d = tempfile.mkdtemp()
@@ -566,24 +598,10 @@ def test_consola_vevas_preparar_rapid_instala_y_arranca():
         json.dump(tr.go_valido(), open(go, "w"))
         base = [sys.executable, os.path.join(RAIZ, "consola_vevas.py"), "--modo", "rws", "--ip", "127.0.0.1",
                 "--rws-puerto", str(e.puerto), "--sesiones", d, "--puerto", "0", "--real", "--go", go, "--preparar-rapid"]
-        p = subprocess.Popen(base, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        salida = []
-        t0 = time.monotonic()
-        while time.monotonic() - t0 < 30:
-            l = p.stdout.readline()
-            salida.append(l)
-            if "Consola VEVAS lista" in l or not l:
-                break
-        p.send_signal(2)
-        p.wait(timeout=15)
-        txt = "".join(salida)
-        assert "Consola VEVAS lista" in txt and "RAPID listo" in txt, txt
-        assert e.mock.exec == "running" and e.mock.pers["vvRbActivo"] == 1 and "VEVAS_RWS" in e.mock.modulos
-        # en MANR: error claro y salida con código 1
-        e.mock.opmode = "MANR"
-        e.mock.exec = "stopped"
-        r = subprocess.run(base, capture_output=True, text=True, timeout=30)
-        assert r.returncode == 1 and "ERROR al preparar RAPID" in r.stdout and "AUTO" in r.stdout, r.stdout + r.stderr
+        r = subprocess.run(base, capture_output=True, text=True, timeout=15)
+        assert r.returncode != 0 and "velocidad" in (r.stdout + r.stderr).lower(), r.stdout + r.stderr
+        assert not any(l.startswith(("POST", "PUT")) for l in e.mock.log)
+        assert e.mock.exec == "stopped" and e.mock.ctrlstate == "motoroff"
     finally:
         e.cerrar()
 
@@ -665,18 +683,23 @@ def test_programa_con_error_diagnostico_y_recarga():
     from vevas.rws_cliente import Cliente, Falla
     sys.path.insert(0, os.path.join(RAIZ, "herramientas"))
     import rws_irc5
-    m = mock_rws.arrancar(8297)
+    m = mock_rws.arrancar(0)
     try:
         m.modulos.append("VEVAS_RWS"); m.textos["VEVAS_RWS"] = "MODULE VEVAS_RWS\n ERROR_RAPID\nENDMODULE\n"
-        c = Cliente("127.0.0.1", "Default User", "robotics", puerto=8297)
+        c = Cliente("127.0.0.1", "Default User", "robotics", puerto=m.puerto)
         try:
             c.preparar_y_arrancar(eco=lambda *_: None)
             assert False, "debía fallar"
         except Falla as ex:
-            assert "set-pp-routine" in str(ex)
+            assert "difiere" in str(ex)
+            assert m.ctrlstate == "motoroff"
+        # El fallo de compilación anterior quedó en el histórico. Verificar la huella
+        # ahora impide repetir el intento de Start sobre ese módulo modificado.
+        m.elog.append({"code": 40192, "msgtype": "3", "title": "Error de referencia",
+                       "desc": "T_ROB1/VEVAS_RWS line 47: nombre ambiguo"})
         b = io.StringIO()
         with contextlib.redirect_stdout(b):
-            rws_irc5.main(["--ip", "127.0.0.1", "--puerto", "8297", "diagnostico"])
+            rws_irc5.main(["--ip", "127.0.0.1", "--puerto", str(m.puerto), "diagnostico"])
         assert "line 47" in b.getvalue(), b.getvalue()
         c.parar()
         r = c.instalar_modulo(os.path.join(RAIZ, "rapid", "VEVAS_RWS.mod"), forzar=True, eco=lambda *_: None)
@@ -694,3 +717,20 @@ def test_modulo_entra_en_el_limite_de_rws():
         t = f.read()
     assert len(t) <= 4800, len(t)
     assert t.rstrip().endswith("ENDMODULE")
+
+
+@con_escenario
+def test_volver_a_cero_real_con_c02_es_aviso_y_un_solo_tramo(e):
+    """24/11: «Volver a cero» con el robot real se rechazaba por la singularidad del destino, y el movimiento
+    se partía en tramos de 10° con paradas. Con RWS + C02 verificado: aviso y un único MoveAbsJ."""
+    con, b = consola_rws(e)
+    try:
+        p = con.calcular_home("cero")
+        sing = tr.chequeo(p, "singularidad")
+        assert sing["estado"] == "aviso" and "C02" in sing["detalle"], sing
+        assert p["ejecutable"], p["problemas"]
+        assert b.paso_deg == 40.0
+        wps = subdividir([0, -20, 30, 0, 40, 0], [[0, 0, 0, 0, 0, 0]], b.paso_deg)
+        assert len(wps) == 1
+    finally:
+        cerrar_consola(con, b)

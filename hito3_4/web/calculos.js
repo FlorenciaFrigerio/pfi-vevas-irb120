@@ -27,7 +27,56 @@ function paso(n, titulo, nota, cuerpo) {
 export function pasosPlan(plan, cfg) {
   if (!plan) return '<p class="vacio">Sin plan.</p>';
   if (plan.tipo === "pose") return pasosPose(plan, cfg);
+  if (plan.figura) {
+    const fig = plan.figura;
+    const plano = fig.nombre !== "saludo" && fig.plano ? ` · plano ${fig.plano}` : "";
+    const metodo = fig.nombre === "saludo"
+      ? "El saludo mueve las juntas de la muñeca."
+      : "Se busca una rama Pieper para cada punto y se mantiene la orientación del TCP.";
+    const nParadas = Array.isArray(fig.paradas) ? fig.paradas.length : 0;
+    const paradas = nParadas ? ` Se detiene (v = 0) en ${nParadas} ${nParadas === 1 ? "punto intermedio" : "puntos intermedios"}.` : "";
+    return paso(1, "Recorrido predeterminado", plan.descripcion,
+      `<p>${fig.n_puntos} puntos de control · tamaño ${f(fig.tamano_mm, 1)} mm${plano}. ${metodo}${paradas}</p>`) + pasoTrayectoria(2, plan);
+  }
   return pasosArticular(plan);
+}
+
+// Preparar J5 y poses predeterminadas: SIM, o robot real por RWS con C02 verificado. El servidor manda
+// (modo.figuras_permitidas); si no lo informa, solo SIM. Con ROS real o RWS sin C02 quedan deshabilitadas.
+export function permisoMovimientosGuiados(modo) {
+  const m = modo || {};
+  const permitido = typeof m.figuras_permitidas === "boolean" ? m.figuras_permitidas : m.tipo === "sim";
+  const sim = m.tipo === "sim";
+  const maxMm = Number.isFinite(m.figura_max_mm) && m.figura_max_mm > 0 ? m.figura_max_mm : (sim ? 100 : 80);
+  let motivo = "";
+  if (!permitido) {
+    if (m.tipo === "ros") motivo = "Con ROS real no está habilitado: solo en SIM o con el robot por RWS y C02 verificado.";
+    else if (m.tipo === "rws") motivo = "Bloqueado: C02 (velocidad por junta en el RAPID) sin verificar. Verificá C02 para habilitarlo.";
+    else motivo = m.figuras_motivo || "Disponible en SIM o con el robot real por RWS y C02 verificado.";
+  }
+  return {
+    permitido,
+    sim,
+    maxMm,
+    subtituloJ5: sim ? "revisar en SIM" : permitido ? "robot real · RWS C02" : "solo SIM o RWS con C02",
+    tituloJ5: permitido
+      ? (sim ? "Calcula un plan articular que deja J5 en +30° (simulación)."
+             : "Plan articular J5 → +30° para el robot real (RWS, C02). Pasa por revisión, GO, armado y confirmación.")
+      : motivo,
+    tituloFiguras: permitido
+      ? (sim ? "Calcular una figura en simulación"
+             : `Calcular una figura para el robot real (RWS, C02; máx. ${maxMm} mm). Pasa por revisión, GO, armado y confirmación.`)
+      : motivo,
+    textoDialogo: sim
+      ? "Trayectorias de simulación a partir de la pose actual, con perfil suave por tramos."
+      : `Trayectorias para el ROBOT REAL a partir de la pose actual (máx. ${maxMm} mm). Se revisan antes de enviar y exigen GO, armado y confirmación. Si J5 ≈ 0, usá antes «Preparar J5 a +30°».`,
+  };
+}
+
+export function nombrePerfil(perfil) {
+  if (perfil === "camino_quintico") return "Suave C² por tramos";
+  if (perfil === "quintico") return "Suave quíntico";
+  return "LSPB académico";
 }
 
 function pasosPose(plan, cfg) {
@@ -76,7 +125,7 @@ function pasosPose(plan, cfg) {
   h += paso(8, "Selección de la mejor rama", ik.razon + " Ver la pestaña «Las 8 ramas».",
     tex(`\\text{válida}\\iff e_p\\le ${fe(cfg.ik.tol_e_p_m)}\\,\\text{m},\\;e_R\\le ${fe(cfg.ik.tol_e_R_rad)}\\,\\text{rad},\\;\\text{límites con }${cfg.ik.margen_limite_deg}^\\circ\\text{ de margen},\\;\\sigma_{\\min}\\ge ${cfg.ik.sigma_min}`) +
     tex(`\\text{puntaje}=\\sum_i w_i\\,|q_i-q_{i,\\text{actual}}|,\\quad w=[1,1,1,0.6,0.6,0.4]`));
-  if (plan.tray) h += pasoLSPB(9, plan);
+  if (plan.tray) h += pasoTrayectoria(9, plan);
   return h;
 }
 
@@ -93,22 +142,36 @@ function pasosArticular(plan) {
   const p = plan.pose_obj;
   h += paso(4, "Pose del TCP que resulta", "",
     tex(`p=(${f(p.x_mm, 1)},\\;${f(p.y_mm, 1)},\\;${f(p.z_mm, 1)})\\,\\text{mm},\\quad (R_z,R_y,R_x)=(${f(p.rz_deg, 2)}^\\circ,\\;${f(p.ry_deg, 2)}^\\circ,\\;${f(p.rx_deg, 2)}^\\circ)`));
-  h += pasoLSPB(5, plan);
+  h += pasoTrayectoria(5, plan);
   return h;
 }
 
-function pasoLSPB(n, plan) {
+function pasoTrayectoria(n, plan) {
   const t = plan.tray;
   const j = t.junta_limitante;
+  const multiple = t.perfil === "camino_quintico";
+  const suave = multiple || t.perfil === "quintico";
   let filas = "";
   for (let i = 0; i < 6; i++) {
-    filas += `<tr${i + 1 === j ? ' style="color:#ff9b3d;font-weight:700"' : ""}><td>J${i + 1}</td><td>${f(t.D_deg[i], 2)}</td><td>${f(t.V_deg_s[i], 2)}</td><td>${f(t.A_deg_s2[i], 2)}</td></tr>`;
+    const cambio = multiple ? "" : `<td>${f(t.D_deg[i], 2)}</td>`;
+    filas += `<tr${i + 1 === j ? ' style="color:#ff9b3d;font-weight:700"' : ""}><td>J${i + 1}</td>${cambio}<td>${f(t.V_deg_s[i], 2)}</td><td>${f(t.A_deg_s2[i], 2)}</td></tr>`;
+  }
+  const d = multiple ? "" : "<th>D [°]</th>";
+  const v = suave ? "Pico |q̇|" : "V";
+  const a = suave ? "Pico |q̈|" : "A";
+  const tabla = `<table class="tabla-simple"><tr><th>Junta</th>${d}<th>${v} [°/s]</th><th>${a} [°/s²]</th></tr>${filas}</table>`;
+  if (suave) {
+    const explicacion = multiple
+      ? "Polinomios quínticos por tramos que conservan posición, velocidad y aceleración en las uniones."
+      : "La posición sigue un polinomio de quinto grado con velocidad y aceleración nulas al empezar y al llegar.";
+    const ley = multiple ? "" : tex("q_i=q_{0,i}+D_i(10u^3-15u^4+6u^5),\\quad u=t/t_f");
+    return paso(n, nombrePerfil(t.perfil), explicacion, ley + `<p>Duración ${f(t.tf, 3)} s · ${t.motivo_tf}.</p>` + tabla);
   }
   return paso(n, "Trayectoria LSPB sincronizada",
     `Todas las juntas usan el mismo t<sub>f</sub> y el mismo t<sub>c</sub> = κ·t<sub>f</sub> (κ = 0.25). Manda la junta más exigida: ${t.motivo_tf}.`,
     tex(`t_f=\\max_i\\left\\{\\frac{|D_i|}{(1-\\kappa)V_{\\max,i}},\\;\\sqrt{\\frac{|D_i|}{\\kappa(1-\\kappa)A_{\\max,i}}}\\right\\}=${f(t.tf, 3)}\\,\\text{s},\\qquad t_c=${f(t.tc, 3)}\\,\\text{s}`) +
     tex(`V_i=\\frac{D_i}{t_f-t_c},\\qquad A_i=\\frac{V_i}{t_c}`) +
-    `<table class="tabla-simple"><tr><th>Junta</th><th>D [°]</th><th>V [°/s]</th><th>A [°/s²]</th></tr>${filas}</table>`);
+    tabla);
 }
 
 export function tablaRamas(plan) {
@@ -142,10 +205,15 @@ export function tablaRamas(plan) {
 export function panelLSPB(plan) {
   if (!plan || !plan.tray) return '<p class="vacio">Sin trayectoria.</p>';
   const t = plan.tray, c = plan.continuidad;
-  return `<p class="nota">Perfil trapezoidal: acelera durante t<sub>c</sub>, va a velocidad constante y frena durante t<sub>c</sub>. Posición y velocidad continuas; la aceleración salta en t<sub>c</sub> y t<sub>f</sub> − t<sub>c</sub> (es lo esperado en LSPB). La línea blanca marca el instante actual cuando el robot ejecuta este plan.</p>
+  const perfil = nombrePerfil(t.perfil);
+  const lspb = t.tc != null;
+  const descripcion = lspb
+    ? "Perfil trapezoidal con fases de aceleración, velocidad constante y frenado. La aceleración cambia en las transiciones."
+    : "Perfil quíntico con posición, velocidad y aceleración continuas.";
+  return `<p class="nota"><b>${perfil}</b>. ${descripcion}</p>
   <table class="tabla-simple"><tr><th>Dato</th><th>Valor</th></tr>
   <tr><td>Duración t<sub>f</sub></td><td>${f(t.tf, 3)} s</td></tr>
-  <tr><td>Mezcla t<sub>c</sub></td><td>${f(t.tc, 3)} s</td></tr>
+  ${lspb ? `<tr><td>Mezcla t<sub>c</sub></td><td>${f(t.tc, 3)} s</td></tr>` : ""}
   <tr><td>Junta que manda</td><td>${t.junta_limitante ? "J" + t.junta_limitante : "—"} (${t.motivo_tf})</td></tr>
   <tr><td>Velocidad usada</td><td>${f(plan.vel_pct, 0)} % de la hoja de datos${plan.vel_cap_deg_s ? `, tope ${plan.vel_cap_deg_s} °/s` : ""}</td></tr>
   <tr><td>Salto máx. de q entre muestras de 1 ms</td><td>${f(c.salto_q_max_deg, 5)} °</td></tr>

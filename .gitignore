@@ -8,3 +8,14 @@ notebooks/*.pdf
 
 .ipynb_checkpoints/
 figuras_recorrido/
+
+# Hito 3/4: entorno local, autorizaciones y evidencias de laboratorio
+.venv/
+sesiones/
+GO_VEVAS.json
+evidencia_c02*.json
+conexion-rws-*.json
+*.aux
+*.fls
+*.fdb_latexmk
+*.synctex.gz

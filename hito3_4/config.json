@@ -20,6 +20,7 @@
     "sigma_min": 0.02
   },
   "trayectoria": {
+    "perfil": "suave",
     "kappa": 0.25,
     "t_acel_s": 0.5,
     "t_min_s": 1.5,
@@ -52,9 +53,10 @@
   // o confirmá que no hay nada más (sin_objetos_externos_confirmado) y qué hay en la brida.
   "entorno": {
     "mesa_z_m": 0.0,
+    "perfil_mesa": "modelo/mesa_medidas.json",
     "cajas": [],
-    "sin_objetos_externos_confirmado": true,
-    "sin_herramienta_confirmada": true,
+    "sin_objetos_externos_confirmado": false,
+    "sin_herramienta_confirmada": false,
     "herramienta": { "radio_mm": 30.0, "confirmada": false }
   },
   "ros": {

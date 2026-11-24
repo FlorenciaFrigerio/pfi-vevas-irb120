@@ -61,13 +61,30 @@ def cmd_estado(c: Cliente, a):
     return 0
 
 
+def exigir_go(a):
+    from vevas.consola import validar_go
+    if not getattr(a, "go", None):
+        raise Falla("Esta operación requiere --go con un registro explícito de la sesión. No se genera automáticamente.")
+    try:
+        with open(a.go, encoding="utf-8") as archivo:
+            go = json.load(archivo)
+    except (OSError, ValueError) as error:
+        raise Falla("No se pudo leer el GO: " + str(error)) from error
+    ok, mensaje = validar_go(go)
+    if not ok:
+        raise Falla("GO rechazado: " + mensaje)
+    return go
+
+
 def cmd_instalar(c: Cliente, a):
+    exigir_go(a)
     r = c.instalar_modulo(a.modulo, forzar=a.recargar)
     print(f"Módulo {MODULO}: {r}.")
     return 0
 
 
 def cmd_arrancar(c: Cliente, a):
+    exigir_go(a)
     c.preparar_y_arrancar()
     print(f"RAPID corriendo en {RUTINA}.")
     return 0
@@ -176,54 +193,13 @@ def cmd_texto(c: Cliente, a):
 
 
 def cmd_mover(c: Cliente, a):
-    """Manda ángulos al brazo por RWS (el VevasServidor tiene que estar activo).
-    Absoluto:  mover 0 -20 30 0 40 0        Relativo:  mover --rel 0 0 0 0 10 0"""
-    from vevas.rws_cliente import subdividir
-    actual = c.joints_deg()
-    q = [float(v) for v in a.q]
-    destino = [x + d for x, d in zip(actual, q)] if a.rel else q
-    print("Ahora  :", " ".join(f"{v:8.2f}" for v in actual))
-    print("Destino:", " ".join(f"{v:8.2f}" for v in destino))
-    from vevas.rws_cliente import rechazo_local
-    r = rechazo_local(destino, destino)   # solo límites articulares (el paso se reparte en tramos)
-    if r is not None:
-        print(f"No se envía: {r[1]}")
-        return 1
-    pasos = subdividir(actual, [destino], a.paso)
-    print(f"Se envía en {len(pasos)} tramo(s) de hasta {a.paso:g}° (velocidad fija del RAPID: lento).")
-    if not a.si:
-        r = input("¿Mover el robot real? Escribí s y Enter: ").strip().lower()
-        if r not in ("s", "si", "sí"):
-            print("Cancelado: no se envió nada.")
-            return 1
-    # si el servidor del robot no está activo, arrancarlo (solo AUTO; en manual lo hace el operador)
-    problemas = c.problemas_para_enviar()
-    if problemas:
-        e = c.leer_estado(con_juntas=False)
-        if e["opmode"] != "AUTO":
-            print("No listo: " + "; ".join(problemas) + ". En manual: PP a VevasServidor, Start e «Iniciar» en el FlexPendant.")
-            return 1
-        print("El servidor del robot no está activo: lo arranco (" + "; ".join(problemas) + ").")
-        if not e["modulo_vevas"]:
-            c.instalar_modulo(MOD_LOCAL)
-        if e["exec"] == "running" and not c.pp_en_servidor(e):
-            print("RAPID está ejecutando otro programa: detenelo antes.")
-            return 1
-        if e["exec"] != "running":
-            c.preparar_y_arrancar()
-        print(">>> Si el FlexPendant muestra «Aceptar objetivos enviados por la PC?», pulsá «Iniciar» (30 s).")
-        if not c.esperar_servidor(40, pausa_inicial=1.0):
-            print("El servidor no quedó activo (¿no se pulsó «Iniciar»?). Volvé a correr el comando.")
-            return 1
-        print("Servidor activo.")
-    for i, w in enumerate(pasos, 1):
-        ok, cod, msg = c.enviar_objetivo(w, timeout=a.timeout)
-        print(f"  tramo {i}/{len(pasos)}: {msg}")
-        if not ok:
-            return 1
-    fin = c.joints_deg()
-    print("Llegó  :", " ".join(f"{v:8.2f}" for v in fin))
-    return 0
+    """La CLI no salta el bloqueo de velocidad articular del controlador."""
+    exigir_go(a)
+    raise Falla(
+        "Movimiento RWS bloqueado: speeddata vPc limita TCP/orientación, no demuestra el tope de cada junta del GO. "
+        "Se requiere implementar y validar ese control antes de mandar objetivos. "
+        "No se instaló, arrancó ni envió una secuencia. Estado/diagnóstico y modo solo lectura siguen disponibles."
+    )
 
 
 def main(argv=None):
@@ -233,6 +209,7 @@ def main(argv=None):
     ap.add_argument("--usuario", default="Default User")
     ap.add_argument("--clave", default=os.environ.get("VEVAS_RWS_CLAVE", "robotics"))
     ap.add_argument("--timeout", type=float, default=5.0)
+    ap.add_argument("--go", help="registro explícito y válido de esta sesión, obligatorio para instalar/arrancar/mover")
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("estado"); s.add_argument("--shell", action="store_true")
     s = sub.add_parser("instalar"); s.add_argument("--recargar", action="store_true"); s.add_argument("--modulo", default=MOD_LOCAL)

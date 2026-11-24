@@ -1,0 +1,47 @@
+% Arquitectura VEVAS Hito 3/4 -- compilar con: pdflatex fig_arquitectura.tex
+\documentclass[border=1pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{mathptmx}
+\renewcommand{\ttdefault}{lmtt}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit,calc}
+\begin{document}
+\footnotesize
+\begin{tikzpicture}[
+  node distance=3mm,
+  caja/.style={draw=black!70, rounded corners=1.5pt, align=center, inner sep=2.5pt, fill=white},
+  mod/.style={draw=black!50, fill=black!4, align=center, inner sep=1.8pt, font=\scriptsize, minimum height=7.5mm, text width=12.2mm},
+  fl/.style={-{Latex[length=1.6mm]}, thick, black!70},
+  dfl/.style={{Latex[length=1.6mm]}-{Latex[length=1.6mm]}, thick, black!70},
+  et/.style={font=\scriptsize, align=center, text=black!80}]
+
+% Navegador
+\node[caja, text width=80mm] (web) {\textbf{Navegador} (\texttt{web/}, Three.js): gemelo 3D, flechas para arrastrar el TCP y pestañas Control, Cálculos, 8 ramas, FK en vivo, Jacobiano, Trayectoria, Historial\dots};
+
+% Consola
+\node[mod, below=14mm of web.south west, anchor=north west, xshift=2.2mm] (m1) {Pieper\\8 ramas};
+\node[mod, right=1.6mm of m1] (m2) {FK y\\Jacobiano\\$\sigma_{\min}$};
+\node[mod, right=1.6mm of m2] (m3) {LSPB /\\quíntico};
+\node[mod, right=1.6mm of m3] (m4) {Revisión\\previa\\(8 chequeos)};
+\node[mod, right=1.6mm of m4] (m5) {Compuertas\\GO, ARMAR,\\watchdog};
+\node[draw=black!70, rounded corners=1.5pt, inner sep=2pt, fit=(m1)(m5), label={[font=\footnotesize, anchor=south west, inner sep=1pt]north west:\textbf{Consola VEVAS}\; \texttt{consola\_vevas.py} + \texttt{vevas/}}] (cons) {};
+\draw[dfl] (web.south -| m5) -- node[et, left, pos=0.32] {HTTP local (puerto 9012 real / 9013 SIM)} (cons.north -| m5);
+
+% Backends
+\node[caja, below=7mm of cons.south west, anchor=north west, text width=16mm, fill=black!4] (sim) {SIM interno\\(gemelo)};
+\node[caja, right=2.5mm of sim, text width=27mm, fill=black!4] (ros) {ROS 2 Jazzy (opcional:\\EGM\_ROS, RViz)};
+\node[caja, right=2.5mm of ros, text width=31mm, very thick] (rws) {\textbf{RWS 1.0} (robot real)\\HTTP digest + cookies\\lectura de juntas a 10\,Hz};
+\foreach \b in {sim,ros,rws} \draw[fl] (cons.south -| \b.north) -- (\b.north);
+
+% Controlador
+\node[caja, below=7mm of rws, text width=54mm, anchor=north east, xshift=0mm] (irc) at ($(rws.south east)+(0,-7mm)$)
+  {\textbf{IRC5 Compact}, RobotWare 6.12.01\\ RAPID \texttt{VEVAS\_RWS}/\texttt{VevasServidor}\\ \texttt{MoveAbsJ q*, vPc \textbackslash T:=t, fine}};
+\draw[dfl] (rws.south) -- node[et, right] {Ethernet\\192.168.125.1} (rws.south |- irc.north);
+\node[caja, left=5mm of irc, text width=17mm] (rob) {\textbf{ABB IRB 120}\\6 GDL};
+\draw[fl] (irc.west) -- (rob.east);
+\node[caja, below=3mm of irc.south west, anchor=north west, text width=54mm, draw=black, fill=black!10, font=\scriptsize] (paro)
+  {Paro de emergencia físico (parada real); FlexPendant: «Iniciar» y botón MOTORS ON};
+\draw[fl, dashed] (paro.north -| irc.south) ++(0,0) -- (irc.south);
+\end{tikzpicture}
+\end{document}

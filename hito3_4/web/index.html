@@ -21,7 +21,7 @@
 <header>
  <a class="marca" href="#"><span class="logo">V</span><span><strong>VEVAS <em>Studio</em></strong><small>Control y análisis · ABB IRB 120</small></span></a>
  <div class="estado-conexion"><span class="punto"></span><span id="estado-fuente">Simulador interno</span><span id="edad-estado" class="mono">— ms</span></div>
- <div class="controles-cabecera"><span id="estado-armado" class="pastilla desarmado">DESARMADO</span><label class="vel">Velocidad <input id="vel" type="range" min="1" max="100" value="5"><span id="vel-txt">5 %</span></label><button id="btn-parar" class="btn-parar">■ PARAR <kbd>Esc</kbd></button></div>
+ <div class="controles-cabecera"><span id="estado-armado" class="pastilla desarmado">DESARMADO</span><label class="vel">Velocidad del plan <input id="vel" type="range" min="1" max="100" value="5"><span id="vel-txt">5 %</span></label><label class="frecuencia">Pantalla <select id="frecuencia-visor"><option value="5">5 Hz</option><option value="10">10 Hz</option><option value="20">20 Hz</option></select><small id="frecuencia-fuente"></small></label><button id="btn-parar" class="btn-parar">■ PARAR <kbd>Esc</kbd></button></div>
 </header>
 <div class="barra-contexto"><div><span class="kicker">ESPACIO DE TRABAJO</span><h1>Movimiento y datos, en una sola vista.</h1></div><button class="btn-chico" id="btn-ayuda">Atajos de teclado <kbd>H</kbd></button></div>
 <ol id="tuberia" class="tuberia"><li><b>1</b> Objetivo</li><li><b>2</b> Pieper</li><li><b>3</b> Verificación FK</li><li><b>4</b> Rama</li><li><b>5</b> Trayectoria</li><li><b>6</b> Revisión</li><li><b>7</b> Envío</li><li><b>8</b> Resultado</li></ol>
@@ -30,24 +30,47 @@
     <div class="tarjeta escena"><div class="panel-titulo"><div><span class="kicker">GEMELO CINEMÁTICO</span><h2>Robot 3D</h2></div><span id="modelo-estado" class="etiqueta">Cargando mallas…</span></div>
       <div id="lienzo3d"></div>
       <div class="leyenda">
-        <span><i class="c-medido"></i>Estado recibido</span>
+        <span title="El robot 3D interpola las últimas muestras para mostrar el movimiento. Las lecturas y la traza usan los datos recibidos."><i class="c-medido"></i>Estado recibido</span>
         <span><i class="c-objetivo"></i>Comandado / objetivo</span>
-        <span><i class="c-camino"></i>Camino del TCP</span>
+        <span><i class="c-camino"></i>Plan del TCP</span>
       </div>
       <div class="opciones3d">
         <label><input type="checkbox" id="ver-marcos"> Marcos D-H (F)</label>
         <label><input type="checkbox" id="ver-fantasma" checked> Fantasma</label>
         <label><input type="checkbox" id="ver-zmin" checked> Altura mínima</label>
+        <label id="opcion-entorno" class="oculto"><input type="checkbox" id="ver-entorno" checked> Entorno</label>
         <button id="btn-vista" class="btn-chico">Vista inicial</button>
       </div>
+      <div class="trazos-3d" aria-label="Recorridos del TCP">
+        <label><input type="checkbox" id="ver-camino" checked> Plan</label>
+        <label title="Recorrido calculado por FK a partir de las juntas recibidas; en SIM los datos son sintéticos."><input type="checkbox" id="ver-traza" checked> <span id="traza-fuente">Traza del estado</span></label>
+        <label><input type="checkbox" id="ver-puntos" checked> Puntos</label>
+        <button id="btn-limpiar-traza" class="btn-chico" type="button">Limpiar traza</button>
+        <button id="btn-ver-revision-3d" class="btn-chico oculto" type="button">Revisar plan</button>
+      </div>
+      <div id="gz-edicion" class="gz-edicion">
+        <div class="gz-edicion-modos" role="group" aria-label="Edición del destino TCP">
+          <button type="button" data-modo="traslacion" aria-pressed="true" aria-describedby="gz-marco">Trasladar</button>
+          <button type="button" data-modo="rotacion" aria-pressed="false" aria-describedby="gz-marco">Rotar</button>
+        </div>
+        <small id="gz-marco">Ejes fijos de la base</small>
+        <div id="gz-giro-pasos" class="gz-giro-pasos oculto" role="group" aria-label="Girar el TCP 5 grados respecto a los ejes de la base">
+          <button type="button" data-giro="2" data-signo="-1" aria-label="Girar menos 5 grados sobre Z">Rz−</button>
+          <button type="button" data-giro="2" data-signo="1" aria-label="Girar más 5 grados sobre Z">Rz+</button>
+          <button type="button" data-giro="1" data-signo="-1" aria-label="Girar menos 5 grados sobre Y">Ry−</button>
+          <button type="button" data-giro="1" data-signo="1" aria-label="Girar más 5 grados sobre Y">Ry+</button>
+          <button type="button" data-giro="0" data-signo="-1" aria-label="Girar menos 5 grados sobre X">Rx−</button>
+          <button type="button" data-giro="0" data-signo="1" aria-label="Girar más 5 grados sobre X">Rx+</button>
+          <small>5° por paso</small>
+        </div>
+      </div>
       <div id="gizmo" class="gizmo colapsado" aria-label="Mover con botones">
-        <button id="gz-toggle" class="gz-toggle" aria-expanded="false" title="Alternativa a arrastrar las flechas del robot">Mover con botones ▸</button>
+        <button id="gz-toggle" class="gz-toggle" aria-expanded="false" title="Alternativa a arrastrar las flechas del TCP">Mover con botones ▸</button>
         <div id="gz-cuerpo">
         <div class="gz-modos"><button id="gz-m-junta" class="activo">Junta</button><button id="gz-m-tcp">Punta (TCP)</button></div>
         <div id="gz-junta">
+          <label class="gz-paso">Junta <select id="gz-junta-selector" aria-label="Junta del objetivo 3D"><option value="1">J1</option><option value="2">J2</option><option value="3">J3</option><option value="4">J4</option><option value="5">J5</option><option value="6">J6</option></select></label>
           <div class="gz-nombre"><b id="gz-titulo">J1 · Base</b><span id="gz-valor">+0.0°</span></div>
-          <div class="gz-botones"><button id="gz-menos" class="gz-flecha" title="Girar en sentido negativo">◀</button><button id="gz-mas" class="gz-flecha" title="Girar en sentido positivo">▶</button></div>
-          <small>Tocá una pieza del robot para elegir la junta.</small>
         </div>
         <div id="gz-tcp" class="oculto">
           <div class="gz-nombre"><b>Punta · ejes de la base</b><span id="gz-tcp-valor">0 · 0 · 0 mm</span></div>
@@ -59,9 +82,12 @@
         <button id="gz-limpiar" class="btn-chico">Deshacer</button>
         </div>
       </div>
+      <div id="gz-flechas-junta" class="gz-flechas-junta oculto" role="group" aria-label="Modificar el objetivo de la junta seleccionada">
+        <button id="gz-menos" type="button" aria-label="Restar un paso al objetivo de la junta">−</button>
+        <button id="gz-mas" type="button" aria-label="Sumar un paso al objetivo de la junta">+</button>
+      </div>
       <div id="badge-sing" class="badge-sing ok" title="Nivel de singularidad del robot ahora (σmin del Jacobiano)">Singularidad: —</div>
       <div id="gz-badge" class="gz-badge oculto"></div>
-      <div id="gz-nota-webgl" class="gz-nota-webgl oculto">El arrastre necesita WebGL: este equipo usa la vista compatible. Podés mover con los botones o con los formularios.</div>
       <div id="lectura-tcp" class="lectura-tcp"></div>
       <div id="aviso-singular" class="aviso-singular oculto"></div>
     </div>
@@ -101,7 +127,7 @@
         <button data-pest="objetivo" class="activa">Control</button><button data-pest="graficas">Gráficas</button><button data-pest="datos">Datos en vivo</button>
         <button data-pest="pasos">Cálculos</button>
         <button data-pest="ramas">8 ramas</button>
-        <button data-pest="lspb">LSPB</button>
+        <button data-pest="lspb">Trayectoria</button>
         <button data-pest="fk">FK en vivo</button>
         <button data-pest="jac">Jacobiano</button>
         <button data-pest="sec">Demo</button>
@@ -112,19 +138,28 @@
 <div class="pestana activa" id="p-objetivo">
  <div class="fila-home"><span class="kicker">ATAJOS</span>
   <button id="btn-home-cero" class="btn-home" title="No recalibra el controlador: lleva todas las juntas a 0° con un plan revisado"><b>Volver a cero</b><small>todas las juntas a 0°</small></button>
-  <button id="btn-home-inicial" class="btn-home" title="No recalibra el controlador: lleva el robot a la postura inicial con un plan revisado"><b>Postura inicial</b><small>la de la configuración</small></button></div>
+  <button id="btn-home-inicial" class="btn-home" title="Calcula un plan a la postura articular de la configuración"><b>Postura inicial</b><small>la de la configuración</small></button>
+  <button id="btn-home-j5" class="btn-home" type="button" disabled title="Disponible en SIM o con el robot real por RWS y C02 verificado"><b>Preparar J5 a +30°</b><small>revisar en SIM</small></button>
+  <button id="btn-calibracion" class="btn-home"><b>Consultar calibración</b><small>solo lectura · FlexPendant</small></button>
+  <button id="btn-poses-predeterminadas" class="btn-home" type="button" disabled title="Disponible en SIM o con el robot real por RWS y C02 verificado">Poses predeterminadas</button></div>
+ <div class="selectores-plan">
+   <label class="selector-muestras">Posiciones de muestra <select id="presets" aria-label="Posición de muestra"></select></label>
+   <label class="selector-muestras" title="Perfil para movimientos punto a punto">Perfil del plan <select id="perfil-plan"><option value="suave">Suave</option><option value="lspb">LSPB académico</option></select></label>
+ </div>
  <div id="ik-vivo" class="ik-vivo vacio-ik"></div>
- <div id="resumen-plan" class="resumen-plan vacio"><span class="kicker">TU PRÓXIMO MOVIMIENTO</span><p>Al calcular verás el destino, la duración y la revisión del plan.</p></div><div id="panel-revision" class="panel-revision oculto"></div><div class="fila-ejecutar"><button id="btn-ejecutar" class="btn-ejecutar" disabled>Enviar movimiento</button><div id="caja-armado" class="caja-armado"></div></div>
- <div id="mini-tray" class="mini-tray oculto"><div class="mini-cab"><b>Trayectoria planificada (LSPB)</b><span><button id="mini-ver-lspb" class="btn-chico">Ver LSPB completo</button> <button id="mini-ver-graf" class="btn-chico">Gráficas en vivo</button></span></div><div id="mini-q"></div><div id="mini-qd"></div></div>
+ <div id="resumen-plan" class="resumen-plan vacio"><span class="kicker">TU PRÓXIMO MOVIMIENTO</span><p>Al calcular verás el destino, la duración y la revisión del plan.</p></div>
+ <div class="fila-ejecutar"><button id="btn-ver-revision" class="btn-principal oculto" type="button">Abrir revisión del plan</button><div id="caja-armado" class="caja-armado"></div></div>
+ <div id="panel-revision" class="panel-revision oculto"></div>
+ <div id="mini-tray" class="mini-tray oculto"><div class="mini-cab"><b>Trayectoria planificada</b><span><button id="mini-ver-lspb" class="btn-chico">Ver perfil completo</button> <button id="mini-ver-graf" class="btn-chico">Gráficas en vivo</button></span></div><div id="mini-q"></div><div id="mini-qd"></div></div>
  <div class="subpestanas" role="tablist" aria-label="Tipo de objetivo"><button class="activo" data-objetivo="junta">Una junta</button><button data-objetivo="pose">Pose del TCP</button><button data-objetivo="seis">Seis juntas</button></div>
  <section class="objetivo-form" id="objetivo-junta"><div class="intro-form"><h3>Mové una articulación</h3><p>Elegí J1–J6, tocá una pieza del robot 3D y usá sus flechas. Primero se calcula y se verifica; después decidís enviar.</p></div>
- <div class="campos junta-campos"><label>Articulación<select id="j-sola"><option value="1">J1 · Base</option><option value="2">J2 · Hombro</option><option value="3">J3 · Codo</option><option value="4">J4 · Antebrazo</option><option value="5">J5 · Muñeca</option><option value="6">J6 · Brida</option></select></label><label>Desplazamiento <span class="unidad">°</span><input id="j-valor" type="number" step="0.5" value="5"></label></div>
- <div class="slider-preview"><label for="j-preview">Vista previa de la junta <span id="j-preview-valor">+5°</span></label><input id="j-preview" type="range" min="-15" max="15" value="5" step="0.5"><div><span>−15°</span><span>0°</span><span>+15°</span></div></div>
+ <div class="campos junta-campos"><label>Articulación<select id="j-sola"><option value="1">J1 · Base</option><option value="2">J2 · Hombro</option><option value="3">J3 · Codo</option><option value="4">J4 · Antebrazo</option><option value="5">J5 · Muñeca</option><option value="6">J6 · Brida</option></select></label><label><span id="j-valor-etiqueta">Desplazamiento</span> <span class="unidad">°</span><input id="j-valor" type="number" step="0.5" value="5"></label></div>
+ <div class="slider-preview"><label for="j-preview">Vista previa de la junta <span id="j-preview-valor">+5°</span></label><input id="j-preview" type="range" min="-15" max="15" value="5" step="0.5"><div id="j-preview-rango"><span>−15°</span><span>0°</span><span>+15°</span></div></div>
  <label class="check"><input id="j-relativo" type="checkbox" checked> Relativo a la posición recibida</label><button id="btn-calc-junta" class="btn-principal">Calcular y verificar J1 <span>→</span></button></section>
- <section class="objetivo-form oculto" id="objetivo-pose"><div class="intro-form"><h3>Una pose, seis articulaciones</h3><p>Posición en la base del robot y orientación Euler ZYX. Pieper calcula las ramas posibles.</p></div><div class="campos"><label>X · mm<input id="px" type="number" value="400"></label><label>Y · mm<input id="py" type="number" value="0"></label><label>Z · mm<input id="pz" type="number" value="400"></label><label>Rz · °<input id="prz" type="number" value="0"></label><label>Ry · °<input id="pry" type="number" value="180"></label><label>Rx · °<input id="prx" type="number" value="0"></label></div><div class="fila-botones"><select id="presets" aria-label="Pose de ejemplo"></select><button id="btn-pose-actual" class="btn-chico">Copiar pose actual</button></div><button id="btn-calc-pose" class="btn-principal">Calcular y verificar · Pieper <span>→</span></button><p class="expl">R = Rz·Ry·Rx. Se verifican los residuos FK y las restricciones antes de elegir una rama.</p></section>
- <section class="objetivo-form oculto" id="objetivo-seis"><div class="intro-form"><h3>Objetivo articular completo</h3><p>Ingresá los seis ángulos en grados. Calculamos FK y una LSPB sincronizada.</p></div><div class="campos seis" id="seis-juntas"></div><div class="fila-botones"><button id="btn-q-actual" class="btn-chico">Copiar actuales</button><button id="btn-q-inicial" class="btn-chico">Ejemplo del simulador</button></div><button id="btn-calc-q" class="btn-principal">Calcular y verificar trayectoria <span>→</span></button></section>
+ <section class="objetivo-form oculto" id="objetivo-pose"><div class="intro-form"><h3>Una pose, seis articulaciones</h3><p>Posición en la base del robot y orientación Euler ZYX. Pieper calcula las ramas posibles.</p></div><div class="campos"><label>X · mm<input id="px" type="number" value="400"></label><label>Y · mm<input id="py" type="number" value="0"></label><label>Z · mm<input id="pz" type="number" value="400"></label><label>Rz · °<input id="prz" type="number" value="0"></label><label>Ry · °<input id="pry" type="number" value="180"></label><label>Rx · °<input id="prx" type="number" value="0"></label></div><div class="fila-botones"><button id="btn-pose-actual" class="btn-chico">Copiar pose actual</button></div><button id="btn-calc-pose" class="btn-principal">Calcular y verificar · Pieper <span>→</span></button><p class="expl">R = Rz·Ry·Rx. Se verifican los residuos FK y las restricciones antes de elegir una rama.</p></section>
+ <section class="objetivo-form oculto" id="objetivo-seis"><div class="intro-form"><h3>Objetivo articular completo</h3><p>Ingresá los seis ángulos en grados. Se calcula la FK y una trayectoria sincronizada.</p></div><div class="campos seis" id="seis-juntas"></div><div class="fila-botones"><button id="btn-q-actual" class="btn-chico">Copiar actuales</button><button id="btn-q-inicial" class="btn-chico">Ejemplo del simulador</button></div><button id="btn-calc-q" class="btn-principal">Calcular y verificar trayectoria <span>→</span></button></section>
 </div>
-<div class="pestana" id="p-graficas"><div class="intro-form"><h3>Gráficas de seguimiento</h3><p>Compará referencia y estado recibido. Las curvas de velocidad y aceleración de LSPB son planificadas.</p></div><div class="filtros-graficas"><label>Ver<select id="tipo-grafica"><option value="posicion">Posición · referencia y recibida</option><option value="error">Error articular</option><option value="velocidad">Velocidad planificada</option><option value="aceleracion">Aceleración planificada</option><option value="tcp">Error de posición TCP</option><option value="orientacion">Error de orientación TCP</option><option value="singularidad">Singularidad · σ mínimo</option></select></label><label>Articulación<select id="junta-grafica"><option value="todas">Todas las juntas</option><option value="0">J1</option><option value="1">J2</option><option value="2">J3</option><option value="3">J4</option><option value="4">J5</option><option value="5">J6</option></select></label></div><div class="fila-botones"><button id="btn-exportar" class="btn-chico">Exportar estados · CSV</button><button id="btn-pausar-grafica" class="btn-chico">Pausar gráfica</button><label class="nota">Ventana <select id="ventana-grafica"><option value="20">20 s</option><option value="60">60 s</option><option value="120">120 s</option></select></label></div><div id="grafica-principal" class="grafica-grande"></div><p id="grafica-nota" class="nota">Estado del simulador · los trazos punteados representan la referencia.</p><div class="resumen-graficas"><div><span>Máximo |valor|</span><b id="grafica-max">—</b></div><div><span>Fuente</span><b id="grafica-fuente">Simulador interno</b></div><div><span>Edad de muestra</span><b id="grafica-edad">—</b></div></div></div>
+<div class="pestana" id="p-graficas"><div class="intro-form"><h3>Gráficas de seguimiento</h3><p>Compará referencia y estado recibido. Las curvas de velocidad y aceleración corresponden al plan.</p></div><div class="filtros-graficas"><label>Ver<select id="tipo-grafica"><option value="posicion">Posición · referencia y recibida</option><option value="error">Error articular</option><option value="velocidad">Velocidad planificada</option><option value="aceleracion">Aceleración planificada</option><option value="tcp">Error de posición TCP</option><option value="orientacion">Error de orientación TCP</option><option value="singularidad">Singularidad · σ mínimo</option></select></label><label>Articulación<select id="junta-grafica"><option value="todas">Todas las juntas</option><option value="0">J1</option><option value="1">J2</option><option value="2">J3</option><option value="3">J4</option><option value="4">J5</option><option value="5">J6</option></select></label></div><div class="fila-botones"><button id="btn-exportar" class="btn-chico">Exportar estados · CSV</button><button id="btn-pausar-grafica" class="btn-chico">Pausar gráfica</button><label class="nota">Ventana <select id="ventana-grafica"><option value="20">20 s</option><option value="60">60 s</option><option value="120">120 s</option></select></label></div><div id="grafica-principal" class="grafica-grande"></div><p id="grafica-nota" class="nota">Estado del simulador · los trazos punteados representan la referencia.</p><div class="resumen-graficas"><div><span>Máximo |valor|</span><b id="grafica-max">—</b></div><div><span>Fuente</span><b id="grafica-fuente">Simulador interno</b></div><div><span>Edad de muestra</span><b id="grafica-edad">—</b></div></div></div>
 <div class="pestana" id="p-datos"><div class="intro-form"><h3>Datos disponibles y procedencia</h3><p>Cada dato identifica su fuente. La pose calculada con FK no reemplaza una medición externa.</p></div><div id="datos-contenido"></div></div>
       <div class="pestana" id="p-pasos"><div id="pasos-contenido" class="pasos"><p class="vacio">Calcula un plan para ver aquí cada cuenta con sus números.</p></div></div>
       <div class="pestana" id="p-ramas"><div id="ramas-contenido"><p class="vacio">Calcula una pose para ver las 8 ramas.</p></div></div>
@@ -161,30 +196,85 @@
     <h2>Atajos de teclado</h2>
     <table class="atajos">
       <tr><td>Espacio o Esc</td><td>PARAR (solicita cancelar el movimiento; no sustituye un paro físico)</td></tr>
-      <tr><td>Enter</td><td>Enviar el plan calculado al robot</td></tr>
+      <tr><td>Enter</td><td>Abrir la revisión del plan en simulación</td></tr>
       <tr><td>M</td><td>Cambiar entre mover por juntas o en cartesiano</td></tr>
       <tr><td>1 a 6</td><td>Elegir la junta que mueven las flechas</td></tr>
-      <tr><td>← → (y ↑ ↓)</td><td>Juntas: menos / más en la junta elegida</td></tr>
-      <tr><td>↑ ↓ ← →</td><td>Cartesiano: +X / −X / +Y / −Y del TCP</td></tr>
-      <tr><td>Re Pág / Av Pág (o W / S)</td><td>Cartesiano: subir / bajar (Z)</td></tr>
-      <tr><td>C</td><td>Continuar la secuencia de demostración</td></tr>
+      <tr><td>← → (y ↑ ↓)</td><td>Juntas en simulación: menos / más en la junta elegida</td></tr>
+      <tr><td>↑ ↓ ← →</td><td>Cartesiano en simulación: +X / −X / +Y / −Y del TCP</td></tr>
+      <tr><td>Re Pág / Av Pág (o W / S)</td><td>Cartesiano en simulación: subir / bajar (Z)</td></tr>
+      <tr><td>C</td><td>Continuar la demostración en simulación</td></tr>
       <tr><td>F</td><td>Mostrar u ocultar los marcos D-H</td></tr>
       <tr><td>+ / −</td><td>Subir o bajar la velocidad</td></tr>
       <tr><td>H</td><td>Esta ayuda</td></tr>
     </table>
-    <p>El robot solo se mueve <b>mientras mantienes la tecla apretada</b> (mando mantenido de la interfaz). Al soltarla, se detiene.</p>
+    <p>Para enviar un plan al robot real, usá el botón «Enviar al robot real» y confirmá el envío.</p>
     <button class="btn-principal" data-cerrar>Cerrar</button>
   </div>
 </div>
 
-<div id="confirmar" class="modal oculto">
-  <div class="modal-caja">
-    <h2>Confirmar envío al ROBOT REAL</h2>
-    <div id="confirmar-texto"></div>
-    <div class="fila-botones">
-      <button id="confirmar-si" class="btn-ejecutar">Sí, enviar</button>
-      <button class="btn-chico" data-cerrar>Cancelar</button>
+<dialog id="flujo-plan" class="dialogo-flujo" aria-labelledby="flujo-titulo">
+  <header class="flujo-cabecera">
+    <h2 id="flujo-titulo" tabindex="-1">Revisar plan</h2>
+    <form method="dialog"><button class="btn-chico" type="submit">Cerrar</button></form>
+  </header>
+  <section class="flujo-cuerpo">
+    <div id="flujo-revision">
+      <div id="flujo-resumen"></div>
+      <div id="flujo-detalle" class="panel-revision"></div>
+      <div id="flujo-armado-real" class="caja-armado"></div>
     </div>
+    <div id="flujo-confirmacion" class="oculto">
+      <div id="confirmar-texto"></div>
+    </div>
+  </section>
+  <footer class="flujo-pie">
+    <p id="flujo-estado" role="status"></p>
+    <p data-mensaje-dialogo class="mensaje-dialogo" role="alert"></p>
+    <div class="flujo-acciones" id="flujo-revision-acciones">
+      <button id="flujo-ver-3d" class="btn-chico" type="button">Ver en 3D</button>
+      <button id="flujo-habilitar" class="btn-chico oculto" type="button">Habilitar simulador</button>
+      <button id="btn-ejecutar" class="btn-principal" type="button" disabled>Continuar a confirmación</button>
+    </div>
+    <div class="flujo-acciones oculto" id="flujo-confirmar-acciones">
+      <button id="flujo-volver" class="btn-chico" type="button">Volver a revisión</button>
+      <button id="confirmar-si" class="btn-ejecutar" type="button">Confirmar ejecución</button>
+    </div>
+  </footer>
+</dialog>
+
+<dialog id="poses-predeterminadas" class="dialogo-flujo" aria-labelledby="figura-titulo">
+  <header class="flujo-cabecera">
+    <h2 id="figura-titulo">Poses predeterminadas</h2>
+    <form method="dialog"><button class="btn-chico" type="submit">Cerrar</button></form>
+  </header>
+  <form id="form-figura">
+    <section class="flujo-cuerpo">
+      <p id="figura-modo">Trayectorias de simulación a partir de la pose actual, con perfil suave por tramos.</p>
+      <div class="campos">
+        <label>Figura <select id="figura-tipo" autofocus><option value="circulo">Círculo</option><option value="corazon">Corazón</option><option value="cuadrado">Cuadrado</option><option value="triangulo">Triángulo</option><option value="saludo">Saludo</option></select></label>
+        <label>Tamaño (mm) <input type="number" id="figura-tamano" min="5" max="100" step="any" value="25" required></label>
+        <label id="figura-plano-campo">Plano base <select id="figura-plano"><option>XY</option><option>XZ</option><option>YZ</option></select></label>
+      </div>
+      <p id="figura-descripcion" class="nota"></p>
+    </section>
+    <footer class="flujo-pie">
+      <p data-mensaje-dialogo class="mensaje-dialogo" role="alert"></p>
+      <div class="flujo-acciones"><button id="btn-calcular-figura" class="btn-principal" type="submit">Calcular trayectoria</button></div>
+    </footer>
+  </form>
+</dialog>
+
+<div id="asistente-calibracion" class="modal oculto" role="dialog" aria-modal="true" aria-labelledby="calibracion-titulo">
+  <div class="modal-caja calibracion-caja">
+    <h2 id="calibracion-titulo">Consultar calibración</h2>
+    <p>Consulta de solo lectura para comparar el FlexPendant con el modelo.</p>
+    <ol>
+      <li>Con el robot detenido, abrí Jogging en el FlexPendant. Seleccioná ROB_1, tool0, wobj0 y coordenadas Base.</li>
+      <li>Leé las juntas y la pose cartesiana. Usá «Leer y comparar» para ver la misma referencia en la consola.</li>
+      <li>Para consultar Track o el estado de los contadores de revolución, abrí Calibración en el FlexPendant. Si hay discrepancias, revisá el marco activo y seguí el procedimiento ABB con el responsable del equipo antes de cambiar contadores o calibrar.</li>
+    </ol>
+    <div id="calibracion-resultado" aria-live="polite"></div>
+    <div class="fila-botones"><button id="btn-comparar-pendant" class="btn-principal">Leer y comparar</button><button class="btn-chico" data-cerrar>Cerrar</button></div>
   </div>
 </div>
 

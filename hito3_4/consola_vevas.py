@@ -35,7 +35,7 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
 
 from vevas.backend_sim import BackendSim  # noqa: E402
-from vevas.consola import Consola  # noqa: E402
+from vevas.consola import Consola, validar_go  # noqa: E402
 from vevas.registro import Registro  # noqa: E402
 from vevas.seguridad import cargar_config  # noqa: E402
 from vevas.servidor import crear_servidor  # noqa: E402
@@ -85,11 +85,20 @@ def main():
                 cfg["rws"][k] = v
         # La postura llega por HTTP a ~10 Hz: el watchdog de 0.5 s se sube al valor de cfg["rws"] (nunca se baja).
         cfg["seguridad"]["watchdog_estado_s"] = max(cfg["seguridad"]["watchdog_estado_s"], cfg["rws"]["watchdog_estado_s"])
-    puerto = args.puerto or cfg["servidor"]["puerto"]
+    puerto = cfg["servidor"]["puerto"] if args.puerto is None else args.puerto
     go = None
     if args.go:
         with open(args.go, encoding="utf-8") as f:
             go = json.load(f)
+    if args.real:
+        ok_go, mensaje_go = validar_go(go)
+        if not ok_go:
+            ap.error("GO rechazado antes de crear interfaces o preparar RAPID: " + mensaje_go)
+        if "entorno" in go:
+            if not isinstance(go["entorno"], dict):
+                ap.error("El entorno de sesión debe ser un objeto JSON")
+            from copy import deepcopy
+            cfg["entorno"] = deepcopy(go["entorno"])
 
     registro = Registro(args.sesiones, args.modo + ("_real" if args.real else ""))
     avisos_previos = []
@@ -109,7 +118,7 @@ def main():
             sys.exit(1)
         backend = BackendROS(cfg, lambda t: avisos_previos.append(t), solo_lectura=args.solo_lectura)
 
-    consola = Consola(cfg, backend, registro, permitir_real=args.real, go=go)
+    consola = Consola(cfg, backend, registro, permitir_real=args.real, go=go, ruta_go=args.go if args.real else None)
     if args.modo in ("ros", "rws"):
         backend._avisar = lambda t: consola.avisar(t, "info")
     for t in avisos_previos:
@@ -130,12 +139,15 @@ def main():
             sys.exit(1)
         print("RAPID listo: VevasServidor activo.")
     consola.iniciar()
-    registro.evento("inicio", modo=args.modo, real=args.real, config=cfg, go=go, solo_lectura=args.solo_lectura)
+    from copy import deepcopy
+    cfg_registro = deepcopy(cfg)
+    cfg_registro.get("rws", {}).pop("clave", None)
+    registro.evento("inicio", modo=args.modo, real=args.real, config=cfg_registro, go=go, solo_lectura=args.solo_lectura)
     consola.avisar(f"Consola iniciada en modo {args.modo.upper()}. Registro en {registro.carpeta}", "ok")
 
     servidor = crear_servidor(consola, os.path.join(AQUI, "web"), cfg["servidor"]["host"], puerto, cfg["servidor"]["hz_estado"])
-    url = f"http://{cfg['servidor']['host']}:{puerto}"
-    print(f"\n  Consola VEVAS lista: abre {url} en el navegador.")
+    url = f"http://{cfg['servidor']['host']}:{servidor.server_address[1]}"
+    print(f"\n  Consola VEVAS lista: abre {url} en el navegador.", flush=True)
     print(f"  Modo: {args.modo}{' (ROBOT REAL PERMITIDO)' if args.real else ''}.  Registro: {registro.carpeta}")
     print("  Ctrl+C para cerrar y guardar el registro.\n")
 

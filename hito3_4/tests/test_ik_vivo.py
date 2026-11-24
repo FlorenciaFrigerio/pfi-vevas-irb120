@@ -168,6 +168,43 @@ def test_http():
         cerrar(con, b)
 
 
+def test_j5_sim_conserva_las_otras_juntas_y_verifica_llegada():
+    con, backend = nueva()
+    try:
+        assert con.armar({}, "")[0]
+        plan = con.calcular_home("j5")
+        assert plan["ejecutable"]
+        assert math.isclose(plan["q_obj_deg"][4], 30.0)
+        for indice in (0, 1, 2, 3, 5):
+            assert plan["q_obj_deg"][indice] == plan["q0_deg"][indice]
+        assert con.ejec is None
+        assert con.ejecutar(plan["id"])[0]
+        plazo = time.monotonic() + plan["tray"]["tf"] + 6.0
+        while con.ejec is not None and time.monotonic() < plazo:
+            con.pulso()
+            time.sleep(0.03)
+        assert con.ultimo_resumen["llegada_verificada"]
+        assert con.ultimo_resumen["error_final_max_deg"] <= 0.25
+    finally:
+        cerrar(con, backend)
+
+
+def test_velocidad_invalida_plan_sim_y_llegada_fuera_de_tolerancia():
+    con, backend = nueva()
+    try:
+        con.calcular_home("j5")
+        con.fijar_velocidad(10)
+        assert con.plan is None
+        plan = con.calcular_home("j5")
+        assert plan["vel_pct"] == 10
+        destino = np.radians(plan["q_obj_deg"])
+        assert con._llegada_sim_verificada({"q_obj": destino}, destino)
+        assert not con._llegada_sim_verificada({"q_obj": destino}, None)
+        assert not con._llegada_sim_verificada({"q_obj": destino}, np.radians(HOME))
+    finally:
+        cerrar(con, backend)
+
+
 if __name__ == "__main__":
     n = 0
     for nombre, f in list(globals().items()):
