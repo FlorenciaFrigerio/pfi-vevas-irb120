@@ -60,3 +60,49 @@ def generar_figura(nombre, tamano_mm=25, plano="XY", *, muestras=65) -> np.ndarr
     puntos[:, ejes] = np.column_stack((a, b)) * (tamano_mm / 1000)
     puntos[[0, -1]] = 0.0
     return puntos
+
+
+def nombre_canonico(nombre) -> str | None:
+    """«círculo», «circulo» → «círculo»; «saludo» → «saludo»; otro → None."""
+    if not isinstance(nombre, str):
+        return None
+    n = nombre.strip().lower()
+    return "saludo" if n == "saludo" else NOMBRES.get(n)
+
+
+def paradas_figura(nombre, puntos, limite=None) -> list[int]:
+    """Índices de las muestras donde el recorrido se detiene (v = 0).
+
+    Corazón: la punta (cúspide). Cuadrado y triángulo: cada esquina (cambio de
+    dirección de más de ~37°). ``limite`` es la cantidad de muestras que llegan a
+    resolverse (si la IK falla antes del final, solo cuentan las previas).
+    """
+    figura = nombre_canonico(nombre)
+    puntos = np.asarray(puntos, dtype=float)
+    n = len(puntos)
+    limite = n if limite is None else int(limite)
+    paradas = []
+    if figura == "corazón" and limite > n // 2:
+        paradas.append(n // 2)
+    if figura in ("cuadrado", "triángulo"):
+        d = np.diff(puntos, axis=0)
+        for k in range(1, min(limite - 1, len(d))):
+            if np.dot(d[k - 1], d[k]) < 0.8 * np.linalg.norm(d[k - 1]) * np.linalg.norm(d[k]):
+                paradas.append(k)
+    return paradas
+
+
+def plano_de_vista(offsets, plano="XY") -> str:
+    """Plano en el que conviene dibujar el recorrido en 2D.
+
+    Para las figuras es su plano de dibujo. Si el recorrido no es plano (saludo
+    articular), se elige el plano base con mayor extensión.
+    """
+    offsets = np.asarray(offsets, dtype=float)
+    plano = plano.strip().upper() if isinstance(plano, str) else "XY"
+    if plano in PLANOS:
+        normal = ({0, 1, 2} - set(PLANOS[plano])).pop()
+        if offsets.size == 0 or np.ptp(offsets[:, normal]) < 1e-9:
+            return plano
+    rango = np.ptp(offsets, axis=0) if offsets.size else np.zeros(3)
+    return max(PLANOS, key=lambda p: float(rango[PLANOS[p][0]] * rango[PLANOS[p][1]] + rango[PLANOS[p][0]] + rango[PLANOS[p][1]]))

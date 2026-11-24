@@ -47,15 +47,16 @@ class Renderer{
   drawRobot(this.fantasma, true);
   path(this.rastro, "#7a3eb1", 2);
   path(this.camino, "#198ba7", 1.8, [5, 4]);
+  const denso = this.puntos.length > 8;   // figuras: puntos macizos chicos, sin aro blanco
   for (const punto of this.puntos) {
     const [x, y] = proj(punto);
     ctx.beginPath();
-    ctx.arc(x, y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = "#198ba7";
+    ctx.arc(x, y, denso ? 2.5 : 4, 0, Math.PI * 2);
+    ctx.fillStyle = denso ? "#0f6f86" : "#198ba7";
     ctx.strokeStyle = "#fff";
     ctx.lineWidth = 2;
     ctx.fill();
-    ctx.stroke();
+    if (!denso) ctx.stroke();
   }
  }
 }

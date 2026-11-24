@@ -3,7 +3,9 @@ import { Escena, interpolarMarcos } from "./escena.js";
 import { GraficaDeslizante, GraficaTrayectoria, COLORES_JUNTAS } from "./graficas.js";
 import { crearArrastre } from "./arrastre.js";
 import { marcosGiroJunta } from "./orientacion.js";
-import { f, nombrePerfil, pasosPlan, permisoMovimientosGuiados, tablaRamas, panelLSPB, panelFK, panelJacobiano, panelSecuencia, panelBitacora } from "./calculos.js";
+import { f, nombrePerfil, pasosPlan, permisoMovimientosGuiados, tablaRamas, panelLSPB, panelFK, panelJacobiano, panelSecuencia, panelBitacora,
+  permisoIrAPose, proyectarFigura, errorFigura, agregarMuestra } from "./calculos.js";
+import { dibujarVistaFigura } from "./vista_figura.js";
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
@@ -27,6 +29,9 @@ const est = {
   drag: null,
   revisionObjetivo: 0,
   calculoPendiente: false,
+  // Vista de puntos de la figura: vista previa (diálogo) y plan calculado con los puntos medidos.
+  figura: { vista: null, plan: null, medidos: [], dibujo: 0, pedido: 0 },
+  poses: { lista: [], pendiente: false, editando: null, borrando: null, clave: "" },
 };
 let arr = null;
 
@@ -262,6 +267,7 @@ async function iniciar() {
   setInterval(() => { est.gJuntas.dibujar(); est.gTCP.dibujar(); est.gRot.dibujar(); if(est.pestana==="graficas") actualizarGrafica(); }, 100);
   animarVistaPrevia();
   abrirStream();
+  cargarPoses();
 }
 
 function abrirStream() {
@@ -355,6 +361,9 @@ function conectarControles() {
   $("#flujo-plan").addEventListener("close", () => { est.confirmarPlanId = null; });
   $("#perfil-plan").onchange = cambiarPerfil;
   conectarFiguras();
+  conectarPosesGuardadas();
+  $("#pf-limpiar").onclick = () => { est.figura.medidos = []; dibujarPanelFigura(); };
+  window.addEventListener("resize", () => { dibujarPanelFigura(); if ($("#poses-predeterminadas").open) dibujarVistaDialogo(); });
   conectarGizmo();
   $("#gz-toggle").onclick = () => {
     const g = $("#gizmo"), cerrado = g.classList.toggle("colapsado");
@@ -730,12 +739,18 @@ function conectarFiguras() {
       actualizarDescripcion();
       modal.querySelector("[data-mensaje-dialogo]").textContent = "";
       modal.showModal();
+      pedirVistaFigura();
     }
   };
+  let tVista = null;
   form.addEventListener("input", () => {
     invalidarPlan();
     actualizarDescripcion();
+    clearTimeout(tVista);
+    tVista = setTimeout(pedirVistaFigura, 120);
   });
+  // Al cerrar sin calcular, los puntos de la vista previa no quedan en el 3D.
+  modal.addEventListener("close", () => { if (!est.plan) est.escena.fijarPuntos([]); });
   form.onsubmit = async (e) => {
     e.preventDefault();
     if (!permisoMovimientosGuiados(est.vivo?.modo).permitido) {
@@ -750,6 +765,222 @@ function conectarFiguras() {
     try { await calcularPlan("calcular_figura", cuerpo); }
     finally { boton.disabled = false; boton.textContent = "Calcular trayectoria"; }
   };
+}
+
+// Vista previa de puntos: la geometría viene de vevas/figuras.py (endpoint que no mueve nada).
+async function pedirVistaFigura() {
+  const n = ++est.figura.pedido;
+  const cuerpo = { figura: $("#figura-tipo").value, tamano_mm: $("#figura-tamano").valueAsNumber, plano: $("#figura-plano").value };
+  let d;
+  try {
+    const r = await fetch("/api/vista_figura", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) });
+    d = await r.json();
+  } catch {
+    d = { ok: false, mensaje: "Sin conexión con la consola." };
+  }
+  if (n !== est.figura.pedido) return;
+  est.figura.vista = d.ok ? d.vista : null;
+  const info = $("#figura-vista-info");
+  if (!d.ok) {
+    info.textContent = d.mensaje || "No se pudo generar la vista previa.";
+  } else {
+    const v = d.vista, np = v.paradas.length;
+    info.textContent = `${v.n_puntos} puntos · plano ${v.plano_vista}`
+      + (v.nombre === "saludo" ? " (proyección del TCP: el saludo mueve la muñeca)" : "")
+      + ` · ${np ? `${np} ${np === 1 ? "parada" : "paradas"} (v = 0)` : "sin paradas intermedias"}`
+      + (v.origen_m ? " · origen en el TCP actual" : "")
+      + (v.excede_tope ? ` · supera el máximo de ${v.tope_mm} mm de este modo` : "");
+    // También en el gemelo 3D (si todavía no hay un plan calculado).
+    if (v.puntos_m && !est.plan) est.escena.fijarPuntos(v.puntos_m);
+  }
+  dibujarVistaDialogo();
+}
+
+function dibujarVistaDialogo() {
+  const v = est.figura.vista;
+  dibujarVistaFigura($("#figura-lienzo"), v
+    ? { plan2d: v.puntos_2d_mm, paradas: v.paradas, ejes: v.ejes }
+    : { vacio: $("#figura-vista-info").textContent || "Elegí figura y tamaño." });
+}
+
+function figuraDePlan(plan) {
+  const fig = plan.figura, puntos = fig.puntos_objetivo_m || plan.preview?.puntos || [];
+  const plano = fig.plano_vista || fig.plano || "XY";
+  return { plan_id: plan.id, descripcion: plan.descripcion, puntos_m: puntos, plano, paradas: fig.paradas || [],
+    ejes: [plano[0], plano[1]], origen_m: puntos[0] };
+}
+
+function dibujarPanelFigura() {
+  const panel = $("#panel-figura"), fp = est.figura.plan;
+  panel.classList.toggle("oculto", !fp);
+  if (!fp) return;
+  const med = est.figura.medidos;
+  $("#pf-titulo").textContent = `Recorrido de la figura · plan ${fp.plan_id} · ${fp.descripcion}`;
+  dibujarVistaFigura($("#pf-lienzo"), {
+    plan2d: proyectarFigura(fp.puntos_m, fp.plano, fp.origen_m),
+    medidos2d: proyectarFigura(med, fp.plano, fp.origen_m),
+    paradas: fp.paradas, ejes: fp.ejes,
+  });
+  const e = errorFigura(med, fp.puntos_m);
+  $("#pf-error").textContent = e.n
+    ? `Medido vs planificado (distancia 3D al recorrido): máx ${f(e.max_mm, 2)} mm · medio ${f(e.medio_mm, 2)} mm · ${e.n} puntos`
+    : "Al ejecutar el plan se superponen aquí los puntos medidos del TCP.";
+}
+
+function seguirFigura(v) {
+  const fp = est.figura.plan;
+  const siguiendo = !!(fp && v.ejec && v.ejec.plan_id === fp.plan_id);
+  if (est.figura.siguiendo && !siguiendo) dibujarPanelFigura();   // terminó: dibujo final con el error completo
+  est.figura.siguiendo = siguiendo;
+  if (!siguiendo || !v.tcp_med) return;
+  if (!(Number.isFinite(v.edad_estado_s) && v.edad_estado_s <= est.cfg.cfg.seguridad.watchdog_estado_s)) return;
+  const p = v.tcp_med;
+  if (agregarMuestra(est.figura.medidos, [p.x_mm / 1000, p.y_mm / 1000, p.z_mm / 1000])) {
+    const ahora = performance.now();
+    if (ahora - est.figura.dibujo > 150) { est.figura.dibujo = ahora; dibujarPanelFigura(); }
+  }
+}
+
+// Poses guardadas: guardar la actual, listar, renombrar, borrar (con confirmación) e «Ir a pose».
+function conectarPosesGuardadas() {
+  $("#pg-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const nombre = $("#pg-nombre").value.trim();
+    if (!nombre) { mostrarAvisoPoses("Escribí un nombre para la pose."); $("#pg-nombre").focus(); return; }
+    const d = await ordenPoses("pose_guardar", { nombre });
+    if (d.ok) { $("#pg-nombre").value = ""; aviso(`Pose «${d.pose.nombre}» guardada.`, "ok"); }
+  };
+  $("#pg-lista").addEventListener("click", async (e) => {
+    const b = e.target.closest("button[data-accion]");
+    if (!b || b.disabled) return;
+    const nombre = b.closest("li").dataset.nombre, accion = b.dataset.accion;
+    if (accion === "ir") {
+      if (est.vivo?.ejec) { aviso("Esperá a que termine el movimiento en curso.", "error"); return; }
+      await calcularPlan("calcular_pose_guardada", { nombre });
+    } else if (accion === "renombrar") {
+      est.poses.editando = nombre; est.poses.borrando = null; dibujarPoses(true);
+      $("#pg-lista .pg-renombrar input")?.focus();
+    } else if (accion === "borrar") {
+      est.poses.borrando = nombre; est.poses.editando = null; dibujarPoses(true);
+    } else if (accion === "cancelar") {
+      est.poses.borrando = est.poses.editando = null; dibujarPoses(true);
+    } else if (accion === "si-borrar") {
+      const d = await ordenPoses("pose_borrar", { nombre, confirmar: true });
+      if (d.ok) aviso(`Pose «${nombre}» borrada.`, "info");
+    } else if (accion === "aceptar") {
+      await renombrarPose(b.closest("li"));
+    }
+  });
+  $("#pg-lista").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.target.matches(".pg-renombrar input")) { e.preventDefault(); renombrarPose(e.target.closest("li")); }
+  });
+}
+
+async function renombrarPose(li) {
+  const nuevo = li.querySelector("input").value.trim();
+  if (!nuevo) { mostrarAvisoPoses("Escribí el nuevo nombre."); return; }
+  const d = await ordenPoses("pose_renombrar", { nombre: li.dataset.nombre, nuevo });
+  if (d.ok) aviso(`Pose renombrada a «${d.pose.nombre}».`, "ok");
+}
+
+async function ordenPoses(nombre, cuerpo) {
+  if (est.poses.pendiente) return { ok: false };
+  est.poses.pendiente = true;
+  dibujarPoses(true);
+  try {
+    const d = await orden(nombre, cuerpo);
+    if (d.ok) { est.poses.editando = est.poses.borrando = null; recibirPoses(d); }
+    else mostrarAvisoPoses(d.mensaje || "No se pudo completar la operación.");
+    return d;
+  } finally {
+    est.poses.pendiente = false;
+    dibujarPoses(true);
+  }
+}
+
+async function cargarPoses() {
+  const d = await orden("poses_listar");
+  if (d.ok) recibirPoses(d);
+}
+
+function recibirPoses(d) {
+  est.poses.lista = d.poses || [];
+  est.poses.disponible = d.disponible !== false;
+  mostrarAvisoPoses(d.aviso || "");
+  $("#pg-cuenta").textContent = est.poses.disponible
+    ? (est.poses.lista.length ? `${est.poses.lista.length} guardada${est.poses.lista.length === 1 ? "" : "s"}` : "ninguna todavía")
+    : "sin carpeta de datos";
+  if (d.ruta) $("#pg-cuenta").title = d.ruta;
+  dibujarPoses(true);
+}
+
+function mostrarAvisoPoses(texto) {
+  const a = $("#pg-aviso");
+  a.textContent = texto;
+  a.classList.toggle("oculto", !texto);
+}
+
+function fechaCorta(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(iso || "");
+  return m ? `${m[3]}/${m[2]} ${m[4]}:${m[5]}` : "";
+}
+
+// Se redibuja solo cuando cambia algo que afecta a los botones (no en cada muestra del estado).
+function dibujarPoses(forzar = false) {
+  const v = est.vivo, permiso = permisoIrAPose(v?.modo);
+  const ocupado = est.poses.pendiente || !!v?.ejec || !!v?.jog || est.calculoPendiente || est.envioPendiente;
+  const clave = [permiso.permitido, ocupado, est.poses.disponible].join("|");
+  if (!forzar && clave === est.poses.clave) return;
+  est.poses.clave = clave;
+  $("#pg-guardar").disabled = ocupado || est.poses.disponible === false;
+  $("#pg-guardar").title = est.poses.disponible === false ? "No hay carpeta de datos configurada (--datos)."
+    : v?.ejec || v?.jog ? "Esperá a que el robot esté quieto." : "Guarda las 6 juntas recibidas y la pose del TCP por FK";
+  const lista = $("#pg-lista");
+  const boton = (texto, accion, clase = "", deshabilitado = false, titulo = "") => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "btn-chico " + clase; b.dataset.accion = accion; b.textContent = texto;
+    b.disabled = deshabilitado; if (titulo) b.title = titulo;
+    return b;
+  };
+  lista.replaceChildren(...est.poses.lista.slice().reverse().map((p) => {
+    const li = document.createElement("li");
+    li.dataset.nombre = p.nombre;
+    const acciones = document.createElement("div");
+    acciones.className = "pg-acciones";
+    if (est.poses.editando === p.nombre) {
+      const caja = document.createElement("div");
+      caja.className = "pg-renombrar";
+      const input = document.createElement("input");
+      input.type = "text"; input.maxLength = 40; input.value = p.nombre; input.setAttribute("aria-label", "Nuevo nombre de la pose");
+      caja.append(input);
+      acciones.append(boton("Aceptar", "aceptar", "pg-ir", est.poses.pendiente), boton("Cancelar", "cancelar"));
+      li.append(caja, acciones);
+      return li;
+    }
+    const info = document.createElement("div");
+    info.className = "pg-info";
+    const b = document.createElement("b");
+    b.textContent = p.nombre;
+    const small = document.createElement("small");
+    const t = p.tcp || {};
+    const tcp = Number.isFinite(t.x_mm) ? ` · TCP (${f(t.x_mm, 0)}, ${f(t.y_mm, 0)}, ${f(t.z_mm, 0)}) mm` : "";
+    small.textContent = `${fechaCorta(p.fecha)} · q = [${p.q_deg.map((x) => f(x, 1)).join(", ")}]°${tcp}`;
+    small.title = small.textContent;
+    info.append(b, small);
+    if (est.poses.borrando === p.nombre) {
+      const txt = document.createElement("span");
+      txt.className = "pg-confirmar"; txt.textContent = "¿Borrar esta pose?";
+      acciones.append(txt, boton("Sí, borrar", "si-borrar", "pg-si", est.poses.pendiente), boton("Cancelar", "cancelar"));
+    } else {
+      acciones.append(
+        boton("Ir", "ir", "pg-ir", ocupado || !permiso.permitido,
+          permiso.permitido ? "Calcula un plan articular revisado hasta esta pose (después: revisión, armado y confirmación)" : permiso.motivo),
+        boton("Renombrar", "renombrar", "", est.poses.pendiente),
+        boton("Borrar", "borrar", "pg-borrar", est.poses.pendiente));
+    }
+    li.append(info, acciones);
+    return li;
+  }));
 }
 
 // Planes
@@ -781,6 +1012,13 @@ function recibirPlan(plan, irAPasos, desdeArrastre = false) {
   $("#ramas-contenido").innerHTML = tablaRamas(plan);
   $("#lspb-contenido").innerHTML = panelLSPB(plan);
   if (est.pestana === "lspb") dibujarLSPB(plan);
+  if (plan.figura) {
+    est.figura.plan = figuraDePlan(plan);
+    est.figura.medidos = [];
+  } else {
+    est.figura.plan = null;
+  }
+  dibujarPanelFigura();
   const camino = plan.preview?.camino || [];
   est.escena.fijarCamino(camino);
   est.escena.fijarPuntos(plan.preview?.puntos ?? (camino.length ? [camino[0], camino.at(-1)] : []));
@@ -884,6 +1122,8 @@ function actualizar(v) {
     $("#traza-fuente").textContent = v.modo?.tipo === "sim" ? "Traza SIM" : "Traza por FK";
   }
   botonesGuiados(v.modo);
+  dibujarPoses();
+  seguirFigura(v);
   est.ultimaRecepcion=performance.now();
   $("#estado-fuente").textContent=v.modo?.tipo==="sim"?"Simulador interno":v.modo?.real===false?"ROS · hardware simulado":"Estado leído del robot";
   $("#nota-fuente").textContent=notaFuente(v.modo||{});

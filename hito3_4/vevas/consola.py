@@ -30,6 +30,7 @@ import numpy as np
 from . import pieper as pp
 from .jacobiano import analisis_singularidad
 from .robot_irb120 import (
+    LIMITES_DEG,
     VEL_MAX_DEG,
     Robot,
     describir_pose,
@@ -37,6 +38,7 @@ from .robot_irb120 import (
     error_posicion,
     pose_desde_xyz_euler,
 )
+from .poses_guardadas import AlmacenPoses
 from .secuencias import POSTURA_INICIAL_DEG, pasos_demo
 from .revision import nivel_singularidad, problemas_de, revisar_trayectoria
 from .rws_cliente import CancelacionOrden
@@ -47,6 +49,8 @@ FRASE_REAL = "MOVER ROBOT REAL"
 GRAD = 180.0 / math.pi
 FIGURA_REAL_MAX_MM = 80.0   # tamaño máximo de una figura con el robot real (se puede bajar en config: seguridad.figura_real_max_mm)
 FIGURAS = ("circulo", "corazon", "cuadrado", "triangulo", "saludo")
+MOTIVO_IR_A_POSE = ("Ir a una pose guardada con el robot real por RWS exige C02 verificado "
+                    "(velocidad por junta acotada en el RAPID).")
 MOTIVO_SOLO_SIM = ("Disponible en SIM y, con el robot real, solo por RWS con C02 verificado "
                    "(velocidad por junta acotada en el RAPID).")
 
@@ -56,7 +60,8 @@ def _m16(T) -> list:
 
 
 class Consola:
-    def __init__(self, cfg: dict, backend, registro, permitir_real: bool = False, go: dict | None = None, ruta_go=None):
+    def __init__(self, cfg: dict, backend, registro, permitir_real: bool = False, go: dict | None = None, ruta_go=None,
+                 ruta_poses: str | None = None):
         self.cfg = cfg
         rc = cfg["robot"]
         self.robot = Robot(tcp_xyz=tuple(rc["tcp_xyz_m"]), tcp_rpy=tuple(rc["tcp_rpy_rad"]))
@@ -65,6 +70,7 @@ class Consola:
         self.permitir_real = permitir_real
         self.go = go
         self.ruta_go = ruta_go
+        self.poses = AlmacenPoses(ruta_poses, cfg.get("robot", {}).get("limites_deg") or LIMITES_DEG)
         self._t_revision_go = 0.0
         self.lock = threading.RLock()
         s = cfg["seguridad"]
@@ -113,7 +119,14 @@ class Consola:
         info["figuras_permitidas"] = permitidas
         info["figuras_motivo"] = None if permitidas else MOTIVO_SOLO_SIM
         info["figura_max_mm"] = 100.0 if self.backend.tipo == "sim" else self._figura_real_max_mm()
+        ir = self._ir_a_pose_permitido()
+        info["ir_a_pose_permitido"] = ir
+        info["ir_a_pose_motivo"] = None if ir else MOTIVO_IR_A_POSE
         return info
+
+    def _ir_a_pose_permitido(self) -> bool:
+        """Mismas reglas que «Volver a cero»: SIM y ROS como siempre; RWS solo con C02 verificado."""
+        return self.backend.tipo != "rws" or self._rws_c02()
 
     def _rws_c02(self) -> bool:
         """Robot real por RWS con MoveAbsJ y velocidad por junta acotada y verificada (C02)."""
@@ -575,7 +588,7 @@ class Consola:
             return publico(plan)
 
     def calcular_articular(self, q_deg, descripcion=None, vel_cap_deg_s=None, permitir_singular_destino=False,
-                           *, preparar_j5=False, buscar_retorno=False) -> dict:
+                           *, preparar_j5=False, buscar_retorno=False, extra: dict | None = None) -> dict:
         with self.lock:
             q0 = self._origen_para_nuevo_plan(exigir_fresco=True) if preparar_j5 else self._origen_para_nuevo_plan()
             if preparar_j5:
@@ -585,7 +598,9 @@ class Consola:
                 q_obj = np.radians(np.asarray(q_deg, dtype=float))
             fuera = [i + 1 for i, ok in enumerate(self.robot.dentro_de_limites(q_obj)) if not ok]
             desc = descripcion or "Juntas " + ", ".join(f"{v:.1f}" for v in q_deg) + " °"
-            extra = {"preparar_j5": True} if preparar_j5 else {}
+            extra = dict(extra or {})
+            if preparar_j5:
+                extra["preparar_j5"] = True
             plan = self._armar_plan("articular", desc, q0, q_obj, extra, vel_cap_deg_s, permitir_singular_destino)
             if buscar_retorno and not plan["ejecutable"]:
                 tcfg = self.cfg["trayectoria"]
@@ -598,7 +613,7 @@ class Consola:
                                               self._factor(None), tcfg["t_acel_s"], tcfg["t_min_s"])
                     alternativa = self._armar_plan(
                         "articular", desc + " · con punto intermedio", q0, q_obj,
-                        {"punto_intermedio_deg": list(punto_deg)},
+                        {**extra, "punto_intermedio_deg": list(punto_deg)},
                         permitir_singular_destino=True, tray=tray)
                     if alternativa["ejecutable"]:
                         plan = alternativa
@@ -646,14 +661,11 @@ class Consola:
         origen es el TCP actual y la orientación se conserva. El saludo usa
         posturas articulares de muñeca y se identifica como tal, sin inventar IK.
         """
-        from .figuras import generar_figura
+        from .figuras import generar_figura, paradas_figura, plano_de_vista
         if not self._movimientos_guiados_permitidos():
             raise RuntimeError("Figuras: " + MOTIVO_SOLO_SIM + " Con ROS real o sin C02 quedan deshabilitadas.")
         simulacion = self.backend.tipo == "sim"
-        nombre = figura.strip().lower() if isinstance(figura, str) else ""
-        nombre = {"círculo": "circulo", "corazón": "corazon", "triángulo": "triangulo"}.get(nombre, nombre)
-        if nombre not in FIGURAS:
-            raise ValueError("Elegí círculo, corazón, cuadrado, triángulo o saludo.")
+        nombre = _nombre_figura(figura)
         if not simulacion and isinstance(tamano_mm, (int, float)) and not isinstance(tamano_mm, bool):
             tope_mm = self._figura_real_max_mm()
             if tamano_mm > tope_mm:
@@ -675,13 +687,7 @@ class Consola:
             juntas, ramas, error_ik = [q0.copy()], [], None
             ep_max, er_max = 0.0, 0.0
             if nombre == "saludo":
-                u = np.linspace(0.0, 2.0 * math.pi, len(offsets))
-                Q = np.tile(q0, (len(u), 1))
-                amplitud = math.radians(float(tamano_mm) * 0.25)
-                Q[:, 3] += amplitud * np.sin(2.0 * u)
-                Q[:, 4] += (1 if q0[4] >= 0 else -1) * amplitud * (1.0 - np.cos(u)) * 0.5
-                Q[:, 5] += amplitud * np.sin(u)
-                Q[[0, -1]] = q0
+                Q = _juntas_saludo(q0, tamano_mm, len(offsets))
                 objetivos = np.array([self.robot.fk_tcp(q)[:3, 3] for q in Q])
             else:
                 ik = self.cfg["ik"]
@@ -709,25 +715,17 @@ class Consola:
                     ramas.append(mejor.indice)
                 Q = np.asarray(juntas)
             tcfg = self.cfg["trayectoria"]
-            paradas = []
-            if nombre == "corazon" and len(Q) > len(objetivos) // 2:
-                # La punta es una cúspide geométrica: detenerse allí evita
-                # cortar el corazón o imponer una desaceleración a todo el lazo.
-                paradas.append(len(objetivos) // 2)
-            if nombre in ("cuadrado", "triangulo"):
-                # Los cambios de dirección de 90° (cuadrado) o 120° (triángulo)
-                # exigen detenerse en la esquina si se quiere conservar la figura
-                # sin redondearla.
-                d = np.diff(objetivos, axis=0)
-                for k in range(1, min(len(Q) - 1, len(d))):
-                    if np.dot(d[k - 1], d[k]) < 0.8 * np.linalg.norm(d[k - 1]) * np.linalg.norm(d[k]):
-                        paradas.append(k)
+            # Corazón: se detiene en la punta (cúspide). Cuadrado y triángulo: en cada
+            # esquina, para conservar la figura sin redondearla. La misma función
+            # alimenta la vista previa de puntos.
+            paradas = paradas_figura(nombre, objetivos, limite=len(Q))
             tray = (planificar_camino(Q, self.robot.vel_max, self._factor(None),
                                      tcfg["t_acel_s"], tcfg["t_min_s"], paradas=paradas)
                     if len(Q) > 1 else self._planificar_punto(q0, q0))
             datos_figura = {"nombre": nombre, "tamano_mm": float(tamano_mm), "plano": plano,
                             "n_puntos": len(objetivos), "puntos_objetivo_m": objetivos.tolist(),
                             "ramas": ramas, "paradas": paradas,
+                            "plano_vista": plano_de_vista(objetivos - objetivos[0], plano),
                             "metodo": "articular" if nombre == "saludo" else "Pieper con orientación constante",
                             "falla_punto": error_ik[0] if error_ik else None}
             visible = {"circulo": "Círculo", "corazon": "Corazón", "triangulo": "Triángulo"}.get(nombre, nombre.capitalize())
@@ -760,6 +758,106 @@ class Consola:
                             "falta armar y confirmar.") if plan["ejecutable"] else "revisá los rechazos antes de enviar."),
                         "ok" if plan["ejecutable"] else "aviso")
             return publico(plan)
+
+    def vista_figura(self, figura, tamano_mm=25, plano="XY") -> dict:
+        """Vista previa de una figura: muestras del TCP, paradas e inicio/fin. No calcula plan ni mueve nada.
+
+        Usa la misma geometría que calcular_figura (vevas/figuras.py). Si llega la postura
+        actual, devuelve también los puntos absolutos en la base (origen = TCP actual).
+        """
+        from .figuras import PLANOS, generar_figura, paradas_figura, plano_de_vista
+        nombre = _nombre_figura(figura)
+        offsets = generar_figura("circulo" if nombre == "saludo" else nombre, tamano_mm, plano)
+        plano = plano.strip().upper()
+        q_med, _ = self._q_medida()
+        q0 = None if q_med is None else np.asarray(q_med, dtype=float)
+        if q0 is not None and not np.all(np.isfinite(q0)):
+            q0 = None
+        absolutos = None
+        if nombre == "saludo":
+            if q0 is None:
+                raise RuntimeError("El saludo depende de la postura actual: esperá el estado del robot.")
+            absolutos = np.array([self.robot.fk_tcp(q)[:3, 3] for q in _juntas_saludo(q0, tamano_mm, len(offsets))])
+            offsets = absolutos - absolutos[0]
+        elif q0 is not None:
+            absolutos = self.robot.fk_tcp(q0)[:3, 3] + offsets
+        vista = plano_de_vista(offsets, plano)
+        i, j = PLANOS[vista]
+        simulacion = self.backend.tipo == "sim"
+        tope = 100.0 if simulacion else self._figura_real_max_mm()
+        return {
+            "nombre": nombre,
+            "tamano_mm": float(tamano_mm),
+            "plano": plano,
+            "plano_vista": vista,
+            "ejes": [vista[0], vista[1]],
+            "n_puntos": len(offsets),
+            "offsets_mm": (offsets * 1000.0).tolist(),
+            "puntos_2d_mm": (offsets[:, [i, j]] * 1000.0).tolist(),
+            "paradas": paradas_figura(nombre, offsets),
+            "inicio": 0,
+            "fin": len(offsets) - 1,
+            "origen_m": None if absolutos is None else absolutos[0].tolist(),
+            "puntos_m": None if absolutos is None else absolutos.tolist(),
+            "metodo": "articular" if nombre == "saludo" else "Pieper con orientación constante",
+            "permitida": self._movimientos_guiados_permitidos(),
+            "tope_mm": tope,
+            "excede_tope": float(tamano_mm) > tope,
+        }
+
+    # Poses guardadas
+    def listar_poses(self) -> dict:
+        return self.poses.listar()
+
+    def guardar_pose_actual(self, nombre) -> dict:
+        """Guarda las 6 juntas medidas [°] y la pose del TCP por FK, con fecha."""
+        with self.lock:
+            if self.ejec is not None or self.jog is not None or self.envio_pendiente:
+                raise RuntimeError("Esperá a que el robot esté quieto para guardar la pose.")
+            q_med, t_est = self._q_medida()
+            if q_med is None:
+                raise RuntimeError("Todavía no llega la posición del robot.")
+            if time.monotonic() - t_est > self.cfg["seguridad"]["watchdog_estado_s"]:
+                raise RuntimeError("El estado del robot está desactualizado: esperá una lectura reciente.")
+            q = np.asarray(q_med, dtype=float)
+        if q.shape != (6,) or not np.all(np.isfinite(q)):
+            raise RuntimeError("La postura recibida no es válida (6 juntas finitas).")
+        tcp = describir_pose(self.robot.fk_tcp(q))
+        tcp.pop("cuaternion", None)
+        pose = self.poses.guardar(nombre, [float(v) for v in np.degrees(q)], tcp)
+        self.reg.evento("pose_guardada", nombre=pose["nombre"], q_deg=pose["q_deg"], tcp=pose["tcp"])
+        self.avisar(f"Pose «{pose['nombre']}» guardada.", "ok")
+        return pose
+
+    def renombrar_pose(self, nombre, nuevo) -> dict:
+        pose = self.poses.renombrar(nombre, nuevo)
+        self.reg.evento("pose_renombrada", anterior=nombre, nombre=pose["nombre"])
+        return pose
+
+    def borrar_pose(self, nombre, confirmar=False) -> dict:
+        if confirmar is not True:
+            raise ValueError("Confirmá el borrado de la pose.")
+        pose = self.poses.borrar(nombre)
+        self.reg.evento("pose_borrada", nombre=pose["nombre"], q_deg=pose["q_deg"])
+        self.avisar(f"Pose «{pose['nombre']}» borrada.", "info")
+        return pose
+
+    def calcular_pose_guardada(self, nombre) -> dict:
+        """«Ir a pose»: plan articular revisado hacia una pose guardada.
+
+        Mismas reglas que «Volver a cero»: SIM siempre; robot real por RWS solo con C02
+        verificado; ROS como cualquier plan articular. Pasa por la revisión previa
+        (límites, singularidades, colisiones) y después por GO, armado, checklist y
+        confirmación; si la postura cambió antes de enviar, exige recalcular.
+        """
+        if not self._ir_a_pose_permitido():
+            raise RuntimeError(MOTIVO_IR_A_POSE + " Sin C02, movelo desde el FlexPendant.")
+        pose = self.poses.obtener(nombre)
+        simulacion = self.backend.tipo == "sim"
+        permitir = True if simulacion else ("articular_real" if self._rws_c02() else False)
+        return self.calcular_articular(
+            pose["q_deg"], f"Ir a pose «{pose['nombre']}»", permitir_singular_destino=permitir,
+            buscar_retorno=simulacion, extra={"pose_guardada": dict(pose)})
 
     def ik_vivo_rapido(self, pose: dict, q_ref_deg=None) -> dict:
         """IK de consulta (sin plan, sin registro, sin lock): para el panel en vivo de la interfaz."""
@@ -877,7 +975,8 @@ class Consola:
                                "de la ficha. Para ir más lento hay que bajar vLim en rapid/VEVAS_RWS.mod y volver a verificar C02.")
             dif = np.degrees(np.abs(np.asarray(q_med) - plan["_tray"].q0)).max()
             if dif > self.cfg["seguridad"]["inicio_max_deg"]:
-                if m["exige_go"] or plan.get("tipo") == "figura" or plan.get("preparar_j5") or plan.get("punto_intermedio_deg"):
+                if (m["exige_go"] or plan.get("tipo") == "figura" or plan.get("preparar_j5")
+                        or plan.get("punto_intermedio_deg") or plan.get("pose_guardada")):
                     return False, f"La postura inicial cambió {dif:.2f}°. Recalculá y revisá el plan."
                 self.avisar(f"El robot se movió {dif:.2f}° desde que se calculó el plan: se recalcula desde la postura actual.", "aviso")
                 plan["_tray"] = self._planificar_punto(q_med, plan["q_obj_rad"], plan.get("vel_cap_deg_s"))
@@ -1300,6 +1399,27 @@ class Consola:
             v["t"] = time.monotonic() - self.t0
             v["sesion"] = self.reg.carpeta
             return v
+
+
+def _nombre_figura(figura) -> str:
+    nombre = figura.strip().lower() if isinstance(figura, str) else ""
+    nombre = {"círculo": "circulo", "corazón": "corazon", "triángulo": "triangulo"}.get(nombre, nombre)
+    if nombre not in FIGURAS:
+        raise ValueError("Elegí círculo, corazón, cuadrado, triángulo o saludo.")
+    return nombre
+
+
+def _juntas_saludo(q0, tamano_mm, n) -> np.ndarray:
+    """Saludo articular de la muñeca (J4, J5, J6) desde q0; empieza y termina en q0."""
+    q0 = np.asarray(q0, dtype=float)
+    u = np.linspace(0.0, 2.0 * math.pi, n)
+    Q = np.tile(q0, (n, 1))
+    amplitud = math.radians(float(tamano_mm) * 0.25)
+    Q[:, 3] += amplitud * np.sin(2.0 * u)
+    Q[:, 4] += (1 if q0[4] >= 0 else -1) * amplitud * (1.0 - np.cos(u)) * 0.5
+    Q[:, 5] += amplitud * np.sin(u)
+    Q[[0, -1]] = q0
+    return Q
 
 
 def pose_texto(p: dict) -> str:

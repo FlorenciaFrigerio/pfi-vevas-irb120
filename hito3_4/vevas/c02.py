@@ -10,6 +10,9 @@ Cómo se cierra C02 en esta versión (24/11/2026):
    (``evidencia_c02.json``) ligada a la huella del módulo, al modo de operación y a los topes.
 3. El backend RWS solo habilita el envío si la evidencia existe, pasó, corresponde al MISMO texto de
    módulo (local y en el controlador) y al modo actual. Cambiar el .mod invalida la evidencia.
+4. Movimiento continuo (módulo con vvPcZona/tZona, 24/11): los tramos con zona usan el mismo tope
+   kPico·|Δq|/vLim pero con piso tZona (0.2 s) y Δq contra el objetivo anterior. verificar_c02.py agrega una
+   prueba corta de streaming (J6 ±δ en 8 puntos) y evaluar() la exige si el módulo soporta streaming.
 
 Limitaciones (documentadas también en docs/CONTROL_FISICO_PENDIENTE.md): la velocidad se estima desde
 posiciones leídas por RWS (no es una traza interna del controlador) y una diferencia finita promedia en
@@ -20,9 +23,9 @@ from __future__ import annotations
 import json
 import os
 
-from .rws_cliente import huella_modulo, limites_c02  # noqa: F401 (huella_modulo se reexporta)
+from .rws_cliente import huella_modulo, limites_c02, tiempo_zona  # noqa: F401 (huella_modulo se reexporta)
 
-VERSION_EVIDENCIA = 1
+VERSION_EVIDENCIA = 2     # 2: agrega la prueba de movimiento continuo («streaming»)
 VENTANA_S = 0.10          # ventana de la diferencia finita
 TOL_TIEMPO = 0.02         # |vvRbTiempo − t esperado| / t esperado
 
@@ -76,6 +79,9 @@ def evaluar(ruta: str, texto_modulo_local: str, opmode: str | None = None,
     probadas = {int(m["junta"]) for m in ev.get("movimientos", []) if m.get("ok")}
     if probadas != {1, 2, 3, 4, 5, 6}:
         return False, f"C02: faltan juntas verificadas ({sorted({1, 2, 3, 4, 5, 6} - probadas)}).", ev
+    if tiempo_zona(texto_modulo_local) is not None and not (ev.get("streaming") or {}).get("ok"):
+        return False, ("C02: el módulo mueve en continuo (zonas) y falta la prueba de streaming aprobada; "
+                       "repetí «python3 herramientas/verificar_c02.py»."), ev
     if opmode is not None and opmode.upper() not in [m.upper() for m in ev.get("modos", [])]:
         return False, (f"C02: verificado en {', '.join(ev.get('modos', []))}; el controlador está en {opmode}. "
                        "Una verificación acredita solo su modo."), ev

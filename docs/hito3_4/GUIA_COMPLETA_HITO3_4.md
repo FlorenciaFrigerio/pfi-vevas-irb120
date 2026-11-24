@@ -766,7 +766,7 @@ El incidente 3 es el más importante para la defensa: después de perder contado
 | Prioridad | Tema | Situación actual | Próximo paso |
 |---|---|---|---|
 | 1 | Batería SMB | Débil; causó la pérdida de contadores | Cambiarla; verificar la calibración fina desde el FlexPendant; evitar reinicios mientras tanto |
-| 2 | Paradas entre puntos en figuras | Cada tramo termina en `fine`; las figuras frenan en cada punto no colineal | **Streaming con zonas `z1`, en desarrollo y no subido**: variable `vvPcZona`, piso tZona = 0,2 s, Δq medido contra el objetivo previo (no contra la postura actual), prueba de streaming dentro de `verificar_c02`. Como cambia el módulo, exige repetir `verificar_c02` |
+| 2 | Paradas entre puntos en figuras | **Resuelto en código (24/11, tarde)**: streaming con zonas `z1` (variable `vvPcZona`, piso tZona = 0,2 s, Δq contra el objetivo previo, `fine` solo en el último punto y en las esquinas del plan). Pasa las pruebas con el IRC5 simulado | Repetir `verificar_c02.sh` (incluye una prueba de streaming con J6) y probar las figuras en el robot real vigilando avisos 50024 |
 | 3 | Medición de velocidad | Diferencias de posiciones leídas por RWS con ventana de 0,1 s; puede subestimar un pico breve | El margen kPico lo cubre; mejorar con traza interna del controlador si se dispone |
 | 4 | Modelo de entorno | La revisión ve solo lo descrito (cápsulas, mesa, cajas) y hasta 240 muestras | Medir herramienta, soportes y entorno; más muestras en planes largos |
 | 5 | Visión | No integrada | Cámara cenital con calibración DLT propia (objetivo: error < 1,5 mm) |

@@ -22,4 +22,11 @@ Siguiente paso presencial: `bash 05_seguridad_y_control/verificar_c02.sh` (AUTO,
 - RWS: reintento ante HTTP 500 «Error registering callback»; los motores solo se apagan si hay que escribir el módulo; si RWS niega MOTORS ON (403) se espera al operador 60 s.
 - «Preparar J5 a +30°» y las figuras predeterminadas (cuadrado, círculo, saludo, corazón y el nuevo triángulo) habilitadas con el robot real por RWS con C02 verificado. Tamaño máximo 80 mm en real; si J5 ≈ 0 piden preparar J5 primero.
 - Resultado: 265 pruebas Python y 10 JS pasan.
-- En desarrollo, no incluido: movimiento continuo con zonas para recorridos de muchos puntos (cambia el módulo RAPID y exige repetir verificar_c02).
+
+## Tarde del 24/11
+
+- Movimiento continuo: los recorridos de muchos puntos se mandan en streaming. RAPID usa `MoveAbsJ \T:=t, z1` en los intermedios y acusa (código 3) apenas encola, así la PC manda el siguiente mientras el robot se mueve. `fine` solo en el último punto y en las paradas del plan (esquinas del cuadrado y del triángulo, punta del corazón). Piso de tiempo 0,2 s con zona y 0,5 s con fine; la ley C02 no cambia. Módulo: 4707 caracteres.
+- C02 versión 2: verificar_c02 agrega una prueba de streaming (J6 ±δ en 8 puntos) y la evidencia la exige. **Hay que repetir verificar_c02.sh** antes de mover.
+- Poses guardadas: guardar la postura actual con nombre, listar, renombrar, borrar (con confirmación) e «Ir a pose» con revisión y todas las compuertas. Se guardan en `<--datos>/poses_guardadas.json` (escritura atómica).
+- Vista de puntos: dibujo 2D en mm de la figura antes de calcular (inicio, fin, paradas, orden) y, durante la ejecución, los puntos medidos del TCP encima con el error máximo y medio.
+- Resultado: 321 pruebas Python y 16 JS pasan.

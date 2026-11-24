@@ -14,6 +14,15 @@ Protocolo (idéntico al de LabJointRws V3):
                  -3 paso grande, -4 modo no permitido)
     vvRbSeq     -> copia de vvPcSeq cuando el robot terminó o rechazó
 
+Movimiento continuo (streaming, módulo con vvPcZona y tZona):
+
+    vvPcZona    <- 1 antes de los puntos intermedios de un recorrido, 0 antes del último (y en órdenes sueltas)
+    con vvPcZona = 1 el RAPID hace MoveAbsJ ...\\T:=t,z1 y contesta enseguida vvRbCodigo = 3 («tomada en
+    zona») + vvRbSeq: la PC escribe el punto siguiente mientras el robot recorre el actual. Δq, el paso
+    máximo y t se calculan contra el objetivo ANTERIOR; el piso de t baja de 0.5 s a tZona (0.2 s). Si el
+    punto siguiente no llega a tiempo, el robot para en ese punto (aviso 50024 «corner path failure» del
+    IRC5): no es un error. El último punto va con fine (vvRbCodigo 1 → 2 al llegar).
+
 Rutas RWS usadas y su origen (R = copiada tal cual de la referencia, H = de herramientas/rws_irc5.py
 ya probado en este proyecto, S = sin verificar con el robot, se prueba con lecturas de vuelta):
 
@@ -62,6 +71,7 @@ MODULO = "VEVAS_RWS"
 RUTINA = "VevasServidor"
 BASE_SIMBOLO = f"/rw/rapid/symbol/data/RAPID/{TAREA}/{MODULO}/"
 SIMBOLOS_NUM = ("vvPcSeq", "vvPcFin", "vvRbSeq", "vvRbCodigo", "vvRbActivo")
+SIMBOLO_ZONA = "vvPcZona"      # 1: vienen más puntos (MoveAbsJ con z1); 0: fine (último u orden suelta)
 SIMBOLO_TIEMPO = "vvRbTiempo"  # tiempo (s) que usó el último MoveAbsJ \\T
 RUTA_MODULO = f"/rw/rapid/modules/{MODULO}"
 MASTERSHIP = "/rw/mastership/rapid"
@@ -78,7 +88,7 @@ PASO_PC_MAX_DEG = 40.0   # tope de la PC: 5° de margen para el error residual d
 PASO_TOL_DEG = 0.05      # ruido de medida entre el cálculo del tramo y su envío
 DECIMALES = 3            # el IRC5 devuelve 6 cifras: con ejes ≥ 100° solo 3 decimales sobreviven
 LECTURA_TOL_DEG = 2e-3
-CODIGOS = {0: "listo", 1: "moviendo", 2: "llegada", -1: "objetivo vacío o no válido",
+CODIGOS = {0: "listo", 1: "moviendo", 2: "llegada", 3: "tomada en zona (vienen más puntos)", -1: "objetivo vacío o no válido",
            -2: "fuera de límites con margen de 2°", -3: "algún eje cambia más de 45° en una orden",
            -4: "modo no permitido por el módulo"}
 
@@ -155,6 +165,10 @@ def detalle_error(txt: str) -> str:
 VLIM_DEG_S_DEFECTO = (12.5, 12.5, 12.5, 16.0, 16.0, 21.0)
 K_PICO_DEFECTO = 2.5
 T_MIN_S = 0.5
+# Piso de tiempo de los tramos con zona (streaming). Con 0.5 s un recorrido de 60 puntos chicos tardaría
+# 30 s aunque cada tramo sea de décimas de grado; 0.2 s sigue siendo lento para la junta (Δq ≤ 0.08·vLim·t
+# en esos tramos) y deja a la PC ~0.2 s para escribir el punto siguiente. El tope kPico·|Δq|/vLim no cambia.
+T_ZONA_DEFECTO = 0.2
 
 
 def limites_c02(fuente: str | None = None) -> tuple[tuple[float, ...], float]:
@@ -171,9 +185,21 @@ def limites_c02(fuente: str | None = None) -> tuple[tuple[float, ...], float]:
     return vlim, float(mk.group(1))
 
 
-def tiempo_movimiento(objetivo_deg, actual_deg, vlim=VLIM_DEG_S_DEFECTO, k_pico=K_PICO_DEFECTO) -> float:
-    """Mismo cálculo que Tiempo() del RAPID: t = max(0.5, kPico·|Δq_i|/vLim_i)."""
-    t = T_MIN_S
+def tiempo_zona(fuente: str | None) -> float | None:
+    """Piso tZona del módulo si soporta movimiento continuo (vvPcZona + tZona); None si es la versión vieja."""
+    if not fuente:
+        return None
+    m = re.search(r"CONST\s+num\s+tZona\s*:=\s*([0-9.]+)", fuente)
+    if not m or not re.search(r"PERS\s+num\s+vvPcZona\b", fuente):
+        return None
+    return float(m.group(1))
+
+
+def tiempo_movimiento(objetivo_deg, actual_deg, vlim=VLIM_DEG_S_DEFECTO, k_pico=K_PICO_DEFECTO,
+                      t_min: float = T_MIN_S) -> float:
+    """Mismo cálculo que Tiempo() del RAPID: t = max(t_min, kPico·|Δq_i|/vLim_i); t_min = 0.5 s (fine) o
+    tZona (tramo con zona de un recorrido continuo)."""
+    t = t_min
     for a, b, v in zip(objetivo_deg, actual_deg, vlim):
         t = max(t, k_pico * abs(float(a) - float(b)) / v)
     return t
@@ -278,6 +304,84 @@ def subdividir(q_actual_deg, trayectoria_deg, paso_deg: float):
             out.append([x + (y - x) * k / n for x, y in zip(a, b)])
         out.append(b)
     return out or [final]
+
+
+def muestrear_recorrido(q_actual_deg, trayectoria_deg, paso_max_deg: float = 10.0, tol_deg: float = 0.1):
+    """Puntos para el movimiento continuo. Recorre las muestras (densas) de la trayectoria y deja un punto solo
+    donde la cuerda desde el último punto se apartaría más de `tol_deg` (en cualquier junta) de alguna muestra
+    intermedia, o donde el tramo pasaría de `paso_max_deg`. Así los tramos rectos en el espacio articular se
+    fusionan (un punto cada ≤ paso_max_deg) y las curvas quedan con un punto cada ~0.5–2° (cuerda ~√(8·R·tol));
+    los vértices y cambios de sentido se conservan. Un salto entre muestras mayor que el paso se subdivide."""
+    if not 0 < paso_max_deg <= PASO_PC_MAX_DEG:
+        raise Falla(f"El paso debe estar entre 0 y {PASO_PC_MAX_DEG}°.")
+    origen = [float(x) for x in q_actual_deg]
+    if len(origen) != 6 or not all(math.isfinite(x) for x in origen):
+        raise Falla("El origen necesita seis valores finitos.")
+    pts = [origen]
+    for muestra in trayectoria_deg:
+        q = [float(x) for x in muestra]
+        if len(q) != 6 or not all(math.isfinite(x) for x in q):
+            raise Falla("Cada waypoint necesita seis valores finitos.")
+        if q != pts[-1]:
+            pts.append(q)
+    if len(trayectoria_deg) == 0:
+        raise Falla("La trayectoria está vacía.")
+    if len(pts) == 1:
+        return [list(pts[0])]
+    def desvio(a, d, dd, p):
+        u = 0.0 if dd <= 0 else min(1.0, max(0.0, sum((x - y) * z for x, y, z in zip(p, a, d)) / dd))
+        return max(abs(x - (y + u * z)) for x, y, z in zip(p, a, d))
+
+    n = len(pts)
+    elegidos = []
+    i = 0
+    while i < n - 1:
+        a = pts[i]
+        mejor = i + 1
+        for j in range(i + 2, n):
+            d = [y - x for x, y in zip(a, pts[j])]
+            if max(abs(x) for x in d) > paso_max_deg:
+                break
+            dd = sum(x * x for x in d)
+            if any(desvio(a, d, dd, pts[m]) > tol_deg for m in range(i + 1, j)):
+                break
+            mejor = j
+        elegidos.append(mejor)
+        i = mejor
+    out = []
+    previo = pts[0]
+    for j in elegidos:
+        b = pts[j]
+        m = max(1, math.ceil(max(abs(y - x) for x, y in zip(previo, b)) / paso_max_deg - 1e-9))
+        for k in range(1, m):
+            out.append([x + (y - x) * k / m for x, y in zip(previo, b)])
+        out.append(list(b))
+        previo = b
+    return out
+
+
+def muestrear_con_paradas(q_actual_deg, trayectoria_deg, paradas=(), paso_max_deg: float = 10.0,
+                          tol_deg: float = 0.1):
+    """muestrear_recorrido por trozos, cortando en las `paradas` (índices de muestras de la trayectoria con
+    velocidad nula en el plan: esquinas del cuadrado/triángulo, punta del corazón). Cada parada queda como
+    punto propio y va con fine, así la zona no redondea la esquina. Devuelve (puntos, fines): `fines` son
+    los índices de `puntos` que van con fine; siempre incluye el último."""
+    tray = list(trayectoria_deg)
+    if not tray:
+        raise Falla("La trayectoria está vacía.")
+    cortes = sorted({int(k) for k in paradas if 0 <= int(k) < len(tray) - 1})
+    puntos, fines = [], []
+    desde, inicio = [float(x) for x in q_actual_deg], 0
+    for fin in cortes + [len(tray) - 1]:
+        trozo = muestrear_recorrido(desde, tray[inicio:fin + 1], paso_max_deg, tol_deg)
+        if not (len(trozo) == 1 and trozo[0] == desde):   # trozo quieto: no agrega un tramo nulo
+            puntos += trozo
+        if puntos and (not fines or fines[-1] != len(puntos) - 1):
+            fines.append(len(puntos) - 1)
+        desde, inicio = [float(x) for x in tray[fin]], fin + 1
+    if not puntos:
+        return [desde], [0]
+    return puntos, fines
 
 
 class CancelacionOrden(threading.Event):
@@ -810,8 +914,8 @@ class Cliente:
 
     # ---- órdenes
     def _escribir(self, nombre: str, valor: str, *, cancelar=None, antes_de_enviar=None):
-        if nombre not in ("vvPcTarget", "vvPcSeq", "vvPcFin"):
-            raise Falla("Solo se escriben vvPcTarget, vvPcSeq y vvPcFin.")
+        if nombre not in ("vvPcTarget", "vvPcSeq", "vvPcFin", SIMBOLO_ZONA):
+            raise Falla("Solo se escriben vvPcTarget, vvPcSeq, vvPcFin y vvPcZona.")
         self.mantener_rmmp()
         est, txt = self._pedir("POST", BASE_SIMBOLO + nombre, datos={"value": valor}, params={"action": "set"},
                                cancelar=cancelar, antes_de_enviar=antes_de_enviar)
@@ -888,6 +992,8 @@ class Cliente:
         q_deg = [round(v, DECIMALES) for v in q_deg]
         self.verificar_modulo()
         comprobar_cancelacion()
+        if self.tiempo_zona_local() is not None and int(self._num(SIMBOLO_ZONA)) != 0:
+            self._escribir(SIMBOLO_ZONA, "0", cancelar=cancelar)   # orden suelta: siempre fine
         self._escribir("vvPcTarget", literal(q_deg), cancelar=cancelar)
         vuelta = self._leer_objetivo()
         if vuelta is None or max(abs(a - b) for a, b in zip(vuelta, q_deg)) > LECTURA_TOL_DEG:
@@ -945,3 +1051,203 @@ class Cliente:
             time.sleep(intervalo)
         return False, None, (f"Sin respuesta del robot a la orden {seq} en {timeout:.0f} s. "
                              "No enviar otra: revisar el FlexPendant.")
+
+    # ---- movimiento continuo (streaming con zonas)
+    def tiempo_zona_local(self) -> float | None:
+        """tZona del módulo revisado (rapid/VEVAS_RWS.mod); None si esa versión no soporta streaming.
+        verificar_modulo() garantiza que el controlador corre ese mismo texto."""
+        try:
+            with open(self.ruta_modulo, encoding="utf-8") as f:
+                return tiempo_zona(f.read())
+        except OSError:
+            return None
+
+    def _exec(self) -> str:
+        return str(_buscar_valor(self.get("/rw/rapid/execution"), "ctrlexecstate") or "?").lower()
+
+    def _esperar_acuse(self, seq: int, timeout: float, intervalo: float) -> int:
+        """Espera vvRbSeq = seq y devuelve vvRbCodigo. Lee la postura cada 0.1 s (frescura para el watchdog de
+        Consola) y el estado de RAPID cada 0.5 s (un Stop/paro corta la espera)."""
+        t0 = time.monotonic()
+        t_q = t_exec = 0.0
+        detenido = 0
+        while True:
+            ahora = time.monotonic()
+            if int(self._num("vvRbSeq")) == seq:
+                return int(self._num("vvRbCodigo"))
+            if ahora - t0 > timeout:
+                raise Falla(f"Sin acuse del robot para la orden {seq} en {timeout:.0f} s. No enviar otra: revisar el FlexPendant.")
+            if ahora - t_q >= 0.1:
+                t_q = ahora
+                self.mantener_rmmp()
+                self.joints_deg()
+            if ahora - t_exec >= 0.5:
+                t_exec = ahora
+                if self._exec() != "running":
+                    detenido += 1
+                    if detenido >= 2:
+                        raise Falla(f"RAPID se detuvo con la orden {seq} pendiente (¿PARAR, paro, habilitador, error?). "
+                                    "No se envían más puntos; resolverlo en el FlexPendant.")
+                else:
+                    detenido = 0
+            time.sleep(intervalo)
+
+    def _esperar_quieto(self, objetivo_deg, timeout: float) -> list[float] | None:
+        """Tras cortar un recorrido: espera a que el robot termine lo ya encolado (llega al último punto tomado o
+        se queda quieto) o a que RAPID esté detenido. Devuelve la última postura leída."""
+        t0 = time.monotonic()
+        q_prev, t_quieto, q = None, None, None
+        while time.monotonic() - t0 < timeout:
+            try:
+                q = self.joints_deg()
+                if objetivo_deg is not None and max(abs(a - b) for a, b in zip(q, objetivo_deg)) <= PASO_TOL_DEG:
+                    return q
+                if q_prev is not None and max(abs(a - b) for a, b in zip(q, q_prev)) < 0.005:
+                    t_quieto = t_quieto or time.monotonic()
+                    if time.monotonic() - t_quieto > 0.6:
+                        return q
+                else:
+                    t_quieto = None
+                q_prev = q
+                if self._exec() != "running":
+                    return q
+            except Falla:
+                pass
+            time.sleep(0.05)
+        return q
+
+    def enviar_recorrido(self, puntos_deg, timeout: float = 120.0, cancelar: threading.Event | None = None,
+                         al_aceptar=None, al_progreso=None, origen_deg=None, al_comprometer=None,
+                         intervalo: float = 0.02, eco=None, fines=()) -> tuple[bool, int | None, str]:
+        """Recorrido continuo: los puntos intermedios van con zona (vvPcZona = 1, el robot no para) y el último
+        con fine. El punto k+1 se escribe apenas el robot contestó que tomó el k (vvRbCodigo = 3).
+        `fines`: índices de puntos intermedios que también van con fine (paradas del plan: esquinas); el robot
+        se detiene ahí (vvRbCodigo 1 → 2) y el recorrido sigue desde la postura medida.
+
+        Antes de mover nada se validan TODOS los puntos (límites y paso ≤ 40° contra el punto anterior).
+        Si el robot rechaza un punto a mitad, no se escribe ninguno más: el robot frena en el último tomado.
+        Cancelar (PARAR) corta el envío entre puntos; el robot termina lo ya encolado (≤ 2 tramos) y para.
+        Devuelve (ok, codigo, mensaje); el detalle queda en self.ultimo_recorrido."""
+        puntos = [[float(v) for v in p] for p in puntos_deg]
+        self.ultimo_recorrido = {"puntos": len(puntos), "tomados": 0, "codigos": [], "espera_acuse_max_s": 0.0}
+        try:
+            with self.escritor():
+                return self._recorrido(puntos, timeout, cancelar, al_aceptar, al_progreso, origen_deg,
+                                       al_comprometer, intervalo, eco, fines)
+        except Falla as ex:
+            return False, None, str(ex)
+
+    def _recorrido(self, puntos, timeout, cancelar, al_aceptar, al_progreso, origen_deg, al_comprometer, intervalo, eco,
+                   fines=()):
+        info = self.ultimo_recorrido
+        n = len(puntos)
+        if n == 0:
+            return False, None, "El recorrido está vacío."
+        fine = {int(k) for k in (fines or ()) if 0 <= int(k) < n} | {n - 1}   # el último siempre con fine
+        info["fines"] = sorted(fine)
+        if cancelar is not None and cancelar.is_set():
+            raise Falla("Recorrido cancelado antes de empezar.")
+        tz = self.tiempo_zona_local()
+        if tz is None:
+            return False, None, "El módulo RAPID no soporta movimiento continuo (falta vvPcZona/tZona)."
+        with open(self.ruta_modulo, encoding="utf-8") as f:
+            vlim, kp = limites_c02(f.read())
+        e = self.leer_estado(con_juntas=False)
+        s = self.estado_servidor() if e["modulo_vevas"] else None
+        problemas = self.problemas_para_enviar(e, s)
+        if problemas:
+            return False, None, "No listo: " + "; ".join(problemas)
+        actual = self.joints_deg()
+        if origen_deg is not None and max(abs(a - b) for a, b in zip(actual, origen_deg)) > PASO_TOL_DEG:
+            raise Falla("La postura medida cambió desde el origen revisado. Recalculá y revisá el plan.")
+        puntos = [[round(v, DECIMALES) for v in p] for p in puntos]
+        previo = actual
+        tiempos = []
+        for i, p in enumerate(puntos, 1):
+            rech = rechazo_local(p, previo)
+            if rech is not None:
+                return False, rech[0], f"Rechazado por la PC (punto {i}/{n}, no se movió nada): {rech[1]}"
+            tiempos.append(tiempo_movimiento(p, previo, vlim, kp, T_MIN_S if i - 1 in fine else tz))
+            previo = p
+        if e["opmode"] == "MANR" and not self.rmmp_concedido:
+            self.solicitar_rmmp(eco=eco or print)
+        self.verificar_modulo()
+        zona_ctrl = int(self._num(SIMBOLO_ZONA))
+        seq = s["vvPcSeq"]
+        tomados, ultimo_tomado = 0, None
+        try:
+            for i, p in enumerate(puntos):
+                con_fine = i in fine
+                if cancelar is not None and cancelar.is_set():
+                    break
+                zona = 0 if con_fine else 1
+                if zona_ctrl != zona:
+                    self._escribir(SIMBOLO_ZONA, str(zona), cancelar=cancelar)
+                    zona_ctrl = zona
+                self._escribir("vvPcTarget", literal(p), cancelar=cancelar)
+                vuelta = self._leer_objetivo()
+                if vuelta is None or max(abs(a - b) for a, b in zip(vuelta, p)) > LECTURA_TOL_DEG:
+                    raise Falla(f"La lectura de vuelta de vvPcTarget (punto {i + 1}/{n}) no coincide; no se ordena.")
+                confirmar = None
+                if i == 0:
+                    e1, s1 = self.leer_estado(con_juntas=False), self.estado_servidor()
+                    problemas = self.problemas_para_enviar(e1, s1)
+                    if problemas or s1["vvPcSeq"] != seq:
+                        return False, None, "Cambió el estado antes de la orden: " + ("; ".join(problemas) or "secuencia distinta")
+                    t_origen = time.monotonic()
+                    q1 = self.joints_deg()
+                    if origen_deg is not None and max(abs(a - b) for a, b in zip(q1, origen_deg)) > PASO_TOL_DEG:
+                        raise Falla("La postura medida cambió desde el origen revisado. Recalculá y revisá el plan.")
+                    if rechazo_local(p, q1):
+                        raise Falla("El primer punto ya no cumple los límites desde la postura medida.")
+
+                    def confirmar():
+                        if al_comprometer is not None:
+                            al_comprometer()
+                        if self.max_edad_juntas_s is not None and time.monotonic() - t_origen > self.max_edad_juntas_s:
+                            raise Falla("El estado del robot caducó antes de emitir vvPcSeq.")
+                self._escribir("vvPcSeq", str(seq + 1), cancelar=cancelar, antes_de_enviar=confirmar)
+                seq += 1
+                # el acuse de un punto con zona llega cuando el RAPID pudo encolarlo (a lo sumo cuando termina el
+                # tramo anterior); el de un punto con fine, al llegar (detrás de hasta dos tramos encolados).
+                espera = sum(tiempos[max(0, i - 2):i + 1]) + 10.0
+                t_a = time.monotonic()
+                codigo = self._esperar_acuse(seq, espera, intervalo)
+                info["espera_acuse_max_s"] = max(info["espera_acuse_max_s"], round(time.monotonic() - t_a, 3))
+                info["codigos"].append(codigo)
+                if i == 0 and al_aceptar is not None:
+                    al_aceptar(codigo)
+                if codigo < 0:
+                    if ultimo_tomado is not None:
+                        self._esperar_quieto(ultimo_tomado, sum(tiempos[max(0, i - 2):i]) + 5.0)
+                    donde = f"el punto {tomados}" if tomados else "el origen (no se movió)"
+                    return False, codigo, (f"El robot rechazó el punto {i + 1}/{n}: código {codigo} "
+                                           f"({CODIGOS.get(codigo, '?')}). No se enviaron más; frenó en {donde}.")
+                if codigo != (2 if con_fine else 3):
+                    self._esperar_quieto(ultimo_tomado, sum(tiempos[max(0, i - 2):i + 1]) + 5.0)
+                    return False, codigo, f"Respuesta inesperada al punto {i + 1}/{n}: código {codigo} ({CODIGOS.get(codigo, '?')})."
+                tomados, ultimo_tomado = i + 1, p
+                info["tomados"] = tomados
+                if al_progreso is not None:
+                    al_progreso(tomados, n)
+            else:
+                falta = max(abs(a - b) for a, b in zip(self.joints_deg(), puntos[-1]))
+                if falta > PASO_TOL_DEG:
+                    return False, 2, f"Acuse sin llegada medida: faltan {falta:.3f}°."
+                return True, 2, (f"recorrido continuo de {n} puntos: llegada confirmada (falta {falta:.3f}°, "
+                                 f"espera máx. de acuse {info['espera_acuse_max_s']:.2f} s)")
+        except Falla:
+            if not (cancelar is not None and cancelar.is_set()):
+                # falla a mitad (HTTP, RAPID detenido...): no se mandan más puntos; antes de soltar el candado se
+                # espera a que el robot termine lo encolado, así nadie ordena desde una postura en movimiento
+                with contextlib.suppress(Falla):
+                    self._esperar_quieto(ultimo_tomado, sum(tiempos[max(0, tomados - 2):tomados]) + 5.0)
+                raise
+        finally:
+            if zona_ctrl == 1:   # que una orden futura no herede la zona (el RAPID la ignora sin vvPcSeq nuevo)
+                with contextlib.suppress(Falla):
+                    self._escribir(SIMBOLO_ZONA, "0")
+        # cancelado (PARAR) entre puntos: el robot termina lo encolado y para en el último punto tomado
+        self._esperar_quieto(ultimo_tomado, sum(tiempos[max(0, tomados - 2):tomados]) + 5.0)
+        return False, None, (f"Recorrido cancelado tras {tomados}/{n} puntos: no se enviaron más; el robot "
+                             "termina el tramo encolado y para en el último punto tomado.")

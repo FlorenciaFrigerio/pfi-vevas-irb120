@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(RAIZ, "herramientas"))
 from mock_rws import MockIRC5  # noqa: E402
 from vevas import c02  # noqa: E402
 from vevas.backend_rws import BackendRWS  # noqa: E402
-from vevas.rws_cliente import huella_modulo, limites_c02, tiempo_movimiento  # noqa: E402
+from vevas.rws_cliente import huella_modulo, limites_c02, tiempo_movimiento, tiempo_zona  # noqa: E402
 from vevas.seguridad import cargar_config  # noqa: E402
 import verificar_c02  # noqa: E402
 
@@ -35,6 +35,26 @@ def test_modulo_rapid_c02():
     assert k == 2.5
     for nombre in ("pcTarget", "ServidorPC", "rbSeq"):   # nombres de LabJointRws: no deben repetirse
         assert re.search(rf"\b{nombre}\b", TEXTO) is None
+    # movimiento continuo: intermedios con zona chica y el mismo \T; piso más bajo solo en zona
+    assert "MoveAbsJ objetivo,vPc\\T:=t,z1,tool0;" in TEXTO
+    assert len(re.findall(r"^\s*MoveAbsJ ", TEXTO, flags=re.M)) == 2
+    assert tiempo_zona(TEXTO) == 0.2
+    assert re.search(r"^\s*PERS\s+num\s+vvPcZona\s*:=\s*0;", TEXTO, flags=re.M)
+    # Δq contra el objetivo anterior mientras hay zona; CJointT solo con el robot parado (tras fine)
+    assert "Validar(objetivo.robax, previo.robax)" in TEXTO and "Tiempo(objetivo.robax, previo.robax, t)" in TEXTO
+    assert re.search(r"IF enZona = FALSE THEN\s+previo := CJointT\(\);", TEXTO)
+    # nombres globales: solo VevasServidor y las PERS vv*; el resto LOCAL
+    globales = re.findall(r"^ {2}(?:PROC|FUNC\s+\w+|CONST\s+\w+|VAR\s+\w+)\s+(\w+)", TEXTO, flags=re.M)
+    assert globales == ["VevasServidor"], globales
+
+
+def test_tiempo_de_zona_como_el_rapid():
+    v, k = limites_c02(TEXTO)
+    tz = tiempo_zona(TEXTO)
+    assert tiempo_movimiento([0] * 6, [0] * 6, v, k, tz) == 0.2
+    assert abs(tiempo_movimiento([0, 0, 0, 0, 0, 2.1], [0] * 6, v, k, tz) - 0.25) < 1e-12
+    assert abs(tiempo_movimiento([10, 0, 0, 0, 0, 0], [0] * 6, v, k, tz) - 2.0) < 1e-12   # el tope no cambia
+    assert tiempo_zona(TEXTO.replace("PERS num vvPcZona := 0;", "")) is None             # módulo viejo
 
 
 def test_tiempo_como_el_rapid():
@@ -54,7 +74,7 @@ def test_velocidades_max_por_ventana():
 def _evidencia(tmp, **cambios):
     ev = {"version": c02.VERSION_EVIDENCIA, "ok": True, "fecha_utc": "2026-11-24T10:00:00+00:00", "modos": ["AUTO"],
           "huella_modulo": huella_modulo(TEXTO), "vlim_deg_s": list(limites_c02(TEXTO)[0]), "k_pico": 2.5,
-          "movimientos": [{"junta": j, "ok": True} for j in range(1, 7)]}
+          "movimientos": [{"junta": j, "ok": True} for j in range(1, 7)], "streaming": {"junta": 6, "ok": True}}
     ev.update(cambios)
     ruta = os.path.join(tmp, "ev.json")
     with open(ruta, "w") as f:
@@ -73,6 +93,11 @@ def test_evaluar_evidencia():
     assert not c02.evaluar(_evidencia(tmp), TEXTO, texto_modulo_controlador=TEXTO.replace("2.5;", "1;"))[0]
     assert not c02.evaluar(_evidencia(tmp, ok=False), TEXTO)[0]
     assert not c02.evaluar(_evidencia(tmp, movimientos=[{"junta": 1, "ok": True}]), TEXTO)[0]
+    # el módulo mueve en continuo: sin la prueba de streaming aprobada no habilita
+    ok, motivo, _ = c02.evaluar(_evidencia(tmp, streaming=None), TEXTO)
+    assert not ok and "streaming" in motivo
+    assert not c02.evaluar(_evidencia(tmp, streaming={"ok": False}), TEXTO)[0]
+    assert not c02.evaluar(_evidencia(tmp, version=1), TEXTO)[0]
 
 
 def _verificar(mock, salida):
@@ -103,6 +128,13 @@ def test_verificacion_completa_habilita_el_envio():
                 continue
             assert all(v <= lim for v, lim in zip(mv["vmax_deg_s"], ev["vlim_deg_s"])), mv
             assert mv["ok_tiempo_rapid"]
+        st = ev["streaming"]
+        assert st["ok"], st
+        assert st["puntos"] == 8 and st["codigos"] == [3] * 7 + [2]
+        assert all(v <= lim for v, lim in zip(st["vmax_deg_s"], ev["vlim_deg_s"])), st
+        assert st["vmax_deg_s"][5] > 0.5 and st["duracion_observada_s"] >= 0.9 * st["t_esperado_total_s"]
+        assert m.fallas_esquina == 0, "la PC no llegó a tiempo con el punto siguiente"
+        assert [mv["zona"] for mv in m.movimientos[-8:]] == [True] * 7 + [False]
         # el backend lee la evidencia y habilita el envío
         be = BackendRWS(_cfg(salida, m.puerto))
         assert be.velocidad_articular_verificada, be.c02_motivo

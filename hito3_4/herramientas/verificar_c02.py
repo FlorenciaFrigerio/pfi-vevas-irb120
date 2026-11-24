@@ -11,8 +11,11 @@ Qué hace:
   2. Arranca VevasServidor (el FlexPendant pide «Iniciar»).
   3. Por cada junta: va +δ y vuelve (o −δ si +δ se sale de los límites), leyendo la postura por RWS tan rápido
      como responda, y estima la velocidad con diferencias de ventana 0.1 s.
-  4. Pasa si en TODOS los movimientos ninguna junta supera vLim (5 % de la ficha) y el RAPID usó el tiempo
-     esperado (vvRbTiempo). Guarda evidencia_c02.json (huella del módulo, modo, topes, trazas resumidas).
+  4. Si el módulo soporta movimiento continuo (vvPcZona/tZona): recorre J6 ±δ en 8 puntos en streaming
+     (z1 en los intermedios, fine al final) y mide igual la velocidad.
+  5. Pasa si en TODOS los movimientos ninguna junta supera vLim (5 % de la ficha) y el RAPID usó el tiempo
+     esperado (vvRbTiempo; en streaming: duración ≥ 90 % de la suma de los t de cada tramo). Guarda
+     evidencia_c02.json (huella del módulo, modo, topes, trazas resumidas).
 
 Solo con esa evidencia la consola VEVAS habilita el envío por RWS. Si falla, no habilita nada.
 """
@@ -33,7 +36,7 @@ sys.path.insert(0, RAIZ)
 
 from vevas import c02  # noqa: E402
 from vevas.rws_cliente import (LIMITES_DEG, MARGEN_DEG, Cliente, Falla, huella_modulo,  # noqa: E402
-                               limites_c02, rechazo_local, tiempo_movimiento)
+                               T_MIN_S, limites_c02, rechazo_local, tiempo_movimiento, tiempo_zona)
 from vevas.seguridad import cargar_config  # noqa: E402
 
 
@@ -102,6 +105,47 @@ def un_movimiento(cli, cli_lectura, objetivo, vlim, k, timeout):
             "periodo_medio_s": round(sum(dts) / len(dts), 4) if dts else None,
             "periodo_max_s": round(max(dts), 4) if dts else None,
             "ok_velocidad": pasa_v, "ok_tiempo_rapid": pasa_t, "ok": pasa_v and pasa_t}
+
+
+def puntos_streaming(q0, delta, n=8):
+    """J6 recorre +δ, −δ y vuelve (seno) en n puntos; el último es exactamente q0."""
+    import math
+    pts = []
+    for m in range(1, n + 1):
+        q = list(q0)
+        q[5] = q0[5] + delta * math.sin(2 * math.pi * m / n)
+        pts.append(q)
+    pts[-1] = list(q0)
+    return pts
+
+
+def prueba_streaming(cli, cli_lectura, vlim, k, t_zona, delta, timeout):
+    """Recorrido continuo corto con zonas: misma medición de velocidad que los movimientos sueltos."""
+    q0 = cli.joints_deg()
+    pts = puntos_streaming(q0, delta)
+    t_esp, previo = 0.0, q0
+    for i, p in enumerate(pts, 1):
+        t_esp += tiempo_movimiento(p, previo, vlim, k, T_MIN_S if i == len(pts) else t_zona)
+        previo = p
+    with Muestreador(cli_lectura) as m:
+        time.sleep(0.3)
+        ok_envio, cod, msg = cli.enviar_recorrido(pts, timeout=timeout)
+        time.sleep(0.5)
+    info = dict(getattr(cli, "ultimo_recorrido", {}) or {})
+    ms = m.muestras
+    vmax = c02.velocidades_max(ms)
+    moviendo = [t for (t, q), (_, qa) in zip(ms[1:], ms) if max(abs(x - y) for x, y in zip(q, qa)) > 0.005]
+    dur = (moviendo[-1] - moviendo[0]) if len(moviendo) >= 2 else None
+    codigos = info.get("codigos", [])
+    pasa_v = all(v <= lim for v, lim in zip(vmax, vlim))
+    pasa_t = dur is not None and dur >= 0.9 * t_esp
+    pasa_z = codigos == [3] * (len(pts) - 1) + [2]   # intermedios en zona, último fine
+    return {"junta": 6, "delta_deg": delta, "puntos": len(pts), "desde_deg": [round(x, 4) for x in q0],
+            "t_esperado_total_s": round(t_esp, 4), "duracion_observada_s": dur and round(dur, 3),
+            "codigos": codigos, "espera_acuse_max_s": info.get("espera_acuse_max_s"), "mensaje": msg,
+            "vmax_deg_s": [round(v, 3) for v in vmax], "muestras": len(ms), "errores_lectura": m.errores,
+            "ok_envio": ok_envio, "ok_velocidad": pasa_v, "ok_tiempo": pasa_t, "ok_zonas": pasa_z,
+            "ok": bool(ok_envio and pasa_v and pasa_t and pasa_z)}
 
 
 def main(argv=None):
@@ -176,16 +220,27 @@ def main(argv=None):
                 print(f"  {marca} J{j} {nombre:6s} t={res['t_esperado_s']:.2f}s (RAPID {res['t_rapid_s']}) "
                       f"vmax={res['vmax_deg_s'][j-1]:.2f}°/s (tope {vlim[j-1]}) · peor otra junta "
                       f"{max(v for i, v in enumerate(res['vmax_deg_s']) if i != j-1):.2f}°/s · {res['muestras']} muestras")
+        streaming = None
+        t_zona = tiempo_zona(texto)
+        if t_zona is not None:
+            streaming = prueba_streaming(cli, cli_lect, vlim, k, t_zona, a.delta, a.timeout)
+            marca = "OK " if streaming["ok"] else "MAL"
+            print(f"  {marca} streaming J6 ±{a.delta:g}° en {streaming['puntos']} puntos: t≈{streaming['t_esperado_total_s']:.2f}s "
+                  f"(observado {streaming['duracion_observada_s']}) vmax J6={streaming['vmax_deg_s'][5]:.2f}°/s "
+                  f"(tope {vlim[5]}) · códigos {streaming['codigos']} · {streaming['mensaje']}")
     except Falla as ex:
         print(f"ERROR: {ex}")
         return 1
     ok = all(m["ok"] for m in movs) and {m["junta"] for m in movs} == set(juntas)
+    if streaming is not None:
+        ok = ok and streaming["ok"]
     por_junta = [{"junta": j, "ok": all(m["ok"] for m in movs if m["junta"] == j)} for j in juntas]
     ev = {"version": c02.VERSION_EVIDENCIA, "ok": ok and set(juntas) == {1, 2, 3, 4, 5, 6},
           "fecha_utc": dt.datetime.now(dt.timezone.utc).isoformat(), "ip": ip, "modos": [e["opmode"]],
           "huella_modulo": huella_modulo(texto), "vlim_deg_s": list(vlim), "k_pico": k, "delta_deg": a.delta,
           "ventana_s": c02.VENTANA_S, "metodo": "posiciones RWS /rw/motionsystem/mechunits/ROB_1/jointtarget, diferencia finita",
-          "movimientos": [dict(m, ok=m["ok"]) for m in movs], "juntas": por_junta}
+          "movimientos": [dict(m, ok=m["ok"]) for m in movs], "juntas": por_junta,
+          "t_zona_s": tiempo_zona(texto), "streaming": streaming}
     # una entrada por junta (ok si ida y vuelta pasaron) para evaluar()
     ev["movimientos"] = movs + [{"junta": p["junta"], "ok": p["ok"], "resumen": True} for p in por_junta]
     ev["movimientos"] = [m for m in ev["movimientos"] if m.get("resumen")] + [m for m in ev["movimientos"] if not m.get("resumen")]

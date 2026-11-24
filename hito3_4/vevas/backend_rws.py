@@ -12,9 +12,17 @@ Cosas que este backend hace distinto de BackendROS/BackendSim (Consola lo sabe p
     waypoint (resultado_trayectoria) o que falló, con un tiempo límite global.
   * ejecutar_trayectoria no bloquea: lanza un hilo que manda los waypoints uno tras otro. Vuelve en
     cuanto el robot tomó el primero (o lo rechazó).
-  * mantener() NO frena el brazo: pide que no se envíe ningún waypoint más. El MoveAbsJ en curso
-    termina (a lo sumo unos segundos a 20 mm/s). El freno físico es el PARO DE EMERGENCIA o soltar
-    el habilitador. Después no se acepta otra trayectoria hasta que el robot conteste esa orden.
+  * Movimiento continuo (24/11): si el módulo soporta zonas (vvPcZona/tZona) y la trayectoria deja más de
+    un punto, se manda en streaming (Cliente.enviar_recorrido): puntos intermedios con z1 (el robot no
+    para), el último con fine. Los puntos salen de muestrear_recorrido: tramos rectos fusionados hasta
+    `paso_zona_max_deg` (10° por defecto) y curvas con un punto cada ~0.5–2° (desvío ≤ `tol_zona_deg`).
+    Las paradas del plan (muestras con QD = 0 en todas las juntas: esquinas del cuadrado/triángulo, punta
+    del corazón) cortan el recorrido y van con fine: el robot se detiene ahí y no redondea la esquina.
+    Si no, se usa el envío por tramos con fine de siempre.
+  * mantener() NO frena el brazo: pide que no se envíe ningún waypoint más. Lo ya encolado termina: en
+    streaming, a lo sumo el tramo en curso y el siguiente (≤ 2 × paso_zona_max_deg); con fine, el MoveAbsJ
+    en curso. El freno físico es el PARO DE EMERGENCIA o soltar el habilitador (o Cliente.parar(): Stop de
+    RAPID + motores OFF). Después no se acepta otra trayectoria hasta que el robot quede quieto.
   * No hay jog continuo por RWS: Consola lo rechaza con tipo == "rws".
 """
 from __future__ import annotations
@@ -26,8 +34,8 @@ import time
 import numpy as np
 
 from . import c02
-from .rws_cliente import (PASO_PC_MAX_DEG, CancelacionOrden, Cliente, Falla, MODULO, limites_c02, subdividir,
-                          tiempo_movimiento)
+from .rws_cliente import (PASO_PC_MAX_DEG, T_MIN_S, CancelacionOrden, Cliente, Falla, MODULO, limites_c02,
+                          muestrear_con_paradas, subdividir, tiempo_movimiento, tiempo_zona)
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -49,6 +57,9 @@ class BackendRWS:
         self.signos = np.array(rc["signos"], dtype=float)
         self.offsets = np.radians(np.array(rc["offsets_deg"], dtype=float))
         self.paso_deg = min(float(r["paso_envio_deg"]), PASO_PC_MAX_DEG)
+        # streaming: tramo recto máximo (acota lo que queda encolado tras PARAR) y desvío de la cuerda
+        self.paso_zona_deg = min(float(r.get("paso_zona_max_deg", 10.0)), PASO_PC_MAX_DEG)
+        self.tol_zona_deg = float(r.get("tol_zona_deg", 0.1))
         self.periodo_lectura = 1.0 / max(1.0, float(r["hz_lectura"]))
         self.timeout_orden_s = float(r["timeout_orden_s"])
         self.vel_min_deg_s = float(r["vel_min_estimada_deg_s"])
@@ -60,6 +71,7 @@ class BackendRWS:
         self._hilo = None
         self._worker = None
         self._cancelar = CancelacionOrden()
+        self._ultimo_envio = None   # (Q, origen, waypoints, fines) del último recorrido mandado
         self.duracion_observada_s = None
         self._gen = 0
         self.ultimo_resultado = None
@@ -75,8 +87,9 @@ class BackendRWS:
             with open(self.ruta_modulo, encoding="utf-8") as f:
                 self._texto_modulo_local = f.read()
             self.vlim_c02, self.k_c02 = limites_c02(self._texto_modulo_local)
+            self.t_zona_s = tiempo_zona(self._texto_modulo_local)   # None: el módulo no soporta streaming
         except (OSError, Falla) as e:
-            self._texto_modulo_local, self.vlim_c02, self.k_c02 = None, None, None
+            self._texto_modulo_local, self.vlim_c02, self.k_c02, self.t_zona_s = None, None, None, None
             self.c02_motivo = f"C02: no se pudo leer el módulo RAPID ({e})."
         else:
             ok, self.c02_motivo, self._c02_ev = c02.evaluar(self.ruta_evidencia, self._texto_modulo_local)
@@ -187,6 +200,7 @@ class BackendRWS:
         return {"tipo": "rws", "hardware": "IRC5 vía RWS", "real": True, "texto": texto,
                 "velocidad_articular_verificada": self.velocidad_articular_verificada,
                 "c02_motivo": self.c02_motivo, "vlim_c02_deg_s": self.vlim_c02,
+                "movimiento_continuo": self.t_zona_s is not None, "t_zona_s": self.t_zona_s,
                 "solo_lectura": self.solo_lectura, "ip": self.ip, "paso_envio_deg": self.paso_deg,
                 "ultimo_error": self.ultimo_error, "progreso": self.progreso}
 
@@ -198,19 +212,54 @@ class BackendRWS:
         with self._lock:
             return self._resultado_exitoso, self.ultimo_resultado
 
+    def plan_recorrido(self, origen_deg, Q_deg, paradas=()):
+        """(waypoints en grados RWS, fines): fines = índices que van con fine dentro de un recorrido continuo
+        (paradas del plan y el último), o None si el módulo no soporta zonas y se manda por tramos con fine."""
+        if self.t_zona_s is not None:
+            pts, fines = muestrear_con_paradas(origen_deg, Q_deg, paradas, self.paso_zona_deg, self.tol_zona_deg)
+            if len(pts) > 1:
+                return pts, fines
+        return subdividir(origen_deg, Q_deg, self.paso_deg), None
+
+    def puntos_recorrido(self, origen_deg, Q_deg, paradas=()):
+        """Lista de waypoints (grados RWS) y si van en streaming (True) o por tramos con fine (False)."""
+        wps, fines = self.plan_recorrido(origen_deg, Q_deg, paradas)
+        return wps, fines is not None
+
+    @staticmethod
+    def paradas_de(Q, QD) -> list[int]:
+        """Muestras intermedias donde el plan está en reposo (todas las juntas con velocidad nula: esquinas del
+        cuadrado/triángulo, punta del corazón). Esas van con fine para no redondear la esquina con la zona."""
+        if QD is None:
+            return []
+        v = np.abs(np.asarray(QD, dtype=float))
+        if v.ndim != 2 or v.shape != (len(Q), 6):
+            return []
+        return [k for k in range(len(Q) - 1) if float(v[k].max()) <= 1e-6]
+
     def duracion_estimada_s(self, Q_rad) -> float:
         """Cota GRUESA y conservadora del tiempo que tarda el robot (para el tiempo límite de Consola)."""
-        q, _ = self.leer()
-        q0 = self._a_rws_deg(q) if q is not None else self._a_rws_deg(Q_rad[0])
-        wps = subdividir(q0, self._a_rws_deg(Q_rad), self.paso_deg)
+        envio = self._ultimo_envio
+        if envio is not None and np.shape(Q_rad) == np.shape(envio[0]) and np.array_equal(np.asarray(Q_rad), envio[0]):
+            q0, wps, fines = envio[1], envio[2], envio[3]    # el mismo recorrido que se acaba de mandar
+        else:
+            q, _ = self.leer()
+            q0 = self._a_rws_deg(q) if q is not None else self._a_rws_deg(Q_rad[0])
+            wps, fines = self.plan_recorrido(q0, self._a_rws_deg(Q_rad))
+        continuo = fines is not None
+        fine = set(fines or ()) | {len(wps) - 1}
         t, previo = 0.0, q0
-        for w in wps:
-            if self.vlim_c02 is not None:
+        for k, w in enumerate(wps):
+            if continuo:
+                # mismo t que el RAPID (piso tZona salvo en los fine) + holgura por HTTP y paradas por esquina
+                t += tiempo_movimiento(w, previo, self.vlim_c02, self.k_c02,
+                                       T_MIN_S if k in fine else self.t_zona_s) * 1.5 + (1.0 if k in fine else 0.5)
+            elif self.vlim_c02 is not None:
                 t += tiempo_movimiento(w, previo, self.vlim_c02, self.k_c02) * 1.5 + 1.5
             else:
                 t += max(abs(a - b) for a, b in zip(w, previo)) / self.vel_min_deg_s + 1.5
             previo = w
-        return t
+        return t + (3.0 if continuo else 0.0)
 
     # ---- comandos
     def ejecutar_trayectoria(self, ts, Q, QD=None, *, origen_revisado=None, cancelar=None, comprobar_go=None) -> tuple[bool, str]:
@@ -229,9 +278,11 @@ class BackendRWS:
             return False, "Falta el origen de la trayectoria revisada."
         origen_deg = self._a_rws_deg(origen_revisado)
         try:
-            wps = subdividir(origen_deg, self._a_rws_deg(Q), self.paso_deg)
+            wps, fines = self.plan_recorrido(origen_deg, self._a_rws_deg(Q), self.paradas_de(Q, QD))
         except Falla as ex:
             return False, str(ex)
+        continuo = fines is not None
+        self._ultimo_envio = (np.array(Q, dtype=float), origen_deg, wps, fines)
         cancelar = cancelar if cancelar is not None else CancelacionOrden()
         inicio_orden = None
 
@@ -246,7 +297,7 @@ class BackendRWS:
         primera = threading.Event()
 
         def al_aceptar(codigo):
-            if codigo in (1, 2):
+            if codigo in (1, 2, 3):
                 caja["ok"] = True
             primera.set()
 
@@ -259,6 +310,20 @@ class BackendRWS:
             if not primera.is_set():
                 caja["msg"] = texto
                 primera.set()
+
+        def progreso(k, n):
+            with self._lock:
+                if gen == self._gen:
+                    self.progreso = f"{k}/{n} puntos (continuo)"
+
+        def correr_continuo():
+            try:
+                ok, cod, msg = self.cli.enviar_recorrido(
+                    wps, timeout=self.timeout_orden_s, cancelar=cancelar, al_aceptar=al_aceptar,
+                    al_progreso=progreso, origen_deg=origen_deg, al_comprometer=antes_de_ordenar, fines=fines)
+                terminar(ok, msg)
+            except Exception as ex:  # noqa: BLE001
+                terminar(False, f"error inesperado en el envío continuo: {ex}")
 
         def correr():
             try:
@@ -293,9 +358,10 @@ class BackendRWS:
             self.ultimo_resultado = None
             self._resultado_exitoso = None
             self.duracion_observada_s = None
-            self.progreso = f"0/{len(wps)} waypoints"
+            self.progreso = f"0/{len(wps)} " + ("puntos (continuo)" if continuo else "waypoints")
             self._cancelar = cancelar
-            self._worker = threading.Thread(target=correr, daemon=True, name="rws-trayectoria")
+            self._worker = threading.Thread(target=correr_continuo if continuo else correr, daemon=True,
+                                            name="rws-trayectoria")
             self._worker.start()
         if not primera.wait(15.0):
             cancelar.set()
@@ -306,6 +372,11 @@ class BackendRWS:
             while self.ultimo_resultado is None and time.monotonic() - t0 < 2.0:
                 time.sleep(0.01)
             return False, self.ultimo_resultado or caja["msg"]
+        if continuo:
+            esquinas = len(fines) - 1
+            return True, (f"trayectoria aceptada por el servidor RWS: movimiento continuo de {len(wps)} puntos "
+                          f"(zona z1, tramos ≤{self.paso_zona_deg:g}°"
+                          + (f", {esquinas} parada(s) con fine" if esquinas else "") + ")")
         return True, f"trayectoria aceptada por el servidor RWS ({len(wps)} waypoints de ≤{self.paso_deg:g}°)"
 
     def mantener(self, q=None) -> None:
@@ -316,7 +387,8 @@ class BackendRWS:
             vivo = self._worker is not None and self._worker.is_alive()
             if vivo and self._resultado_exitoso is None:
                 self._resultado_exitoso = False
-                self.ultimo_resultado = "cancelada por PARAR/aborto: no se envían más waypoints (el movimiento en curso termina solo)"
+                self.ultimo_resultado = ("cancelada por PARAR/aborto: no se envían más waypoints (lo ya encolado en el "
+                                         "robot termina solo y para)")
         ev.set()
 
     def enviar_punto(self, q, horizonte: float) -> None:

@@ -303,3 +303,91 @@ export function panelBitacora(v) {
   h += '<h3>Eventos</h3><div class="eventos">' + (v.eventos || []).slice().reverse().map((e) => `<div class="${e.nivel}">${e.hora} · ${e.texto}</div>`).join("") + "</div>";
   return h;
 }
+
+// ---- Poses guardadas: «Ir a pose» sigue las reglas de «Volver a cero» (SIM y ROS como siempre; RWS solo con C02).
+export function permisoIrAPose(modo) {
+  const m = modo || {};
+  const permitido = typeof m.ir_a_pose_permitido === "boolean" ? m.ir_a_pose_permitido : m.tipo === "sim";
+  return {
+    permitido,
+    motivo: permitido ? "" : (m.ir_a_pose_motivo || "Ir a una pose guardada con el robot real por RWS exige C02 verificado."),
+  };
+}
+
+// ---- Vista de puntos de una figura
+export const PLANOS_VISTA = { XY: [0, 1], XZ: [0, 2], YZ: [1, 2] };
+
+// Proyección en el plano de dibujo: [u, v] en mm relativos al origen (por defecto, la primera muestra).
+export function proyectarFigura(puntos_m, plano = "XY", origen_m = null) {
+  const ejes = PLANOS_VISTA[String(plano).toUpperCase()] || PLANOS_VISTA.XY;
+  const lista = Array.isArray(puntos_m) ? puntos_m : [];
+  const o = origen_m || lista[0] || [0, 0, 0];
+  return lista.map((p) => [(p[ejes[0]] - o[ejes[0]]) * 1000, (p[ejes[1]] - o[ejes[1]]) * 1000]);
+}
+
+// Distancia de un punto al recorrido (polilínea) más cercano; sirve en 2D y en 3D.
+export function distanciaARecorrido(p, recorrido) {
+  if (!recorrido?.length) return NaN;
+  const dim = p.length;
+  let mejor = Infinity;
+  const d2 = (a, b) => { let s = 0; for (let i = 0; i < dim; i++) s += (a[i] - b[i]) ** 2; return s; };
+  if (recorrido.length === 1) return Math.sqrt(d2(p, recorrido[0]));
+  for (let k = 0; k + 1 < recorrido.length; k++) {
+    const a = recorrido[k], b = recorrido[k + 1];
+    let ab2 = 0, ap_ab = 0;
+    for (let i = 0; i < dim; i++) { const ab = b[i] - a[i]; ab2 += ab * ab; ap_ab += (p[i] - a[i]) * ab; }
+    const t = ab2 > 0 ? Math.min(1, Math.max(0, ap_ab / ab2)) : 0;
+    let s = 0;
+    for (let i = 0; i < dim; i++) s += (p[i] - (a[i] + t * (b[i] - a[i]))) ** 2;
+    if (s < mejor) mejor = s;
+  }
+  return Math.sqrt(mejor);
+}
+
+// Error entre los puntos medidos (FK de las juntas recibidas) y el recorrido planificado, en mm.
+// Ambas listas en metros, en la base del robot. Se usa la distancia 3D al tramo más cercano.
+export function errorFigura(medidos_m, planificados_m) {
+  const med = Array.isArray(medidos_m) ? medidos_m : [];
+  if (!med.length || !planificados_m?.length) return { n: 0, max_mm: null, medio_mm: null };
+  let max = 0, suma = 0;
+  for (const p of med) {
+    const d = distanciaARecorrido(p, planificados_m) * 1000;
+    if (d > max) max = d;
+    suma += d;
+  }
+  return { n: med.length, max_mm: max, medio_mm: suma / med.length };
+}
+
+// Agrega una muestra medida solo si se separa de la anterior (evita miles de puntos quietos).
+export function agregarMuestra(lista, p, minimo_m = 0.0002, maximo = 4000) {
+  const ultimo = lista.at(-1);
+  if (ultimo && Math.hypot(p[0] - ultimo[0], p[1] - ultimo[1], p[2] - ultimo[2]) < minimo_m) return false;
+  lista.push([p[0], p[1], p[2]]);
+  if (lista.length > maximo) lista.splice(0, lista.length - maximo);
+  return true;
+}
+
+// Paso "redondo" para las marcas de los ejes (1, 2 o 5 × 10^k mm).
+export function pasoEje(rango_mm, marcas = 5) {
+  const crudo = Math.max(rango_mm, 1e-6) / Math.max(1, marcas);
+  const base = 10 ** Math.floor(Math.log10(crudo));
+  const n = crudo / base;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * base;
+}
+
+// Encuadre con la MISMA escala en ambos ejes: devuelve funciones a píxeles (v crece hacia arriba).
+export function encuadreFigura(conjuntos, ancho, alto, margen = 28) {
+  const todos = conjuntos.flat().filter((p) => p && Number.isFinite(p[0]) && Number.isFinite(p[1]));
+  let uMin = Math.min(...todos.map((p) => p[0])), uMax = Math.max(...todos.map((p) => p[0]));
+  let vMin = Math.min(...todos.map((p) => p[1])), vMax = Math.max(...todos.map((p) => p[1]));
+  if (!todos.length) { uMin = vMin = -10; uMax = vMax = 10; }
+  const lado = Math.max(uMax - uMin, vMax - vMin, 2);
+  const holgura = 0.08 * lado;
+  const cu = (uMin + uMax) / 2, cv = (vMin + vMax) / 2;
+  const escala = Math.min((ancho - 2 * margen) / (uMax - uMin + 2 * holgura || lado), (alto - 2 * margen) / (vMax - vMin + 2 * holgura || lado));
+  const x = (u) => ancho / 2 + (u - cu) * escala;
+  const y = (v) => alto / 2 - (v - cv) * escala;
+  const u = (px) => cu + (px - ancho / 2) / escala;
+  const v = (py) => cv - (py - alto / 2) / escala;
+  return { escala, x, y, u, v, paso: pasoEje(Math.max(uMax - uMin, vMax - vMin, 2)) };
+}

@@ -372,3 +372,62 @@ def test_sim_en_j5_cero_la_figura_sugiere_preparar_j5(tmp_path):
         assert "Preparar J5 a +30°" in plan["problemas"][0]
     finally:
         registro.cerrar()
+
+
+# ---- vista previa de puntos (no calcula plan ni mueve)
+@pytest.mark.parametrize(("nombre", "plano", "paradas", "ejes"), [
+    ("cuadrado", "XY", [16, 32, 48], ["X", "Y"]),
+    ("triángulo", "XZ", [22, 43], ["X", "Z"]),
+    ("corazón", "YZ", [32], ["Y", "Z"]),
+    ("círculo", "XY", [], ["X", "Y"]),
+])
+def test_vista_figura_devuelve_puntos_y_paradas_iguales_al_plan(consola, nombre, plano, paradas, ejes):
+    from vevas.servidor import ORDENES
+    r = ORDENES["vista_figura"](consola, {"figura": nombre, "tamano_mm": 30, "plano": plano})
+    assert r["ok"], r
+    vista = r["vista"]
+    assert consola.plan is None                         # no crea plan
+    assert vista["paradas"] == paradas and vista["ejes"] == ejes and vista["plano_vista"] == plano
+    assert vista["n_puntos"] == 65 and vista["inicio"] == 0 and vista["fin"] == 64
+    esperado = generar_figura(nombre, 30, plano) * 1000
+    np.testing.assert_allclose(vista["offsets_mm"], esperado, atol=1e-9)
+    i, j = {"XY": (0, 1), "XZ": (0, 2), "YZ": (1, 2)}[plano]
+    np.testing.assert_allclose(vista["puntos_2d_mm"], esperado[:, [i, j]], atol=1e-9)
+    # ancho igual al tamaño en el primer eje del plano
+    assert np.ptp(np.asarray(vista["puntos_2d_mm"])[:, 0]) == pytest.approx(30, abs=1e-9)
+    origen = consola.robot.fk_tcp(consola.backend.leer()[0])[:3, 3]
+    np.testing.assert_allclose(vista["origen_m"], origen, atol=1e-12)
+    # misma geometría y mismas paradas que el plan calculado
+    plan = consola.calcular_figura(nombre, 30, plano)
+    np.testing.assert_allclose(vista["puntos_m"], plan["figura"]["puntos_objetivo_m"], atol=1e-12)
+    assert plan["figura"]["paradas"] == vista["paradas"]
+    assert plan["figura"]["plano_vista"] == plano
+
+
+def test_vista_figura_saludo_usa_la_postura_actual(consola):
+    vista = consola.vista_figura("saludo", 25)
+    plan = consola.calcular_figura("saludo", 25)
+    np.testing.assert_allclose(vista["puntos_m"], plan["figura"]["puntos_objetivo_m"], atol=1e-12)
+    assert vista["paradas"] == [] and vista["metodo"] == "articular"
+    assert vista["plano_vista"] == plan["figura"]["plano_vista"]
+    assert np.ptp(np.asarray(vista["puntos_2d_mm"]), axis=0).max() > 1.0
+
+
+def test_vista_figura_valida_sin_registrar_avisos(consola):
+    from vevas.servidor import ORDENES
+    n = consola.n_evento
+    for cuerpo in ({"figura": "estrella"}, {"figura": "circulo", "tamano_mm": 4},
+                   {"figura": "circulo", "tamano_mm": 101}, {"figura": "circulo", "plano": "XX"}):
+        r = ORDENES["vista_figura"](consola, cuerpo)
+        assert r["ok"] is False and r["mensaje"]
+    assert consola.n_evento == n
+
+
+def test_vista_figura_en_rws_sin_c02_se_ve_pero_avisa(tmp_path):
+    con, registro = _consola_rws(tmp_path, [0, -20, 30, 0, 40, 0], verificada=False)
+    try:
+        vista = con.vista_figura("cuadrado", 90)
+        assert vista["permitida"] is False and vista["excede_tope"] is True and vista["tope_mm"] == 80
+        assert con.plan is None and con.backend.enviados == []
+    finally:
+        registro.cerrar()

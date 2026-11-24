@@ -58,6 +58,8 @@ def main():
     ap.add_argument("--config", default=os.path.join(AQUI, "config.json"))
     ap.add_argument("--puerto", type=int, default=None)
     ap.add_argument("--sesiones", default=os.path.join(AQUI, "sesiones"))
+    ap.add_argument("--datos", default=os.path.join(AQUI, "datos"),
+                    help="carpeta de datos locales (poses_guardadas.json); no se versiona")
     ap.add_argument("--abrir", action="store_true", help="abrir el navegador automáticamente")
     args = ap.parse_args()
     if args.real and args.modo not in ("ros", "rws"):
@@ -118,7 +120,8 @@ def main():
             sys.exit(1)
         backend = BackendROS(cfg, lambda t: avisos_previos.append(t), solo_lectura=args.solo_lectura)
 
-    consola = Consola(cfg, backend, registro, permitir_real=args.real, go=go, ruta_go=args.go if args.real else None)
+    consola = Consola(cfg, backend, registro, permitir_real=args.real, go=go, ruta_go=args.go if args.real else None,
+                      ruta_poses=os.path.join(args.datos, "poses_guardadas.json"))
     if args.modo in ("ros", "rws"):
         backend._avisar = lambda t: consola.avisar(t, "info")
     for t in avisos_previos:

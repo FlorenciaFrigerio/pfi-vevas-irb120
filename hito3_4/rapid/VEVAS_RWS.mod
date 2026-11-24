@@ -1,6 +1,7 @@
 MODULE VEVAS_RWS
-  ! VEVAS (de LabJointRws V3). vvRbCodigo: 0 listo,1 mueve,2 llego,-1 vacio,-2 lim,-3 paso,-4 modo
-  ! C02: MoveAbsJ \T con tiempo >= kPico*|dq|/vLim por eje (vLim = 5 % de la ficha). <4800 car.
+  ! VEVAS (de LabJointRws V3). vvRbCodigo: 0 listo,1 mueve,2 llego,3 zona,-1 vacio,-2 lim,-3 paso,-4 modo
+  ! C02: MoveAbsJ \T, t >= kPico*|dq|/vLim por eje (vLim = 5 % ficha). Texto <4800 car.
+  ! vvPcZona=1: vienen mas puntos -> z1 sin esperar, piso tZona, dq vs objetivo previo.
   LOCAL CONST num maxPasoDeg := 45;
   LOCAL CONST num margenDeg := 2;
   LOCAL CONST bool permitirAuto := TRUE;
@@ -8,9 +9,11 @@ MODULE VEVAS_RWS
   LOCAL CONST speeddata vPc := [20,5,20,5];
   LOCAL CONST num vLim{6} := [12.5,12.5,12.5,16,16,21];
   LOCAL CONST num kPico := 2.5;
+  LOCAL CONST num tZona := 0.2;
   PERS jointtarget vvPcTarget := [[9E9,9E9,9E9,9E9,9E9,9E9],[9E9,9E9,9E9,9E9,9E9,9E9]];
   PERS num vvPcSeq := 0;
   PERS num vvPcFin := 0;
+  PERS num vvPcZona := 0;
   PERS num vvRbSeq := 0;
   PERS num vvRbCodigo := 0;
   PERS num vvRbActivo := 0;
@@ -18,7 +21,9 @@ MODULE VEVAS_RWS
 
   PROC VevasServidor()
     VAR jointtarget objetivo;
-    VAR jointtarget actual;
+    VAR jointtarget previo;
+    VAR bool enZona := FALSE;
+    VAR bool zona := FALSE;
     VAR num seq := 0;
     VAR num respuesta := 0;
     VAR errnum motivo := 0;
@@ -37,6 +42,7 @@ MODULE VEVAS_RWS
       ENDIF
     ENDIF
     vvPcFin := 0;
+    vvPcZona := 0;
     vvRbCodigo := 0;
     vvRbSeq := vvPcSeq;
     vvRbActivo := 1;
@@ -46,22 +52,36 @@ MODULE VEVAS_RWS
       IF vvPcSeq <> vvRbSeq THEN
         seq := vvPcSeq;
         objetivo := vvPcTarget;
-        actual := CJointT();
-        vvRbCodigo := Validar(objetivo.robax, actual.robax);
+        zona := vvPcZona = 1;
+        IF enZona = FALSE THEN
+          previo := CJointT();
+        ENDIF
+        vvRbCodigo := Validar(objetivo.robax, previo.robax);
         IF vvRbCodigo = 0 THEN
-          vvRbCodigo := 1;
-          TPWrite "Moviendo orden"\Num:=seq;
-          objetivo.extax := actual.extax;
-          t := Tiempo(objetivo.robax, actual.robax);
+          objetivo.extax := previo.extax;
+          t := 0.5;
+          IF zona THEN
+            t := tZona;
+          ENDIF
+          t := Tiempo(objetivo.robax, previo.robax, t);
           vvRbTiempo := t;
-          MoveAbsJ objetivo,vPc\T:=t,fine,tool0;
-          vvRbCodigo := 2;
+          previo := objetivo;
+          enZona := zona;
+          IF zona THEN
+            MoveAbsJ objetivo,vPc\T:=t,z1,tool0;
+            vvRbCodigo := 3;
+          ELSE
+            vvRbCodigo := 1;
+            TPWrite "Moviendo orden"\Num:=seq;
+            MoveAbsJ objetivo,vPc\T:=t,fine,tool0;
+            vvRbCodigo := 2;
+          ENDIF
         ELSE
           TPWrite "Orden rechazada, codigo"\Num:=vvRbCodigo;
         ENDIF
         vvRbSeq := seq;
       ENDIF
-      WaitTime 0.1;
+      WaitTime 0.02;
     ENDWHILE
     vvRbActivo := 0;
     AccSet 100, 100;
@@ -75,9 +95,9 @@ MODULE VEVAS_RWS
     RETURN t;
   ENDFUNC
 
-  LOCAL FUNC num Tiempo(robjoint q, robjoint a)
-    VAR num t := 0.5;
-    t := Tj(t, q.rax_1 - a.rax_1, vLim{1});
+  LOCAL FUNC num Tiempo(robjoint q, robjoint a, num t0)
+    VAR num t;
+    t := Tj(t0, q.rax_1 - a.rax_1, vLim{1});
     t := Tj(t, q.rax_2 - a.rax_2, vLim{2});
     t := Tj(t, q.rax_3 - a.rax_3, vLim{3});
     t := Tj(t, q.rax_4 - a.rax_4, vLim{4});

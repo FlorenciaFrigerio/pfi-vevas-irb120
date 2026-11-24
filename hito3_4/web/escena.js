@@ -484,6 +484,17 @@ class EscenaWebGL {
     marcaCtx.fill();
     const texturaPunto = new THREE.CanvasTexture(marca);
     texturaPunto.colorSpace = THREE.SRGBColorSpace;
+    // Recorridos con muchas muestras (figuras): punto macizo sin aro blanco, para que los puntos
+    // solapados no se tapen entre sí y el recorrido se lea como una línea de puntos.
+    const denso = document.createElement("canvas");
+    denso.width = denso.height = 32;
+    const densoCtx = denso.getContext("2d");
+    densoCtx.beginPath();
+    densoCtx.arc(16, 16, 14, 0, Math.PI * 2);
+    densoCtx.fillStyle = "#0f6f86";
+    densoCtx.fill();
+    this.texturasPunto = { marca: texturaPunto, denso: new THREE.CanvasTexture(denso) };
+    this.texturasPunto.denso.colorSpace = THREE.SRGBColorSpace;
     this.puntos = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({
       map: texturaPunto, size: 11, sizeAttenuation: false, transparent: true, depthTest: false, depthWrite: false,
     }));
@@ -589,9 +600,15 @@ class EscenaWebGL {
   }
 
   fijarPuntos(puntos) {
-    const g = new THREE.BufferGeometry().setFromPoints((puntos || []).map((p) => new THREE.Vector3(...p)));
+    const lista = puntos || [];
+    const g = new THREE.BufferGeometry().setFromPoints(lista.map((p) => new THREE.Vector3(...p)));
     this.puntos.geometry.dispose();
     this.puntos.geometry = g;
+    const denso = lista.length > 8;
+    const m = this.puntos.material;
+    m.map = denso ? this.texturasPunto.denso : this.texturasPunto.marca;
+    m.size = denso ? 6 : 11;
+    m.needsUpdate = true;
   }
 
   captura() { return this.render.domElement.toDataURL("image/png"); }

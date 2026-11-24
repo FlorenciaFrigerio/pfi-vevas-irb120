@@ -4,6 +4,9 @@
     GET  /api/stream       estado en vivo (Server-Sent Events, ~20 por segundo)
     GET  /api/config       configuración y datos fijos del robot
     POST /api/<orden>      órdenes de la interfaz (ver ORDENES)
+                           poses guardadas: poses_listar, pose_guardar, pose_renombrar,
+                           pose_borrar (exige "confirmar": true), calcular_pose_guardada
+                           vista previa de figura (no mueve): vista_figura
 
 Escucha solo en 127.0.0.1 por defecto: nadie de la red puede mandar órdenes al robot.
 """
@@ -186,6 +189,20 @@ def fijar_frecuencia(consola, cuerpo):
     return {"ok": True, "hz_vista": hz, "hz_fuente": fuente}
 
 
+def vista_figura(consola, cuerpo):
+    """Vista previa de puntos de una figura. No mueve nada ni cambia el plan; los errores de
+    validación (tamaño fuera de rango mientras se escribe) no se registran como avisos."""
+    try:
+        vista = consola.vista_figura(cuerpo.get("figura"), cuerpo.get("tamano_mm", 25), cuerpo.get("plano", "XY"))
+    except (ValueError, RuntimeError) as error:
+        return {"ok": False, "mensaje": str(error)}
+    return _ok(vista=vista)
+
+
+def _con_lista(consola, mensaje, **extra):
+    return _ok(mensaje, **extra, **consola.listar_poses())
+
+
 ORDENES = {
     "pulso": lambda c, b: (c.pulso(), _ok())[1],
     "calcular_pose": lambda c, b: _ok(plan=c.calcular_pose({k: float(b[k]) for k in ("x", "y", "z", "rz", "ry", "rx")})),
@@ -194,6 +211,12 @@ ORDENES = {
     "ik_vivo": lambda c, b: _ok(ik=c.ik_vivo_rapido({k: float(b[k]) for k in ("x", "y", "z", "rz", "ry", "rx")}, b.get("q_ref_deg"))),
     "calcular_home": lambda c, b: _ok(plan=c.calcular_home(str(b.get("destino", "cero")))),
     "calcular_figura": lambda c, b: _ok(plan=c.calcular_figura(b.get("figura"), b.get("tamano_mm", 25), b.get("plano", "XY"))),
+    "vista_figura": vista_figura,
+    "poses_listar": lambda c, b: _con_lista(c, "ok"),
+    "pose_guardar": lambda c, b: _con_lista(c, "Pose guardada.", pose=c.guardar_pose_actual(b.get("nombre"))),
+    "pose_renombrar": lambda c, b: _con_lista(c, "Pose renombrada.", pose=c.renombrar_pose(b.get("nombre"), b.get("nuevo"))),
+    "pose_borrar": lambda c, b: _con_lista(c, "Pose borrada.", pose=c.borrar_pose(b.get("nombre"), b.get("confirmar"))),
+    "calcular_pose_guardada": lambda c, b: _ok(plan=c.calcular_pose_guardada(b.get("nombre"))),
     "perfil": lambda c, b: _ok("Perfil actualizado. Volvé a calcular el recorrido.", perfil=c.fijar_perfil(b.get("perfil"))),
     "elegir_rama": lambda c, b: _ok(plan=c.elegir_rama_manual(int(b["indice"]))),
     "ejecutar": ejecutar_revisado,

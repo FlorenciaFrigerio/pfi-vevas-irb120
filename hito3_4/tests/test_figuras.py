@@ -85,3 +85,21 @@ def test_triangulo_equilatero_cerrado_con_sus_tres_vertices(muestras):
 def test_rechaza_entradas_invalidas(nombre, datos, error):
     with pytest.raises(ValueError, match=error):
         generar_figura(nombre, **datos)
+
+
+def test_paradas_y_plano_de_vista():
+    from vevas.figuras import paradas_figura, plano_de_vista
+    assert paradas_figura("cuadrado", generar_figura("cuadrado", 20)) == [16, 32, 48]
+    assert paradas_figura("triangulo", generar_figura("triangulo", 20, "YZ")) == [22, 43]
+    assert paradas_figura("corazón", generar_figura("corazon", 20)) == [32]
+    assert paradas_figura("corazón", generar_figura("corazon", 20), limite=10) == []
+    assert paradas_figura("cuadrado", generar_figura("cuadrado", 20), limite=20) == [16]
+    assert paradas_figura("círculo", generar_figura("circulo", 20)) == []
+    assert paradas_figura("saludo", generar_figura("circulo", 20)) == []
+    assert plano_de_vista(generar_figura("circulo", 20, "XZ"), "XZ") == "XZ"
+    # recorrido no plano: elige el plano base de mayor extensión
+    p = np.zeros((5, 3))
+    p[:, 1] = [0, 0.01, 0.02, 0.01, 0]
+    p[:, 2] = [0, 0.005, 0, -0.005, 0]
+    p[:, 0] = [0, 0.0001, 0, 0, 0]
+    assert plano_de_vista(p, "XY") == "YZ"
