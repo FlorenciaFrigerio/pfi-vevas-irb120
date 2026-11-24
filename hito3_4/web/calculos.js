@@ -27,7 +27,56 @@ function paso(n, titulo, nota, cuerpo) {
 export function pasosPlan(plan, cfg) {
   if (!plan) return '<p class="vacio">Sin plan.</p>';
   if (plan.tipo === "pose") return pasosPose(plan, cfg);
+  if (plan.figura) {
+    const fig = plan.figura;
+    const plano = fig.nombre !== "saludo" && fig.plano ? ` · plano ${fig.plano}` : "";
+    const metodo = fig.nombre === "saludo"
+      ? "El saludo mueve las juntas de la muñeca."
+      : "Se busca una rama Pieper para cada punto y se mantiene la orientación del TCP.";
+    const nParadas = Array.isArray(fig.paradas) ? fig.paradas.length : 0;
+    const paradas = nParadas ? ` Se detiene (v = 0) en ${nParadas} ${nParadas === 1 ? "punto intermedio" : "puntos intermedios"}.` : "";
+    return paso(1, "Recorrido predeterminado", plan.descripcion,
+      `<p>${fig.n_puntos} puntos de control · tamaño ${f(fig.tamano_mm, 1)} mm${plano}. ${metodo}${paradas}</p>`) + pasoTrayectoria(2, plan);
+  }
   return pasosArticular(plan);
+}
+
+// Preparar J5 y poses predeterminadas: SIM, o robot real por RWS con C02 verificado. El servidor manda
+// (modo.figuras_permitidas); si no lo informa, solo SIM. Con ROS real o RWS sin C02 quedan deshabilitadas.
+export function permisoMovimientosGuiados(modo) {
+  const m = modo || {};
+  const permitido = typeof m.figuras_permitidas === "boolean" ? m.figuras_permitidas : m.tipo === "sim";
+  const sim = m.tipo === "sim";
+  const maxMm = Number.isFinite(m.figura_max_mm) && m.figura_max_mm > 0 ? m.figura_max_mm : (sim ? 100 : 80);
+  let motivo = "";
+  if (!permitido) {
+    if (m.tipo === "ros") motivo = "Con ROS real no está habilitado: solo en SIM o con el robot por RWS y C02 verificado.";
+    else if (m.tipo === "rws") motivo = "Bloqueado: C02 (velocidad por junta en el RAPID) sin verificar. Verificá C02 para habilitarlo.";
+    else motivo = m.figuras_motivo || "Disponible en SIM o con el robot real por RWS y C02 verificado.";
+  }
+  return {
+    permitido,
+    sim,
+    maxMm,
+    subtituloJ5: sim ? "revisar en SIM" : permitido ? "robot real · RWS C02" : "solo SIM o RWS con C02",
+    tituloJ5: permitido
+      ? (sim ? "Calcula un plan articular que deja J5 en +30° (simulación)."
+             : "Plan articular J5 → +30° para el robot real (RWS, C02). Pasa por revisión, GO, armado y confirmación.")
+      : motivo,
+    tituloFiguras: permitido
+      ? (sim ? "Calcular una figura en simulación"
+             : `Calcular una figura para el robot real (RWS, C02; máx. ${maxMm} mm). Pasa por revisión, GO, armado y confirmación.`)
+      : motivo,
+    textoDialogo: sim
+      ? "Trayectorias de simulación a partir de la pose actual, con perfil suave por tramos."
+      : `Trayectorias para el ROBOT REAL a partir de la pose actual (máx. ${maxMm} mm). Se revisan antes de enviar y exigen GO, armado y confirmación. Si J5 ≈ 0, usá antes «Preparar J5 a +30°».`,
+  };
+}
+
+export function nombrePerfil(perfil) {
+  if (perfil === "camino_quintico") return "Suave C² por tramos";
+  if (perfil === "quintico") return "Suave quíntico";
+  return "LSPB académico";
 }
 
 function pasosPose(plan, cfg) {
@@ -76,7 +125,7 @@ function pasosPose(plan, cfg) {
   h += paso(8, "Selección de la mejor rama", ik.razon + " Ver la pestaña «Las 8 ramas».",
     tex(`\\text{válida}\\iff e_p\\le ${fe(cfg.ik.tol_e_p_m)}\\,\\text{m},\\;e_R\\le ${fe(cfg.ik.tol_e_R_rad)}\\,\\text{rad},\\;\\text{límites con }${cfg.ik.margen_limite_deg}^\\circ\\text{ de margen},\\;\\sigma_{\\min}\\ge ${cfg.ik.sigma_min}`) +
     tex(`\\text{puntaje}=\\sum_i w_i\\,|q_i-q_{i,\\text{actual}}|,\\quad w=[1,1,1,0.6,0.6,0.4]`));
-  if (plan.tray) h += pasoLSPB(9, plan);
+  if (plan.tray) h += pasoTrayectoria(9, plan);
   return h;
 }
 
@@ -93,22 +142,36 @@ function pasosArticular(plan) {
   const p = plan.pose_obj;
   h += paso(4, "Pose del TCP que resulta", "",
     tex(`p=(${f(p.x_mm, 1)},\\;${f(p.y_mm, 1)},\\;${f(p.z_mm, 1)})\\,\\text{mm},\\quad (R_z,R_y,R_x)=(${f(p.rz_deg, 2)}^\\circ,\\;${f(p.ry_deg, 2)}^\\circ,\\;${f(p.rx_deg, 2)}^\\circ)`));
-  h += pasoLSPB(5, plan);
+  h += pasoTrayectoria(5, plan);
   return h;
 }
 
-function pasoLSPB(n, plan) {
+function pasoTrayectoria(n, plan) {
   const t = plan.tray;
   const j = t.junta_limitante;
+  const multiple = t.perfil === "camino_quintico";
+  const suave = multiple || t.perfil === "quintico";
   let filas = "";
   for (let i = 0; i < 6; i++) {
-    filas += `<tr${i + 1 === j ? ' style="color:#ff9b3d;font-weight:700"' : ""}><td>J${i + 1}</td><td>${f(t.D_deg[i], 2)}</td><td>${f(t.V_deg_s[i], 2)}</td><td>${f(t.A_deg_s2[i], 2)}</td></tr>`;
+    const cambio = multiple ? "" : `<td>${f(t.D_deg[i], 2)}</td>`;
+    filas += `<tr${i + 1 === j ? ' style="color:#ff9b3d;font-weight:700"' : ""}><td>J${i + 1}</td>${cambio}<td>${f(t.V_deg_s[i], 2)}</td><td>${f(t.A_deg_s2[i], 2)}</td></tr>`;
+  }
+  const d = multiple ? "" : "<th>D [°]</th>";
+  const v = suave ? "Pico |q̇|" : "V";
+  const a = suave ? "Pico |q̈|" : "A";
+  const tabla = `<table class="tabla-simple"><tr><th>Junta</th>${d}<th>${v} [°/s]</th><th>${a} [°/s²]</th></tr>${filas}</table>`;
+  if (suave) {
+    const explicacion = multiple
+      ? "Polinomios quínticos por tramos que conservan posición, velocidad y aceleración en las uniones."
+      : "La posición sigue un polinomio de quinto grado con velocidad y aceleración nulas al empezar y al llegar.";
+    const ley = multiple ? "" : tex("q_i=q_{0,i}+D_i(10u^3-15u^4+6u^5),\\quad u=t/t_f");
+    return paso(n, nombrePerfil(t.perfil), explicacion, ley + `<p>Duración ${f(t.tf, 3)} s · ${t.motivo_tf}.</p>` + tabla);
   }
   return paso(n, "Trayectoria LSPB sincronizada",
     `Todas las juntas usan el mismo t<sub>f</sub> y el mismo t<sub>c</sub> = κ·t<sub>f</sub> (κ = 0.25). Manda la junta más exigida: ${t.motivo_tf}.`,
     tex(`t_f=\\max_i\\left\\{\\frac{|D_i|}{(1-\\kappa)V_{\\max,i}},\\;\\sqrt{\\frac{|D_i|}{\\kappa(1-\\kappa)A_{\\max,i}}}\\right\\}=${f(t.tf, 3)}\\,\\text{s},\\qquad t_c=${f(t.tc, 3)}\\,\\text{s}`) +
     tex(`V_i=\\frac{D_i}{t_f-t_c},\\qquad A_i=\\frac{V_i}{t_c}`) +
-    `<table class="tabla-simple"><tr><th>Junta</th><th>D [°]</th><th>V [°/s]</th><th>A [°/s²]</th></tr>${filas}</table>`);
+    tabla);
 }
 
 export function tablaRamas(plan) {
@@ -142,10 +205,15 @@ export function tablaRamas(plan) {
 export function panelLSPB(plan) {
   if (!plan || !plan.tray) return '<p class="vacio">Sin trayectoria.</p>';
   const t = plan.tray, c = plan.continuidad;
-  return `<p class="nota">Perfil trapezoidal: acelera durante t<sub>c</sub>, va a velocidad constante y frena durante t<sub>c</sub>. Posición y velocidad continuas; la aceleración salta en t<sub>c</sub> y t<sub>f</sub> − t<sub>c</sub> (es lo esperado en LSPB). La línea blanca marca el instante actual cuando el robot ejecuta este plan.</p>
+  const perfil = nombrePerfil(t.perfil);
+  const lspb = t.tc != null;
+  const descripcion = lspb
+    ? "Perfil trapezoidal con fases de aceleración, velocidad constante y frenado. La aceleración cambia en las transiciones."
+    : "Perfil quíntico con posición, velocidad y aceleración continuas.";
+  return `<p class="nota"><b>${perfil}</b>. ${descripcion}</p>
   <table class="tabla-simple"><tr><th>Dato</th><th>Valor</th></tr>
   <tr><td>Duración t<sub>f</sub></td><td>${f(t.tf, 3)} s</td></tr>
-  <tr><td>Mezcla t<sub>c</sub></td><td>${f(t.tc, 3)} s</td></tr>
+  ${lspb ? `<tr><td>Mezcla t<sub>c</sub></td><td>${f(t.tc, 3)} s</td></tr>` : ""}
   <tr><td>Junta que manda</td><td>${t.junta_limitante ? "J" + t.junta_limitante : "—"} (${t.motivo_tf})</td></tr>
   <tr><td>Velocidad usada</td><td>${f(plan.vel_pct, 0)} % de la hoja de datos${plan.vel_cap_deg_s ? `, tope ${plan.vel_cap_deg_s} °/s` : ""}</td></tr>
   <tr><td>Salto máx. de q entre muestras de 1 ms</td><td>${f(c.salto_q_max_deg, 5)} °</td></tr>
@@ -234,4 +302,92 @@ export function panelBitacora(v) {
   }
   h += '<h3>Eventos</h3><div class="eventos">' + (v.eventos || []).slice().reverse().map((e) => `<div class="${e.nivel}">${e.hora} · ${e.texto}</div>`).join("") + "</div>";
   return h;
+}
+
+// ---- Poses guardadas: «Ir a pose» sigue las reglas de «Volver a cero» (SIM y ROS como siempre; RWS solo con C02).
+export function permisoIrAPose(modo) {
+  const m = modo || {};
+  const permitido = typeof m.ir_a_pose_permitido === "boolean" ? m.ir_a_pose_permitido : m.tipo === "sim";
+  return {
+    permitido,
+    motivo: permitido ? "" : (m.ir_a_pose_motivo || "Ir a una pose guardada con el robot real por RWS exige C02 verificado."),
+  };
+}
+
+// ---- Vista de puntos de una figura
+export const PLANOS_VISTA = { XY: [0, 1], XZ: [0, 2], YZ: [1, 2] };
+
+// Proyección en el plano de dibujo: [u, v] en mm relativos al origen (por defecto, la primera muestra).
+export function proyectarFigura(puntos_m, plano = "XY", origen_m = null) {
+  const ejes = PLANOS_VISTA[String(plano).toUpperCase()] || PLANOS_VISTA.XY;
+  const lista = Array.isArray(puntos_m) ? puntos_m : [];
+  const o = origen_m || lista[0] || [0, 0, 0];
+  return lista.map((p) => [(p[ejes[0]] - o[ejes[0]]) * 1000, (p[ejes[1]] - o[ejes[1]]) * 1000]);
+}
+
+// Distancia de un punto al recorrido (polilínea) más cercano; sirve en 2D y en 3D.
+export function distanciaARecorrido(p, recorrido) {
+  if (!recorrido?.length) return NaN;
+  const dim = p.length;
+  let mejor = Infinity;
+  const d2 = (a, b) => { let s = 0; for (let i = 0; i < dim; i++) s += (a[i] - b[i]) ** 2; return s; };
+  if (recorrido.length === 1) return Math.sqrt(d2(p, recorrido[0]));
+  for (let k = 0; k + 1 < recorrido.length; k++) {
+    const a = recorrido[k], b = recorrido[k + 1];
+    let ab2 = 0, ap_ab = 0;
+    for (let i = 0; i < dim; i++) { const ab = b[i] - a[i]; ab2 += ab * ab; ap_ab += (p[i] - a[i]) * ab; }
+    const t = ab2 > 0 ? Math.min(1, Math.max(0, ap_ab / ab2)) : 0;
+    let s = 0;
+    for (let i = 0; i < dim; i++) s += (p[i] - (a[i] + t * (b[i] - a[i]))) ** 2;
+    if (s < mejor) mejor = s;
+  }
+  return Math.sqrt(mejor);
+}
+
+// Error entre los puntos medidos (FK de las juntas recibidas) y el recorrido planificado, en mm.
+// Ambas listas en metros, en la base del robot. Se usa la distancia 3D al tramo más cercano.
+export function errorFigura(medidos_m, planificados_m) {
+  const med = Array.isArray(medidos_m) ? medidos_m : [];
+  if (!med.length || !planificados_m?.length) return { n: 0, max_mm: null, medio_mm: null };
+  let max = 0, suma = 0;
+  for (const p of med) {
+    const d = distanciaARecorrido(p, planificados_m) * 1000;
+    if (d > max) max = d;
+    suma += d;
+  }
+  return { n: med.length, max_mm: max, medio_mm: suma / med.length };
+}
+
+// Agrega una muestra medida solo si se separa de la anterior (evita miles de puntos quietos).
+export function agregarMuestra(lista, p, minimo_m = 0.0002, maximo = 4000) {
+  const ultimo = lista.at(-1);
+  if (ultimo && Math.hypot(p[0] - ultimo[0], p[1] - ultimo[1], p[2] - ultimo[2]) < minimo_m) return false;
+  lista.push([p[0], p[1], p[2]]);
+  if (lista.length > maximo) lista.splice(0, lista.length - maximo);
+  return true;
+}
+
+// Paso "redondo" para las marcas de los ejes (1, 2 o 5 × 10^k mm).
+export function pasoEje(rango_mm, marcas = 5) {
+  const crudo = Math.max(rango_mm, 1e-6) / Math.max(1, marcas);
+  const base = 10 ** Math.floor(Math.log10(crudo));
+  const n = crudo / base;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * base;
+}
+
+// Encuadre con la MISMA escala en ambos ejes: devuelve funciones a píxeles (v crece hacia arriba).
+export function encuadreFigura(conjuntos, ancho, alto, margen = 28) {
+  const todos = conjuntos.flat().filter((p) => p && Number.isFinite(p[0]) && Number.isFinite(p[1]));
+  let uMin = Math.min(...todos.map((p) => p[0])), uMax = Math.max(...todos.map((p) => p[0]));
+  let vMin = Math.min(...todos.map((p) => p[1])), vMax = Math.max(...todos.map((p) => p[1]));
+  if (!todos.length) { uMin = vMin = -10; uMax = vMax = 10; }
+  const lado = Math.max(uMax - uMin, vMax - vMin, 2);
+  const holgura = 0.08 * lado;
+  const cu = (uMin + uMax) / 2, cv = (vMin + vMax) / 2;
+  const escala = Math.min((ancho - 2 * margen) / (uMax - uMin + 2 * holgura || lado), (alto - 2 * margen) / (vMax - vMin + 2 * holgura || lado));
+  const x = (u) => ancho / 2 + (u - cu) * escala;
+  const y = (v) => alto / 2 - (v - cv) * escala;
+  const u = (px) => cu + (px - ancho / 2) / escala;
+  const v = (py) => cv - (py - alto / 2) / escala;
+  return { escala, x, y, u, v, paso: pasoEje(Math.max(uMax - uMin, vMax - vMin, 2)) };
 }

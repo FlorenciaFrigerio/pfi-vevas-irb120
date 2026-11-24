@@ -1,0 +1,48 @@
+% Flujo de 8 pasos, estados de la revisión y compuertas -- compilar con: pdflatex fig_tuberia.tex
+\documentclass[border=1pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{mathptmx}
+\renewcommand{\ttdefault}{lmtt}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,calc,fit}
+\begin{document}
+\scriptsize
+\begin{tikzpicture}[
+  paso/.style={draw=black!70, rounded corners=1.5pt, fill=white, align=center, inner sep=1.5pt, minimum height=9mm, text width=17.5mm},
+  est/.style={draw=black!60, align=center, inner sep=1.4pt, text width=17.5mm, minimum height=5mm},
+  gate/.style={draw=black, fill=black!10, align=left, inner sep=1.8pt},
+  fl/.style={-{Latex[length=1.5mm]}, thick, black!75}]
+% fila 1
+\node[paso] (p1) {\textbf{1 Objetivo}\\pose, figura, junta, «cero»};
+\node[paso, right=3.5mm of p1] (p2) {\textbf{2 Pieper}\\8 ramas, \texttt{atan2}};
+\node[paso, right=3.5mm of p2] (p3) {\textbf{3 Verif.\ FK}\\$e_p\!<\!10^{-6}$\,m\\$e_R\!<\!10^{-5}$\,rad};
+\node[paso, right=3.5mm of p3] (p4) {\textbf{4 Rama}\\margen $\ge5^\circ$,\\mín.\ $\Delta q$ pond.};
+\draw[fl] (p1) -- (p2); \draw[fl] (p2) -- (p3); \draw[fl] (p3) -- (p4);
+% fila 2
+\node[paso, below=8mm of p1] (p5) {\textbf{5 Trayectoria}\\LSPB / quíntica\\(perfil «Suave»)};
+\node[paso, below=8mm of p2] (p6) {\textbf{6 Revisión}\\8 chequeos sobre\\$\le 240$ muestras};
+\node[paso, below=8mm of p3, very thick] (p7) {\textbf{7 Envío}\\tramos colineales\\$\le 40^\circ$ (RWS)};
+\node[paso, below=8mm of p4] (p8) {\textbf{8 Resultado}\\llegada medida,\\registro};
+\draw[fl] (p4.south) -- ++(0,-3.2mm) -| ($(p5.north)+(0,0)$);
+\draw[fl] (p5) -- (p6); \draw[fl] (p7) -- (p8);
+% estados
+\node[est, below=6mm of p6, fill=black!3] (s1) {\textbf{aprobado}};
+\node[est, below=0.8mm of s1, fill=black!8] (s2) {\textbf{aviso} (se informa)};
+\node[est, below=0.8mm of s2, fill=black!25] (s3) {\textbf{no\_verificado}\\bloquea con robot real};
+\node[est, below=0.8mm of s3, fill=black!45, text=white] (s4) {\textbf{rechazado}\\bloquea siempre};
+\draw[fl] (p6) -- (s1);
+\draw[thick, black!75] (s1.east) -- ++(1.8mm,0);
+\draw[fl] (s2.east) -- ++(1.8mm,0) |- ($(p7.west)+(0,-1.5mm)$);
+% compuertas
+\node[gate, below=6mm of p7, anchor=north west, text width=38.5mm] (g) at ($(p7.south west)+(0,-6mm)$)
+{\textbf{Compuertas antes de enviar}\\
+$\bullet$ evidencia C02 = huella SHA-256 del módulo local \emph{y} del IRC5, modo, $v_{\lim}$, $k_{pico}$\\
+$\bullet$ GO vigente (tope de velocidad, vencimiento)\\
+$\bullet$ «ARMAR» + checklist + frase de confirmación\\[1pt]
+\textbf{Durante el movimiento}\\
+$\bullet$ watchdog de estado, PARAR (Esc) detiene RAPID\\
+$\bullet$ postura cambió $\Rightarrow$ recalcular (vuelve a 5)};
+\draw[fl, dashed] ($(g.north)+(0,0)$) -- (g.north |- p7.south);
+\end{tikzpicture}
+\end{document}

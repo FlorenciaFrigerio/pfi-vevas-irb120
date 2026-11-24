@@ -37,6 +37,7 @@ CONFIG_POR_DEFECTO = {
         "sigma_min": 0.02,
     },
     "trayectoria": {
+        "perfil": "suave",
         "kappa": 0.25,
         "t_acel_s": 0.5,
         "t_min_s": 1.5,
@@ -81,7 +82,7 @@ CONFIG_POR_DEFECTO = {
         "clave": "robotics",
         "timeout_http_s": 3.0,
         "hz_lectura": 10,
-        "paso_envio_deg": 10.0,
+        "paso_envio_deg": 40.0,   # tramos colineales; la geometría no cambia, solo hay menos paradas
         "timeout_orden_s": 120,
         "vel_min_estimada_deg_s": 2.0,
         "watchdog_estado_s": 1.0,
@@ -106,7 +107,21 @@ def cargar_config(ruta: str | None) -> dict:
     if ruta and os.path.exists(ruta):
         with open(ruta, encoding="utf-8") as f:
             texto = "\n".join(l for l in f.read().splitlines() if not l.strip().startswith("//"))
-        return _mezclar(CONFIG_POR_DEFECTO, json.loads(texto))
+        cfg = _mezclar(CONFIG_POR_DEFECTO, json.loads(texto))
+        perfil = cfg["entorno"].get("perfil_mesa")
+        if perfil:
+            from pathlib import Path
+            from .mesa import cargar_perfil_mesa, generar_mesa
+            archivo = Path(perfil)
+            if not archivo.is_absolute():
+                archivo = Path(ruta).resolve().parent / archivo
+            mesa = generar_mesa(cargar_perfil_mesa(archivo))
+            # Una sola geometría alimenta la revisión y la vista 3D.
+            ent = cfg["entorno"]
+            ent["mesa"] = mesa
+            externas = [c for c in ent["cajas"] if c.get("origen") != "mesa"]
+            ent["cajas"] = externas + [{**c, "origen": "mesa"} for c in mesa["cajas"]]
+        return cfg
     return deepcopy(CONFIG_POR_DEFECTO)
 
 

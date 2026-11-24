@@ -4,6 +4,9 @@
     GET  /api/stream       estado en vivo (Server-Sent Events, ~20 por segundo)
     GET  /api/config       configuración y datos fijos del robot
     POST /api/<orden>      órdenes de la interfaz (ver ORDENES)
+                           poses guardadas: poses_listar, pose_guardar, pose_renombrar,
+                           pose_borrar (exige "confirmar": true), calcular_pose_guardada
+                           vista previa de figura (no mueve): vista_figura
 
 Escucha solo en 127.0.0.1 por defecto: nadie de la red puede mandar órdenes al robot.
 """
@@ -44,15 +47,20 @@ def _limpiar(o):
 
 
 def crear_servidor(consola, carpeta_web: str, host: str, puerto: int, hz: float):
+    consola.cfg["servidor"]["hz_estado"] = hz
     def config_publica():
+        from copy import deepcopy
+        cfg_publica = deepcopy(consola.cfg)
+        if "rws" in cfg_publica:
+            cfg_publica["rws"].pop("clave", None)
         return {
             "dh": [list(f) for f in DH],
             "limites_deg": [list(l) for l in LIMITES_DEG],
             "vel_max_deg_s": list(VEL_MAX_DEG),
-            "postura_inicial_deg": POSTURA_INICIAL_DEG,
+            "postura_inicial_deg": list(consola.cfg.get("postura_inicial_deg", POSTURA_INICIAL_DEG)),
             "presets": PRESETS_POSE,
             "poses_demo": POSES_DEMO,
-            "cfg": consola.cfg,
+            "cfg": cfg_publica,
             "frase_real": "MOVER ROBOT REAL",
             "pasos_demo": [{"titulo": p["titulo"], "explicacion": p["explicacion"], "grupo": p.get("grupo", "")} for p in pasos_demo()],
         }
@@ -80,6 +88,22 @@ def crear_servidor(consola, carpeta_web: str, host: str, puerto: int, hz: float)
                 return self._json(config_publica())
             if ruta == "/api/estado":
                 return self._json(consola.estado())
+            if ruta == "/api/verificacion_pendant":
+                if consola.backend.tipo != "rws":
+                    return self._json({"ok": False, "mensaje": "La comparación con el controlador requiere modo RWS; en SIM no se inventan medidas del FlexPendant."})
+                with consola.lock:
+                    ocupado = consola.ejec is not None or consola.jog is not None or getattr(consola, "envio_pendiente", False)
+                if ocupado:
+                    return self._json({"ok": False, "mensaje": "Esperá a que termine el movimiento antes de tomar una captura de comparación."})
+                try:
+                    from .verificacion_pendant import comparar_con_controlador
+                    rc = consola.cfg["robot"]
+                    comparacion = comparar_con_controlador(consola.backend.cli, consola.robot,
+                                                          signos=rc["signos"], offsets_deg=rc["offsets_deg"])
+                    consola.reg.evento("verificacion_pendant", datos=comparacion)
+                    return self._json(comparacion)
+                except (ValueError, RuntimeError) as error:
+                    return self._json({"ok": False, "mensaje": str(error)})
             if ruta == "/api/plan":
                 from .consola import publico
 
@@ -106,13 +130,13 @@ def crear_servidor(consola, carpeta_web: str, host: str, puerto: int, hz: float)
             self.send_header("Cache-Control", "no-store")
             self.send_header("Connection", "keep-alive")
             self.end_headers()
-            periodo = 1.0 / hz
             try:
                 while True:
                     datos = json.dumps(_limpiar(consola.estado()), ensure_ascii=False)
                     self.wfile.write(f"data: {datos}\n\n".encode("utf-8"))
                     self.wfile.flush()
-                    time.sleep(periodo)
+                    # Frecuencia de pantalla: no cambia el sondeo RWS ni el mando RAPID.
+                    time.sleep(1.0 / float(consola.cfg["servidor"]["hz_estado"]))
             except (BrokenPipeError, ConnectionResetError, OSError):
                 return
 
@@ -148,6 +172,37 @@ def _res(t):
     return {"ok": ok, "mensaje": msg}
 
 
+def ejecutar_revisado(consola, cuerpo):
+    plan_id = cuerpo.get("plan_id")
+    if type(plan_id) is not int or plan_id < 1:
+        return {"ok": False, "mensaje": "Falta un plan_id válido del plan que revisaste. Volvé a calcular antes de enviar."}
+    return _res(consola.ejecutar(plan_id=plan_id))
+
+
+def fijar_frecuencia(consola, cuerpo):
+    hz = cuerpo.get("hz")
+    if isinstance(hz, bool) or not isinstance(hz, (int, float)) or hz not in (5, 10, 20):
+        return {"ok": False, "mensaje": "La frecuencia de pantalla debe ser 5, 10 o 20 Hz."}
+    with consola.lock:
+        consola.cfg["servidor"]["hz_estado"] = hz
+    fuente = consola.cfg.get("rws", {}).get("hz_lectura") if consola.backend.tipo == "rws" else None
+    return {"ok": True, "hz_vista": hz, "hz_fuente": fuente}
+
+
+def vista_figura(consola, cuerpo):
+    """Vista previa de puntos de una figura. No mueve nada ni cambia el plan; los errores de
+    validación (tamaño fuera de rango mientras se escribe) no se registran como avisos."""
+    try:
+        vista = consola.vista_figura(cuerpo.get("figura"), cuerpo.get("tamano_mm", 25), cuerpo.get("plano", "XY"))
+    except (ValueError, RuntimeError) as error:
+        return {"ok": False, "mensaje": str(error)}
+    return _ok(vista=vista)
+
+
+def _con_lista(consola, mensaje, **extra):
+    return _ok(mensaje, **extra, **consola.listar_poses())
+
+
 ORDENES = {
     "pulso": lambda c, b: (c.pulso(), _ok())[1],
     "calcular_pose": lambda c, b: _ok(plan=c.calcular_pose({k: float(b[k]) for k in ("x", "y", "z", "rz", "ry", "rx")})),
@@ -155,9 +210,18 @@ ORDENES = {
     "calcular_junta": lambda c, b: _ok(plan=c.calcular_junta(int(b["junta"]), float(b["valor_deg"]), bool(b.get("relativo")))),
     "ik_vivo": lambda c, b: _ok(ik=c.ik_vivo_rapido({k: float(b[k]) for k in ("x", "y", "z", "rz", "ry", "rx")}, b.get("q_ref_deg"))),
     "calcular_home": lambda c, b: _ok(plan=c.calcular_home(str(b.get("destino", "cero")))),
+    "calcular_figura": lambda c, b: _ok(plan=c.calcular_figura(b.get("figura"), b.get("tamano_mm", 25), b.get("plano", "XY"))),
+    "vista_figura": vista_figura,
+    "poses_listar": lambda c, b: _con_lista(c, "ok"),
+    "pose_guardar": lambda c, b: _con_lista(c, "Pose guardada.", pose=c.guardar_pose_actual(b.get("nombre"))),
+    "pose_renombrar": lambda c, b: _con_lista(c, "Pose renombrada.", pose=c.renombrar_pose(b.get("nombre"), b.get("nuevo"))),
+    "pose_borrar": lambda c, b: _con_lista(c, "Pose borrada.", pose=c.borrar_pose(b.get("nombre"), b.get("confirmar"))),
+    "calcular_pose_guardada": lambda c, b: _ok(plan=c.calcular_pose_guardada(b.get("nombre"))),
+    "perfil": lambda c, b: _ok("Perfil actualizado. Volvé a calcular el recorrido.", perfil=c.fijar_perfil(b.get("perfil"))),
     "elegir_rama": lambda c, b: _ok(plan=c.elegir_rama_manual(int(b["indice"]))),
-    "ejecutar": lambda c, b: _res(c.ejecutar()),
-    "parar": lambda c, b: (c.parar(b.get("motivo", "botón PARAR")), _ok("Parado."))[1],
+    "ejecutar": ejecutar_revisado,
+    "frecuencia": fijar_frecuencia,
+    "parar": lambda c, b: (c.parar(b.get("motivo", "botón PARAR")), _ok("Cancelación solicitada; el tramo físico puede seguir en curso." if c.backend.tipo == "rws" else "Parado."))[1],
     "armar": lambda c, b: _res(c.armar(b.get("checklist", {}), b.get("frase", ""))),
     "desarmar": lambda c, b: (c.desarmar(), _ok("Desarmado."))[1],
     "velocidad": lambda c, b: _ok(vel_pct=c.fijar_velocidad(float(b["pct"]))),

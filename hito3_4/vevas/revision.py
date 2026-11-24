@@ -94,7 +94,7 @@ def capsulas(robot, q, cfg: dict) -> list[tuple[str, np.ndarray, np.ndarray, flo
         ("antebrazo", P(3), P(4), r["antebrazo"]),
         ("muneca", P(4), P(6), r["muneca"]),
     ]
-    if np.linalg.norm(tcp - P(6)) > 1e-4:
+    if np.linalg.norm(tcp - P(6)) > 1e-9:
         caps.append(("herramienta", P(6), tcp, r_tool))
     return caps
 
@@ -123,23 +123,25 @@ def margen_autocolision(robot, q, cfg: dict) -> tuple[float, tuple[str, str] | N
     return peor, par
 
 
-def margen_entorno(robot, q, cfg: dict) -> tuple[float, str | None]:
-    """Menor holgura [m] contra las cajas del entorno y la mesa (negativa = se tocan)."""
+def margen_entorno(robot, q, cfg: dict, holgura: float) -> tuple[float, str | None, float]:
+    """Holgura, obstáculo y mínimo requerido de la condición más restrictiva."""
     ent = cfg.get("entorno", {})
-    peor, quien = float("inf"), None
+    peor, quien, requerido = float("inf"), None, holgura
     mesa = float(ent.get("mesa_z_m", 0.0))
+    margen_mesa = max(holgura, 0.05)
     for nombre, a, b, rad in capsulas(robot, q, cfg):
         if nombre != "base":
             h = min(a[2], b[2]) - rad - mesa
-            if h < peor:
-                peor, quien = h, f"mesa ({nombre})"
+            if h - holgura < peor - requerido:
+                peor, quien, requerido = h, f"plano de montaje ({nombre})", holgura
         for caja in ent.get("cajas", []):
             lo = np.asarray(caja["min_mm"], dtype=float) / 1000.0
             hi = np.asarray(caja["max_mm"], dtype=float) / 1000.0
             h = _dist_segmento_caja(a, b, lo, hi) - rad
-            if h < peor:
-                peor, quien = h, f"{caja.get('nombre', 'objeto')} ({nombre})"
-    return peor, quien
+            minimo = margen_mesa if caja.get("origen") == "mesa" else holgura
+            if h - minimo < peor - requerido:
+                peor, quien, requerido = h, f"{caja.get('nombre', 'objeto')} ({nombre})", minimo
+    return peor, quien, requerido
 
 
 def tipo_singularidad(s: dict) -> str:
@@ -174,7 +176,7 @@ def nivel_singularidad(sigma_min: float, sigma_umbral: float) -> str:
 
 
 def revisar_trayectoria(robot, ts, Q, QD, q_medida, cfg: dict, vel_pct_max: float, exige_go: bool = False,
-                        permitir_singular_destino: bool = False) -> dict:
+                        permitir_singular_destino: bool = False, velocidad_articular_verificada: bool = True) -> dict:
     """Revisa la trayectoria completa y devuelve el informe.
 
     ts, Q, QD   muestras de la trayectoria (s, rad, rad/s)
@@ -237,7 +239,7 @@ def revisar_trayectoria(robot, ts, Q, QD, q_medida, cfg: dict, vel_pct_max: floa
         chequeos.append(_chequeo("limites", "Límites articulares", "aprobado",
                                  f"Margen mínimo a un límite: {math.degrees(peor_marg):.1f}° (se pide ≥ {math.degrees(margen_lim):.0f}°)."))
 
-    # 3. velocidad por junta (C02)
+    # 3. velocidad planificada por junta
     tope_pct = min(float(vel_pct_max), 100.0)
     tope = np.array(VEL_MAX_DEG) * tope_pct / 100.0
     vmax = np.degrees(np.abs(QD)).max(axis=0)
@@ -246,12 +248,17 @@ def revisar_trayectoria(robot, ts, Q, QD, q_medida, cfg: dict, vel_pct_max: floa
     if exceso[j_ex] > 1.001:
         k_ex = int(np.argmax(np.degrees(np.abs(QD[:, j_ex]))))
         marcar(k_ex, 2, "velocidad")
-        chequeos.append(_chequeo("velocidad", "Velocidad por junta", "rechazado",
+        chequeos.append(_chequeo("velocidad", "Velocidad del plan en VEVAS", "rechazado",
                                  f"J{j_ex + 1} llegaría a {vmax[j_ex]:.1f}°/s y su tope es {tope[j_ex]:.1f}°/s ({tope_pct:.0f} % de la hoja de datos).",
                                  k=k_ex, t=float(ts[k_ex]), juntas=[j_ex + 1]))
     else:
-        chequeos.append(_chequeo("velocidad", "Velocidad por junta", "aprobado",
-                                 f"Mayor uso de tope: J{j_ex + 1} a {vmax[j_ex]:.1f}°/s de {tope[j_ex]:.1f}°/s permitidos."))
+        chequeos.append(_chequeo("velocidad", "Velocidad del plan en VEVAS", "aprobado",
+                                 f"Velocidad del plan verificada en VEVAS. Mayor uso de tope: J{j_ex + 1} a {vmax[j_ex]:.1f}°/s de {tope[j_ex]:.1f}°/s permitidos."))
+
+    if not velocidad_articular_verificada:
+        chequeos.append(_chequeo("velocidad_controlador", "Velocidad articular en el IRC5", "no_verificado",
+                                 "RWS ejecuta MoveAbsJ con velocidad de TCP y orientación fijas. "
+                                 "El límite por junta del GO solo se comprobó en el plan nominal."))
 
     # 4. singularidad a lo largo de la trayectoria
     sig = []
@@ -264,24 +271,58 @@ def revisar_trayectoria(robot, ts, Q, QD, q_medida, cfg: dict, vel_pct_max: floa
     # Rechazo: el camino se mete en (o más hondo en) una zona singular que no estaba al principio.
     # «empeora» exige una caída real (no ruido numérico cuando ya parte en una singularidad exacta)
     cae = sig_mn < 0.9 * sig_ini and (sig_ini - sig_mn) > 0.002
-    entra = sig_mn < sigma_min and cae
+    entra = sig_mn < sigma_min and (exige_go or sig_ini >= sigma_min or cae)
     solo_destino = False
-    if entra and permitir_singular_destino:
+    # «articular_real»: robot real por RWS con MoveAbsJ y velocidad por junta acotada y verificada (C02). Llegar a
+    # q = 0 por un camino articular no exige velocidades articulares altas; la singularidad solo importa para un
+    # movimiento cartesiano posterior, y salir de ella también está contemplado.
+    destino_ok = permitir_singular_destino and (not exige_go or permitir_singular_destino == "articular_real")
+    if entra and destino_ok and np.allclose(Q[-1], 0, atol=1e-9, rtol=0):
         # la zona singular debe ser un tramo continuo que termina en la última muestra
-        mal = [i for i, (_, sg, _) in enumerate(sig) if sg < sigma_min and sg < 0.9 * sig_ini and (sig_ini - sg) > 0.002]
-        solo_destino = bool(mal) and mal[-1] == len(sig) - 1 and mal == list(range(mal[0], len(sig)))
-    if entra and solo_destino:
+        mal = [i for i, (_, sg, _) in enumerate(sig) if sg < sigma_min]
+        if mal and mal == list(range(mal[0], len(sig))):
+            tramo = sig[mal[0]:]
+            solo_muneca = all(s["codo_sin_delta"] >= 0.09 and s["hombro_r_w_m"] >= 0.03 for _, _, s in tramo)
+            se_acerca = all(b[1] <= a[1] + 1e-8 for a, b in zip(tramo, tramo[1:]))
+            solo_destino = solo_muneca and se_acerca
+    # Salida de una singularidad de muñeca (robot real): el robot ya está singular (p. ej. J5 = 0 tras un
+    # reposo) y el camino se ALEJA. La ejecución es articular (MoveAbsJ / FollowJointTrajectory) con velocidad
+    # por junta acotada (C02), así que no hay velocidades articulares explosivas; sin esta excepción el
+    # robot real quedaría sin ninguna salida posible desde q5 = 0.
+    sale = False
+    if entra and not solo_destino and sig_ini < sigma_min:
+        mal = [i for i, (_, sg, _) in enumerate(sig) if sg < sigma_min]
+        if mal and mal == list(range(len(mal))) and len(mal) < len(sig):
+            # El robot puede arrancar con q5 apenas del otro lado de 0 (p. ej. −0.05° leído por RWS): el camino
+            # cruza q5 = 0 dentro de la zona singular inicial y después se aleja. Se exige monotonía desde el
+            # mínimo de σ (que tiene que estar dentro de esa zona inicial) hasta salir de ella.
+            i_min = min(range(len(mal)), key=lambda i: sig[i][1])
+            tramo = sig[i_min:len(mal) + 1]
+            solo_muneca = all(s["codo_sin_delta"] >= 0.09 and s["hombro_r_w_m"] >= 0.03 for _, _, s in sig[:len(mal)])
+            se_aleja = all(b[1] >= a[1] - 1e-8 for a, b in zip(tramo, tramo[1:]))
+            fin_ok = sig[-1][1] >= FACTOR_CERCA * sigma_min
+            sale = solo_muneca and se_aleja and fin_ok
+    if entra and sale:
+        for k, sg, _ in sig:
+            if sg < sigma_min:
+                marcar(k, 1, "singularidad")
+        chequeos.append(_chequeo("singularidad", "Singularidades en el recorrido", "aviso",
+                                 f"Sale de una singularidad de muñeca: parte con σ = {sig_ini:.4f} y termina con "
+                                 f"σ = {sig[-1][1]:.3f}, alejándose en todo el tramo. Movimiento articular con velocidad "
+                                 "por junta acotada (C02).", k=sig[0][0], t=float(ts[sig[0][0]])))
+    elif entra and solo_destino:
         for k, sg, _ in sig:
             if sg < sigma_min:
                 marcar(k, 1, "singularidad")
         chequeos.append(_chequeo("singularidad", "Singularidades en el recorrido", "aviso",
                                  f"El destino es singular (σ = {sig[-1][1]:.4f}, {tipo_singularidad(sig[-1][2])}). "
-                                 "q = 0 es singular de muñeca; en un movimiento articular no es un problema. "
-                                 "No hagas movimientos cartesianos desde ahí.",
+                                 "q = 0 es singular de muñeca. " + ("Movimiento articular con velocidad por junta acotada (C02); "
+                                 "antes de mover en cartesiano sacá J5 de 0." if exige_go else
+                                 "La simulación muestra la llegada articular a esa postura."),
                                  k=sig[-1][0], t=float(ts[sig[-1][0]])))
     elif entra:
         for k, sg, _ in sig:
-            if sg < sigma_min and sg < 0.9 * sig_ini and (sig_ini - sg) > 0.002:
+            if sg < sigma_min:
                 marcar(k, 2, "singularidad")
         chequeos.append(_chequeo("singularidad", "Singularidades en el recorrido", "rechazado",
                                  f"En t = {ts[k_min]:.2f} s el valor singular mínimo cae a σ = {sig_mn:.4f} (umbral {sigma_min}); zona: {texto_tipo}.",
@@ -332,21 +373,22 @@ def revisar_trayectoria(robot, ts, Q, QD, q_medida, cfg: dict, vel_pct_max: floa
     # 7. entorno (mesa y objetos descritos)
     ent = cfg.get("entorno", {})
     cajas = ent.get("cajas", [])
-    en_k, en_q, mejor_e = None, None, float("inf")
+    en_k, en_q, en_h, en_min = None, None, None, None
+    mejor_e = float("inf")
     for k in idx:
-        h, quien = margen_entorno(robot, Q[k], cfg)
+        h, quien, minimo = margen_entorno(robot, Q[k], cfg, holgura)
         mejor_e = min(mejor_e, h)
-        if h < holgura:
+        if h < minimo - 1e-9:
             marcar(k, 2, "entorno")
             if en_k is None:
-                en_k, en_q = k, quien
-    sin_objetos = bool(ent.get("sin_objetos_externos_confirmado", False))
+                en_k, en_q, en_h, en_min = k, quien, h, minimo
+    sin_objetos = ent.get("sin_objetos_externos_confirmado") is True
     if en_k is not None:
         chequeos.append(_chequeo("entorno", "Colisión con mesa y objetos descritos", "rechazado",
-                                 f"En t = {ts[en_k]:.2f} s el brazo toca {en_q} (holgura {mejor_e * 1000:.0f} mm; se exige ≥ {holgura * 1000:.0f} mm).",
+                                 f"En t = {ts[en_k]:.2f} s, margen insuficiente frente a {en_q}: {en_h * 1000:.1f} mm; se exige ≥ {en_min * 1000:.0f} mm.",
                                  k=en_k, t=float(ts[en_k])))
-    elif cajas or sin_objetos:
-        det = f"Holgura mínima a mesa y {len(cajas)} objeto(s) descritos: {mejor_e * 1000:.0f} mm."
+    elif any(caja.get("origen") != "mesa" for caja in cajas) or sin_objetos:
+        det = f"Holgura de la condición más restrictiva del entorno: {mejor_e * 1000:.0f} mm."
         if sin_objetos and not cajas:
             det = f"Mesa revisada (holgura {mejor_e * 1000:.0f} mm). El operador confirmó en config.json que no hay otros objetos."
         chequeos.append(_chequeo("entorno", "Colisión con mesa y objetos descritos", "aprobado", det))
@@ -358,7 +400,10 @@ def revisar_trayectoria(robot, ts, Q, QD, q_medida, cfg: dict, vel_pct_max: floa
     # 8. herramienta
     tool = ent.get("herramienta", {})
     tcp_cero = all(abs(v) < 1e-9 for v in cfg["robot"]["tcp_xyz_m"])
-    if tool.get("confirmada") or (tcp_cero and ent.get("sin_herramienta_confirmada")):
+    herramienta_modelada = (tool.get("confirmada") is True and not tcp_cero
+                            and math.isfinite(tool.get("radio_mm", 0)) and tool.get("radio_mm", 0) > 0)
+    if herramienta_modelada or (tcp_cero and ent.get("sin_herramienta_confirmada") is True
+                                and tool.get("confirmada") is not True):
         chequeos.append(_chequeo("herramienta", "Herramienta montada", "aprobado", "El operador confirmó la herramienta en config.json."))
     else:
         chequeos.append(_chequeo("herramienta", "Herramienta montada", "no_verificado",

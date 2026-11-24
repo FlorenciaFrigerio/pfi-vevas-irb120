@@ -1,72 +1,27 @@
-# Prompt para continuar con otra IA
+# Handoff VEVAS Studio · 20/11/2026
 
-Copiá todo lo que está debajo de la línea y pegalo como primer mensaje.
+> Sos mi asistente para VEVAS Studio, PFI Hitos 3/4 de Robótica IMT-342 (UCB Tarija). Hablame en español informal, con comandos completos y entregables que pueda usar. Trabajá desde `hito3_4` del repo `FlorenciaFrigerio/pfi-vevas-irb120`. Revisá primero el estado de la rama y los cambios locales.
 
----
+## Leé primero
 
-Sos mi asistente en el proyecto **VEVAS Studio** del grupo VEVAS, para Robótica IMT-342 (UCB Tarija), PFI Hitos 3/4. Hablame en español informal. Dame comandos completos y listos para copiar, y entregables directos.
+1. [Cambios del 20/11](CAMBIOS_20NOV.md) y [prueba de interfaz](docs/PRUEBA_INTERFAZ_20NOV.md).
+2. [Avances y contexto](AVANCES_CONTEXTO.md) y [registro del 19/11](CAMBIOS_19NOV.md).
+3. [Prompts por tarea](docs/PROXIMOS_PROMPTS.md), [mejoras pendientes](docs/MEJORAS_EXTRAS.md) y [guía de RViz](docs/RVIZ_RWS.md).
 
-## Contexto del robot y la PC
-- **Robot:** ABB IRB 120-3/0.6 con IRC5 Compact y RobotWare 6.12.01 (sistema `120-101516`). El IRC5 está en `192.168.125.1`, puerto SERVICE.
-- **RWS:** versión 1.0, autenticación digest, `Default User` / `robotics`.
-- **PC:** Ubuntu con ROS 2 Jazzy. El workspace `~/abb_ws` tiene abb_ros2 compilado. La IP la da el DHCP del IRC5 (vista `192.168.125.207` en `eno2`).
-- **Carpeta de trabajo:** `~/Descargas/ROBOTICA/vevas_interfaz_prototipo_2026-11-19`.
-- **Repo:** https://github.com/FlorenciaFrigerio/pfi-vevas-irb120. Va en la carpeta `hito3_4/`, rama `19NOV`, que después se fusiona en `main`.
+## Estado actual
 
-## Lo que ya funciona (19/11/2026)
-- **Mover el robot real desde la PC por RWS.**
-  - El módulo RAPID `rapid/VEVAS_RWS.mod` (rutina `VevasServidor`) recibe objetivos articulares en `vvPcTarget`/`vvPcSeq` y responde por `vvRbSeq`/`vvRbCodigo`. Ejecuta con `MoveAbsJ` a velocidad fija (20 mm/s, 5°/s).
-  - Está adaptado de `LabJointRws` (repo `Marcelo767n/robotica-IMT342`, rama `proyectoHito3y4`).
-- **Lanzador de un comando: `./iniciar_real.sh -y`** (con la llave en AUTO).
-  - Pasos: ping → estado RWS → GO automático → instala el módulo → Start → nodo ROS y RViz → consola web en `http://127.0.0.1:8000`.
-  - Al arrancar, el FlexPendant pide «Iniciar» (`confirmarEnPendant := TRUE`).
-  - Ctrl+C detiene RAPID, apaga motores y pone el PP en `main`.
-- **Línea de comandos `herramientas/rws_irc5.py`:**
-  - `mover` (absoluto o `--rel`, en tramos de 10°; si el servidor está detenido lo arranca);
-  - `estado`, `parar`, `diagnostico` (registro de eventos del IRC5), `texto` (diff del módulo en el controlador contra el archivo local).
-- **Consola web (VEVAS)** con `--modo sim|ros|rws`:
-  - arrastre con flechas X/Y/Z sobre la punta en el 3D, con IK de Pieper en vivo (8 ramas), verificación FK (e_p, e_R), σmin del Jacobiano, tipo de singularidad y si la pose es admisible;
-  - «Calcular y verificar» genera la trayectoria LSPB y la revisión previa; después viene «Enviar»; nunca envía solo;
-  - «Volver a cero» y «Postura inicial»;
-  - indicador de singularidad en vivo;
-  - gráficas de q, q̇ y q̈;
-  - pestañas Jacobiano, FK y 8 ramas.
-- **Revisión previa (`vevas/revision.py`):**
-  - chequea inicio, límites, velocidad por junta, singularidades en todo el recorrido (rechaza si σmin < 0.02; «cerca» si σmin < 0.04), altura mínima, autocolisión por cápsulas, mesa/cajas y herramienta;
-  - muestra el instante y la pose donde falla.
-- **Seguridad:** C01–C04 cerrados (GO estricto, tope de velocidad por junta, cancelar al desarmar o parar, estado viejo), en `vevas/consola.py`.
-- **Pruebas:** `python3 tests/test_revision.py` (16) y `python3 -m pytest -q tests/test_rws.py tests/test_ik_vivo.py` (29 + 7). El IRC5 simulado está en `tests/mock_rws.py`.
+- La consola web ofrece simulación, arrastre del TCP con flechas y anillos, IK de Pieper, comprobación de FK, singularidades y revisión del plan. El envío en SIM es explícito. Verificá la versión local con la prueba de interfaz y registrá los resultados que obtengas.
+- `bash iniciar_real.sh --solo-chequeo` consulta el estado. En la PC del laboratorio, `bash iniciar_real.sh --solo-lectura` abre una vista RWS con el lector ROS y RViz. Ese flujo publica postura sin acción de movimiento ni ejecución de MoveIt. La comparación con el FlexPendant es asistida y en lectura. Los contadores de revolución y los offsets del controlador quedan intactos.
+- El grupo reportó movimiento del ABB IRB 120 por RWS el 19/11. Los registros físicos originales y la validación del arrastre y de los anillos con el brazo siguen pendientes. El chat registra EGM «Connected» el 18/11 con la PC en `.10`. El fallo de conexión EGM del 19/11 ocurrió con la PC en `.207`.
+- C01–C04 tenían coberturas parciales en la base auditada. La rama incorpora correcciones de software. El backend y los puntos de entrada de movimiento mantienen bloqueados el envío real y `mover` hasta verificar C02. Los 5°/s de `vPc` describen reorientación del TCP. Mantener las compuertas, el GO manual por sesión y `confirmarEnPendant := TRUE`.
+- Usá las pruebas de Python y de JavaScript disponibles para validar el cambio en local. Incluí el comando, la versión y lo que efectivamente pasó. El IRC5 simulado permite verificar el protocolo en local. La velocidad real por junta, el seguimiento temporal y la parada física se verifican en el laboratorio.
 
-## Leé primero, en este orden
-1. `CAMBIOS_19NOV.md`: qué se cambió, los problemas del robot real y lo que falta.
-2. `AVANCES_CONTEXTO.md`: estado técnico y tabla de archivos.
-3. `GUIA_3_PRIMER_MOVIMIENTO_REAL.md`.
-4. Código, según la tarea:
-   - backend: `vevas/rws_cliente.py`, `vevas/backend_rws.py`, `vevas/consola.py`, `vevas/revision.py`, `vevas/servidor.py`;
-   - web: `web/app.js`, `web/arrastre.js`, `web/escena.js`;
-   - RAPID: `rapid/VEVAS_RWS.mod`;
-   - lanzador: `iniciar_real.sh`.
+## Mesa confirmada
 
-## Lecciones que NO hay que repetir
-- **RWS corta el texto de un módulo RAPID en 5000 caracteres.** `VEVAS_RWS.mod` tiene que quedar por debajo de 4800, con comentarios mínimos. El cliente lo controla.
-- **`LabJointRws` de otro grupo está cargado en T_ROB1.** No uses sus nombres globales (`pcTarget`, `ServidorPC`, `maxPasoDeg`…). Usá el prefijo `vv`/`Vevas` y constantes `LOCAL`.
-- **Particularidades de RobotWare 6:**
-  - los módulos se listan en `/rw/rapid/modules?task=T_ROB1`;
-  - el campo del módulo en `pcp` viene con la errata `modulemame`;
-  - el PP se mueve con `POST /rw/rapid/tasks/T_ROB1/pcp?action=set-pp-routine` (`module`, `routine`, `userlevel=false`).
-- **EGM (abb_ros2) no conectó:** el IRC5 manda a `.10` y la PC tenía `.207`. Quedó como legado en `iniciar_real_egm.sh`; la ruta principal es RWS.
-- **Dentro del controlador no se modifica nada que sea de otros grupos.**
+Marco exterior de 80 × 80 cm y perfil de 5 × 5 cm. Los claros son 29,5 cm en cada lateral, 44,5 cm del lado opuesto a los conectores y 14 cm del lado de los conectores. Desde el plano de los tornillos, el canto superior del marco está a 19 cm y el tope del cilindro a 18 cm. La diferencia es de 1 cm. Los valores anteriores de 37 y 39 cm quedan descartados.
 
-## Lo que falta (prioridad)
-1. Probar el arrastre 3D y «Enviar» desde la web con el robot real, con movimientos chicos.
-2. RViz/MoveIt con el robot real aparece vacío. Revisar `sesiones/moveit_*.log` y `sesiones/nodo_rws_*.log`, y el nodo `herramientas/nodo_rws_ros.py` (`/joint_states` + `FollowJointTrajectory`).
-3. Agregar anillos de rotación (Rz/Ry/Rx) al arrastre; hoy solo hay traslación.
-4. Velocidad fija en RAPID (20 mm/s, 5°/s), con frenadas en cada tramo. Evaluar una velocidad parametrizable acotada o tramos más largos.
-5. Decidir con el docente si `confirmarEnPendant` pasa a `FALSE`, para arrancar sin tocar el FlexPendant.
-6. Medir el entorno real y cargar las cajas en `config.json → entorno`.
-7. Documentación del Hito 3/4: informe, video y evidencias de los movimientos reales.
+## Continuación
 
-## Reglas de seguridad
-- El freno real es el paro de emergencia. En AUTO no hay enabling device, así que siempre tiene que haber alguien con la mano en el paro.
-- Nunca enviar movimientos sin revisión previa. No sacar las compuertas (GO, revisión, armado) sin que yo lo pida explícitamente y con autorización del docente.
-- No mandar desde VEVAS y MoveIt al mismo tiempo.
+Completá primero las pruebas en SIM y el diseño de la verificación de C02. Seguí con la coincidencia de las seis juntas entre el FlexPendant, RWS y el gemelo, y con la inspección de la mesa, herramienta y obstáculos. Para evaluar suavidad, retorno a cero y velocidad derivada, registrá el origen de las muestras, sus marcas temporales y la frecuencia efectiva. Incorporá al informe los registros originales y video disponibles con su procedencia.
+
+Prepará por escrito el protocolo para cualquier ensayo supervisado. No conectes al controlador ni ejecutes hardware de forma automática. El equipo inicia cualquier ensayo físico con autorización del docente y las compuertas vigentes.

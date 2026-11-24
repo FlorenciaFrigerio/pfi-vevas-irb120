@@ -73,9 +73,15 @@ def cfg_rws(e, **extra):
     return c
 
 
-def consola_rws(e, go=None):
+class BackendRWSDeEnsayo(BackendRWS):
+    """Solo para el IRC5 de tests, con el límite de velocidad del integrador simulado."""
+    velocidad_articular_verificada = True
+
+
+def consola_rws(e, go=None, backend_cls=BackendRWSDeEnsayo):
     c = cfg_rws(e)
-    b = BackendRWS(c, lambda t: None, cliente=e.cli)
+    e.mock.vel = min(e.mock.vel, 5.0)  # °/s por junta del integrador del mock
+    b = backend_cls(c, lambda t: None, cliente=e.cli)
     con = Consola(c, b, Registro(tempfile.mkdtemp(), "test_rws"), permitir_real=True, go=go or tr.go_valido())
     b.iniciar()
     con.iniciar()
@@ -380,6 +386,7 @@ def test_manual_reducido_pide_rmmp_y_envia():
 def test_consola_ejecuta_una_trayectoria_multiwaypoint_sin_abortar_por_seguimiento():
     e = Escenario(vel_deg_s=6.0)  # robot MÁS LENTO que el plan LSPB: por tiempo habría abortado (> 3° de error)
     con, b = consola_rws(e)
+    b.paso_deg = 10.0   # este ensayo fuerza varios tramos (por defecto ahora son de hasta 40°)
     try:
         assert b.tipo == "rws" and b.seguimiento_por_llegada
         assert con.modo()["exige_go"] and con.armar(CHECK, FRASE)[0]
@@ -391,6 +398,9 @@ def test_consola_ejecuta_una_trayectoria_multiwaypoint_sin_abortar_por_seguimien
         assert esperar(lambda: con.ejec is None, 40), "no terminó"
         r = con.ultimo_resumen
         assert r["estado"] == "completado", r
+        assert r["err_seguimiento_max_deg"] is None and r["e_p_seguimiento_max_mm"] is None
+        assert r["e_R_seguimiento_max_deg"] is None
+        assert r["duracion_s"] >= 4.5 and r["duracion_s"] != r["duracion_planificada_s"]
         assert r["error_final_max_deg"] < 0.1, r
         assert abs(e.mock.q[0] - 25.0) < 0.01
         assert len(e.mock.ordenes) >= 3 and all(
@@ -531,6 +541,37 @@ def test_tiempo_limite_global_si_el_robot_nunca_informa():
         e.cerrar()
 
 
+def lanzar_hasta_consola_lista(comando, timeout):
+    """Recoge stdout sin bloquear el plazo de arranque y cierra solo el proceso de prueba."""
+    p = subprocess.Popen([comando[0], "-u", *comando[1:]], stdout=subprocess.PIPE,
+                         stderr=subprocess.STDOUT, text=True)
+    salida = []
+    aviso = threading.Event()
+
+    def leer():
+        for linea in p.stdout:
+            salida.append(linea)
+            if "Consola VEVAS lista" in linea:
+                aviso.set()
+        aviso.set()
+
+    lector = threading.Thread(target=leer, daemon=True)
+    lector.start()
+    try:
+        assert aviso.wait(timeout), "".join(salida)
+    finally:
+        if p.poll() is None:
+            p.send_signal(2)
+        try:
+            p.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.wait(timeout=5)
+        lector.join(2)
+        p.stdout.close()
+    return "".join(salida)
+
+
 def test_consola_vevas_modo_rws_exige_real_o_solo_lectura_y_arranca_en_solo_lectura():
     e = Escenario(listo=False)
     try:
@@ -542,22 +583,13 @@ def test_consola_vevas_modo_rws_exige_real_o_solo_lectura_y_arranca_en_solo_lect
                            capture_output=True, text=True, timeout=20)
         assert r.returncode == 2 and "rws" in r.stderr
         # arranca (solo lectura), imprime la URL y se cierra con SIGINT
-        p = subprocess.Popen(base + ["--solo-lectura"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        salida = []
-        t0 = time.monotonic()
-        while time.monotonic() - t0 < 15:
-            l = p.stdout.readline()
-            salida.append(l)
-            if "Consola VEVAS lista" in l:
-                break
-        p.send_signal(2)
-        p.wait(timeout=15)
-        assert any("Consola VEVAS lista" in l for l in salida), "".join(salida)
+        salida = lanzar_hasta_consola_lista(base + ["--solo-lectura"], timeout=15)
+        assert "Consola VEVAS lista" in salida, salida
     finally:
         e.cerrar()
 
 
-def test_consola_vevas_preparar_rapid_instala_y_arranca():
+def test_consola_vevas_preparar_rapid_bloqueado_sin_velocidad_verificada():
     e = Escenario(listo=False)
     try:
         d = tempfile.mkdtemp()
@@ -566,24 +598,10 @@ def test_consola_vevas_preparar_rapid_instala_y_arranca():
         json.dump(tr.go_valido(), open(go, "w"))
         base = [sys.executable, os.path.join(RAIZ, "consola_vevas.py"), "--modo", "rws", "--ip", "127.0.0.1",
                 "--rws-puerto", str(e.puerto), "--sesiones", d, "--puerto", "0", "--real", "--go", go, "--preparar-rapid"]
-        p = subprocess.Popen(base, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        salida = []
-        t0 = time.monotonic()
-        while time.monotonic() - t0 < 30:
-            l = p.stdout.readline()
-            salida.append(l)
-            if "Consola VEVAS lista" in l or not l:
-                break
-        p.send_signal(2)
-        p.wait(timeout=15)
-        txt = "".join(salida)
-        assert "Consola VEVAS lista" in txt and "RAPID listo" in txt, txt
-        assert e.mock.exec == "running" and e.mock.pers["vvRbActivo"] == 1 and "VEVAS_RWS" in e.mock.modulos
-        # en MANR: error claro y salida con código 1
-        e.mock.opmode = "MANR"
-        e.mock.exec = "stopped"
-        r = subprocess.run(base, capture_output=True, text=True, timeout=30)
-        assert r.returncode == 1 and "ERROR al preparar RAPID" in r.stdout and "AUTO" in r.stdout, r.stdout + r.stderr
+        r = subprocess.run(base, capture_output=True, text=True, timeout=15)
+        assert r.returncode != 0 and "velocidad" in (r.stdout + r.stderr).lower(), r.stdout + r.stderr
+        assert not any(l.startswith(("POST", "PUT")) for l in e.mock.log)
+        assert e.mock.exec == "stopped" and e.mock.ctrlstate == "motoroff"
     finally:
         e.cerrar()
 
@@ -665,18 +683,23 @@ def test_programa_con_error_diagnostico_y_recarga():
     from vevas.rws_cliente import Cliente, Falla
     sys.path.insert(0, os.path.join(RAIZ, "herramientas"))
     import rws_irc5
-    m = mock_rws.arrancar(8297)
+    m = mock_rws.arrancar(0)
     try:
         m.modulos.append("VEVAS_RWS"); m.textos["VEVAS_RWS"] = "MODULE VEVAS_RWS\n ERROR_RAPID\nENDMODULE\n"
-        c = Cliente("127.0.0.1", "Default User", "robotics", puerto=8297)
+        c = Cliente("127.0.0.1", "Default User", "robotics", puerto=m.puerto)
         try:
             c.preparar_y_arrancar(eco=lambda *_: None)
             assert False, "debía fallar"
         except Falla as ex:
-            assert "set-pp-routine" in str(ex)
+            assert "difiere" in str(ex)
+            assert m.ctrlstate == "motoroff"
+        # El fallo de compilación anterior quedó en el histórico. Verificar la huella
+        # ahora impide repetir el intento de Start sobre ese módulo modificado.
+        m.elog.append({"code": 40192, "msgtype": "3", "title": "Error de referencia",
+                       "desc": "T_ROB1/VEVAS_RWS line 47: nombre ambiguo"})
         b = io.StringIO()
         with contextlib.redirect_stdout(b):
-            rws_irc5.main(["--ip", "127.0.0.1", "--puerto", "8297", "diagnostico"])
+            rws_irc5.main(["--ip", "127.0.0.1", "--puerto", str(m.puerto), "diagnostico"])
         assert "line 47" in b.getvalue(), b.getvalue()
         c.parar()
         r = c.instalar_modulo(os.path.join(RAIZ, "rapid", "VEVAS_RWS.mod"), forzar=True, eco=lambda *_: None)
@@ -694,3 +717,247 @@ def test_modulo_entra_en_el_limite_de_rws():
         t = f.read()
     assert len(t) <= 4800, len(t)
     assert t.rstrip().endswith("ENDMODULE")
+
+
+@con_escenario
+def test_volver_a_cero_real_con_c02_es_aviso_y_un_solo_tramo(e):
+    """24/11: «Volver a cero» con el robot real se rechazaba por la singularidad del destino, y el movimiento
+    se partía en tramos de 10° con paradas. Con RWS + C02 verificado: aviso y un único MoveAbsJ."""
+    con, b = consola_rws(e)
+    try:
+        p = con.calcular_home("cero")
+        sing = tr.chequeo(p, "singularidad")
+        assert sing["estado"] == "aviso" and "C02" in sing["detalle"], sing
+        assert p["ejecutable"], p["problemas"]
+        assert b.paso_deg == 40.0
+        wps = subdividir([0, -20, 30, 0, 40, 0], [[0, 0, 0, 0, 0, 0]], b.paso_deg)
+        assert len(wps) == 1
+    finally:
+        cerrar_consola(con, b)
+
+
+# ---------------------------------------------------------------- movimiento continuo (streaming con zonas)
+def circulo(q0, radio, n=200, ejes=(0, 2)):
+    """Círculo en el espacio articular (J1/J3) que empieza y termina en q0."""
+    import math
+    out = []
+    for k in range(1, n + 1):
+        a = 2 * math.pi * k / n
+        q = list(map(float, q0))
+        q[ejes[0]] += radio * math.sin(a)
+        q[ejes[1]] += radio * (1 - math.cos(a))
+        out.append(q)
+    return out
+
+
+def backend_continuo(e, **rws):
+    c = cfg_rws(e)
+    c["rws"].update(rws)
+    b = BackendRWSDeEnsayo(c, lambda t: None, cliente=e.cli)
+    b.iniciar()
+    assert esperar(lambda: b.leer()[0] is not None, 3)
+    return b
+
+
+def lanzar(b, Q_deg):
+    q, _ = b.leer()
+    Q = np.array([b._a_dh(w) for w in Q_deg])
+    return b.ejecutar_trayectoria(np.linspace(0, 1, len(Q)), Q, origen_revisado=q)
+
+
+def test_muestrear_recorrido_fusiona_rectas_y_conserva_curvas_y_vertices():
+    from vevas.rws_cliente import muestrear_recorrido
+    # recta de 60° en J1 muestreada cada 0.05°: puntos cada 10° (paso máximo), sin puntos intermedios inútiles
+    recta = [[HOME[0] + 0.05 * k] + HOME[1:] for k in range(1, 1201)]
+    pts = muestrear_recorrido(HOME, recta, 10.0)
+    assert [round(p[0], 6) for p in pts] == [10, 20, 30, 40, 50, 60]
+    # círculo de 8° de radio: cuerdas de ~2.5° (√(8·R·tol)); radios menores dan puntos más seguidos
+    pts = muestrear_recorrido(HOME, circulo(HOME, 8.0, 400), 10.0, 0.1)
+    pasos = [max(abs(a - b) for a, b in zip(p, q)) for p, q in zip([HOME] + pts, pts)]
+    assert 20 <= len(pts) <= 40 and 0.5 <= min(pasos) and max(pasos) <= 2.6, (len(pts), min(pasos), max(pasos))
+    assert np.allclose(pts[-1], HOME, atol=1e-12)
+    # ida y vuelta: el vértice (cambio de sentido) se conserva
+    ida_vuelta = [[0, -20, 30, 0, 40, x] for x in [1, 2, 3, 4, 5, 4, 3, 2, 1, 0]]
+    assert [p[5] for p in muestrear_recorrido(HOME, ida_vuelta, 10.0)] == [5, 0]
+    # salto grande entre muestras: se subdivide; trayectoria quieta: el punto final
+    assert len(muestrear_recorrido(HOME, [[HOME[0] + 25] + HOME[1:]], 10.0)) == 3
+    assert muestrear_recorrido(HOME, [HOME], 10.0) == [[float(v) for v in HOME]]
+    try:
+        muestrear_recorrido(HOME, [], 10.0)
+        assert False
+    except Falla:
+        pass
+
+
+def test_recorrido_de_muchos_puntos_va_en_streaming_sin_fine_intermedios():
+    e = Escenario(perfil_tiempo=True, escala_tiempo=0.5)   # MoveAbsJ \T como el RAPID (al doble de velocidad)
+    b = backend_continuo(e)
+    try:
+        Q = circulo(HOME, 8.0, 400)
+        wps, continuo = b.puntos_recorrido(HOME, Q)
+        assert continuo and len(wps) >= 20
+        estimada = b.duracion_estimada_s(np.array([b._a_dh(w) for w in Q]))
+        t0 = time.monotonic()
+        ok, msg = lanzar(b, Q)
+        assert ok and "continuo" in msg, msg
+        assert esperar(lambda: b.resultado_trayectoria()[0] is not None, 60)
+        dur = time.monotonic() - t0
+        exito, detalle = b.resultado_trayectoria()
+        assert exito is True and "llegada" in detalle, detalle
+        movs = e.mock.movimientos
+        assert len(movs) == len(wps)
+        assert [m["zona"] for m in movs] == [True] * (len(wps) - 1) + [False]   # sin fine intermedios
+        assert e.mock.rechazos == [] and e.mock.fallas_esquina <= 1, e.mock.fallas_esquina
+        assert np.allclose(e.mock.q, HOME, atol=1e-3)
+        assert e.cli.ultimo_recorrido["codigos"] == [3] * (len(wps) - 1) + [2]
+        assert e.mock.pers["vvPcZona"] == 0
+        # el tiempo de cada tramo es el del RAPID con piso tZona (no 0.5 s por punto)
+        suma = sum(m["T"] for m in movs) / e.mock.escala_tiempo
+        assert suma < 0.5 * len(wps), suma
+        assert dur < estimada and estimada < 3 * suma + 0.6 * len(wps) + 10, (dur, estimada, suma)
+        assert b.progreso == f"{len(wps)}/{len(wps)} puntos (continuo)"
+        # y después una orden suelta sigue con fine
+        ok, cod, msg = e.cli.enviar_objetivo([HOME[0] + 2] + HOME[1:])
+        assert ok and cod == 2 and e.mock.movimientos[-1]["zona"] is False, msg
+    finally:
+        b.detener()
+        e.cerrar()
+
+
+def test_parar_a_mitad_de_un_recorrido_continuo():
+    e = Escenario(perfil_tiempo=True)
+    b = backend_continuo(e)
+    try:
+        Q = circulo(HOME, 8.0, 400)
+        wps, _ = b.puntos_recorrido(HOME, Q)
+        ok, msg = lanzar(b, Q)
+        assert ok, msg
+        assert esperar(lambda: len(e.mock.ordenes) >= 4, 20)
+        b.mantener(None)                                   # PARAR de Consola: no se mandan más puntos
+        assert b.resultado_trayectoria()[0] is False
+        assert esperar(lambda: not b.en_movimiento(), 15)  # el hilo espera a que el robot quede quieto
+        n_movs, q_fin = len(e.mock.movimientos), list(e.mock.q)
+        assert n_movs < len(wps) and len(e.mock.ordenes) <= n_movs
+        assert e.mock.movimientos[-1]["zona"] is True
+        assert np.allclose(q_fin, e.mock.movimientos[-1]["q"], atol=1e-6)   # paró en el último punto tomado
+        time.sleep(0.8)
+        assert len(e.mock.movimientos) == n_movs and np.allclose(e.mock.q, q_fin)
+        assert "cancelada" in b.resultado_trayectoria()[1].lower()
+        assert e.mock.pers["vvPcZona"] == 0
+        # se puede seguir desde donde quedó (Δq contra el objetivo anterior = donde paró)
+        ok, msg = lanzar(b, circulo(q_fin, 3.0, 100))
+        assert ok, msg
+        assert esperar(lambda: b.resultado_trayectoria()[0] is not None, 30)
+        assert b.resultado_trayectoria()[0] is True, b.resultado_trayectoria()
+        # Stop de RAPID (Cliente.parar) en medio de otro recorrido: el envío se corta y lo informa
+        ok, msg = lanzar(b, circulo(list(e.mock.q), 8.0, 400))
+        assert ok, msg
+        assert esperar(lambda: e.cli.ultimo_recorrido["tomados"] >= 3, 20)
+        r = e.cli.parar()
+        assert r["ok"], r
+        assert esperar(lambda: b.resultado_trayectoria()[0] is not None, 10)
+        exito, detalle = b.resultado_trayectoria()
+        assert exito is False and "RAPID se detuvo" in detalle, detalle
+        q_stop = list(e.mock.q)
+        time.sleep(0.5)
+        assert e.mock.q == q_stop
+    finally:
+        b.detener()
+        e.cerrar()
+
+
+def test_punto_invalido_a_mitad_de_un_recorrido():
+    e = Escenario(perfil_tiempo=True, escala_tiempo=0.5)
+    b = backend_continuo(e)
+    try:
+        # la PC valida TODO el recorrido antes de mover: un punto fuera de límites a mitad → no se mueve nada
+        Q = [[HOME[0]] + HOME[1:4] + [HOME[4] + 0.5 * k, 0] for k in range(1, 241)]   # J5 hasta 160° (> 118°)
+        ok, msg = lanzar(b, Q)
+        assert not ok and "límite" in msg and "no se movió nada" in msg, msg
+        assert e.mock.movimientos == [] and e.mock.pers["vvPcSeq"] == 0
+        # el RAPID repite la validación: si rechaza un punto a mitad, la PC no manda más y el robot frena
+        e.mock.limites = ((-165, 165), (-110, 110), (-110, 70), (-160, 160), (-120, 120), (-400, 400))
+        Q = circulo(HOME, 8.0, 400)
+        wps, _ = b.puntos_recorrido(HOME, Q)
+        with e.mock.lock:
+            e.mock.limites = ((-165, HOME[0] + 2 + 5.5), (-110, 110), (-110, 70), (-160, 160), (-120, 120), (-400, 400))
+        ok, msg = lanzar(b, Q)
+        assert ok, msg
+        assert esperar(lambda: b.resultado_trayectoria()[0] is not None, 30)
+        exito, detalle = b.resultado_trayectoria()
+        assert exito is False and "código -2" in detalle and "frenó en el punto" in detalle, detalle
+        assert esperar(lambda: not b.en_movimiento(), 10)
+        tomados = e.cli.ultimo_recorrido["tomados"]
+        assert 0 < tomados < len(wps) and e.mock.rechazos and e.mock.rechazos[-1][0] == -2
+        assert len(e.mock.movimientos) == tomados and all(m["zona"] for m in e.mock.movimientos)
+        assert np.allclose(e.mock.q, e.mock.movimientos[-1]["q"], atol=1e-6)
+        assert e.mock.pers["vvPcSeq"] == tomados + 1 and e.mock.pers["vvPcZona"] == 0
+    finally:
+        b.detener()
+        e.cerrar()
+
+
+def test_modulo_sin_zonas_usa_el_envio_por_tramos():
+    e = Escenario(listo=False)
+    try:
+        b = BackendRWSDeEnsayo(cfg_rws(e), lambda t: None, cliente=e.cli)
+        assert b.t_zona_s == 0.2 and b.info()["movimiento_continuo"]
+        b.t_zona_s = None   # como con el VEVAS_RWS.mod anterior (sin vvPcZona/tZona)
+        wps, continuo = b.puntos_recorrido(HOME, circulo(HOME, 8.0, 400))
+        assert not continuo and wps == subdividir(HOME, circulo(HOME, 8.0, 400), b.paso_deg)
+    finally:
+        e.cerrar()
+
+
+def test_muestrear_con_paradas_deja_las_esquinas_como_puntos_fine():
+    from vevas.rws_cliente import muestrear_con_paradas
+    # «L» en J1/J3: 0.05° por muestra, esquina en la muestra 199 (J1 = +10°); sin paradas la zona la redondearía
+    tramo1 = [[HOME[0] + 0.05 * k] + HOME[1:] for k in range(1, 201)]
+    tramo2 = [[HOME[0] + 10, HOME[1], HOME[2] + 0.05 * k] + HOME[3:] for k in range(1, 201)]
+    tray = tramo1 + tramo2
+    pts, fines = muestrear_con_paradas(HOME, tray, [199], 10.0, 0.1)
+    assert fines == [0, 1] and pts[0] == tray[199] and pts[1] == tray[-1]
+    # dos paradas en la misma postura (o una parada en el origen) no agregan tramos nulos
+    pts, fines = muestrear_con_paradas(HOME, [HOME, HOME] + tray, [0, 1, 201], 10.0, 0.1)
+    assert fines == [0, 1] and len(pts) == 2
+    # sin paradas: igual que muestrear_recorrido y solo el último con fine
+    from vevas.rws_cliente import muestrear_recorrido
+    pts, fines = muestrear_con_paradas(HOME, tray, (), 10.0, 0.1)
+    assert pts == muestrear_recorrido(HOME, tray, 10.0, 0.1) and fines == [len(pts) - 1]
+    assert muestrear_con_paradas(HOME, [HOME], [0]) == ([[float(v) for v in HOME]], [0])
+
+
+def test_esquinas_del_plan_van_con_fine_y_el_resto_en_zona():
+    from vevas.trayectoria import planificar_camino
+    e = Escenario(perfil_tiempo=True, escala_tiempo=0.5)
+    b = backend_continuo(e)
+    try:
+        # cuadrado de 15° en J1/J3 con reposo en las 3 esquinas intermedias (como el plan del cuadrado de Consola);
+        # cada lado recto se parte en 2 tramos de 7.5° (≤ paso_zona_max_deg): el del medio va con zona
+        lado = [[HOME[0] + d1, HOME[1], HOME[2] + d3] + HOME[3:] for d1, d3 in
+                [(0, 0), (15, 0), (15, 15), (0, 15), (0, 0)]]
+        V = []
+        for a, c in zip(lado, lado[1:]):     # 10 posturas por lado (las del IK de la figura)
+            V += [[x + (y - x) * s / 10 for x, y in zip(a, c)] for s in range(0 if not V else 1, 11)]
+        Vdh = np.array([b._a_dh(v) for v in V])
+        esquinas = [10, 20, 30]
+        tray = planificar_camino(Vdh, np.radians([25.0] * 6), 1.0, 0.5, 1.0, paradas=esquinas)
+        ts, Q, QD, _ = tray.muestrear(0.02)
+        assert b.paradas_de(Q[1:], QD[1:]) and all(np.abs(QD[1:][k]).max() == 0 for k in b.paradas_de(Q[1:], QD[1:]))
+        q, _ = b.leer()
+        ok, msg = b.ejecutar_trayectoria(ts[1:], Q[1:], QD[1:], origen_revisado=q)
+        assert ok and "3 parada(s) con fine" in msg, msg
+        assert esperar(lambda: b.resultado_trayectoria()[0] is not None, 60)
+        assert b.resultado_trayectoria()[0] is True, b.resultado_trayectoria()
+        movs = e.mock.movimientos
+        fine = [m for m in movs if not m["zona"]]
+        assert [m["q"] for m in fine] == [[round(x, 3) for x in lado[k]] for k in (1, 2, 3, 4)]
+        assert [m["zona"] for m in movs] == [True, False] * 4 and e.mock.rechazos == []
+        codigos = e.cli.ultimo_recorrido["codigos"]
+        assert [c for c in codigos if c == 2] == [2] * 4 and codigos[-1] == 2
+        assert np.allclose(e.mock.q, HOME, atol=1e-3)
+        # la estimación de Consola usa el mismo recorrido (con las paradas) que se mandó
+        assert b.duracion_estimada_s(Q[1:]) > sum(m["T"] for m in movs) / e.mock.escala_tiempo
+    finally:
+        b.detener()
+        e.cerrar()

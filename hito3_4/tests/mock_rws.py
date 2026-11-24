@@ -8,7 +8,12 @@ Emula lo que usa el cliente:
     start/stop/resetpp, motores ON/OFF (403 con la cadena de seguridad abierta);
   - variables PERS de VEVAS_RWS (GET y POST ?action=set) con RMMP obligatorio en manual reducido;
   - el servidor RAPID VevasServidor: Validar() igual que en el .mod (códigos -1/-2/-3/-4), vvRbCodigo 1→2,
-    vvRbSeq, y las juntas se mueven hacia el objetivo a `vel_deg_s`;
+    vvRbSeq, y las juntas se mueven hacia el objetivo a `vel_deg_s` (o con el tiempo \\T si perfil_tiempo);
+  - movimiento continuo (vvPcZona = 1): cola de movimiento de 2 tramos como el pre-fetch de RAPID (el tramo en
+    curso y uno planificado). Una orden con zona se acusa (vvRbCodigo 3, vvRbSeq) apenas entra en la cola;
+    si la cola está llena, RAPID queda «bloqueado» en el MoveAbsJ hasta que termine el tramo en curso. Δq y
+    el paso se validan contra el objetivo anterior. Si al terminar un tramo con zona no hay otro encolado,
+    el robot para ahí (corner path failure: aviso 50024 en el registro, `fallas_esquina` += 1);
   - digest opcional (auth=("usuario","clave")) con cookie de sesión como el IRC5.
 
 Uso:  python3 tests/mock_rws.py [puerto]   (queda corriendo)
@@ -42,7 +47,7 @@ def fmt6(v):
 
 class MockIRC5:
     def __init__(self, opmode="AUTO", vel_deg_s=400.0, confirma_pendant=True, auth=None, q=None,
-                 mechunits=True, acepta_home_var=True, modulos=None):
+                 mechunits=True, acepta_home_var=True, modulos=None, perfil_tiempo=False, escala_tiempo=1.0):
         self.lock = threading.RLock()
         self.opmode = opmode
         self.ctrlstate = "motoroff"
@@ -50,10 +55,26 @@ class MockIRC5:
         self.modulos = list(modulos or ["BASE", "user", "Module1"])
         self.textos = {}
         self.elog = []
+        self.niega_motoron = False   # True: como el IRC5 tras reiniciar en AUTO (403 a motores ON)
+        self.fallas_texto = 0   # >0: contesta HTTP 500 «Error registering callback» esas veces
         self.fileservice = {}
         self.pp = ("Module1", "main")
         self.q = list(q or [0.0, -20.0, 30.0, 0.0, 40.0, 0.0])
         self.vel = vel_deg_s
+        # perfil_tiempo: imita MoveAbsJ \T como el RAPID C02 (t = max(0.5, kPico·|Δq|/vLim), perfil 3s²−2s³,
+        # pico = 1.5 × media). escala_tiempo < 1 simula un controlador que NO respeta el tiempo pedido.
+        self.perfil_tiempo = perfil_tiempo
+        self.escala_tiempo = escala_tiempo
+        self._cola = []            # tramos en ejecución/planificados (máx. 2, como el pre-fetch de RAPID)
+        self._pendiente = None     # orden validada cuyo MoveAbsJ espera lugar en la cola
+        self._fine_seq = None      # RAPID bloqueado en un MoveAbsJ fine hasta la llegada
+        self._previo = None        # objetivo anterior (referencia de Δq mientras hay zona)
+        self._en_zona = False
+        self._quieto = True
+        self._t_paso = None
+        self.movimientos = []      # {"seq", "q", "zona", "T"} de cada orden aceptada
+        self.limites = LIMITES     # las pruebas pueden achicarlos para simular un rechazo del RAPID
+        self.fallas_esquina = 0
         self.confirma_pendant = confirma_pendant
         self.mechunits = mechunits
         self.acepta_home_var = acepta_home_var
@@ -61,7 +82,8 @@ class MockIRC5:
         self.mastership = False
         self.rmmp = "NONE"
         self.rmmp_auto = True
-        self.pers = {"vvPcTarget": None, "vvPcSeq": 0, "vvPcFin": 0, "vvRbSeq": 0, "vvRbCodigo": 0, "vvRbActivo": 0}
+        self.pers = {"vvPcTarget": None, "vvPcSeq": 0, "vvPcFin": 0, "vvPcZona": 0, "vvRbSeq": 0, "vvRbCodigo": 0,
+                     "vvRbActivo": 0, "vvRbTiempo": 0}
         self.ordenes = []      # objetivos recibidos y ejecutados con llegada
         self.rechazos = []     # (codigo, objetivo)
         self.log = []
@@ -87,6 +109,9 @@ class MockIRC5:
         return self.opmode in ("AUTO", "MANR")  # permitirAuto := TRUE
 
     def _paso(self, dt):
+        ahora = time.monotonic()
+        dt = dt if self._t_paso is None else min(0.2, ahora - self._t_paso)   # solo avanza con RAPID en marcha
+        self._t_paso = ahora
         if self.congelado:
             return
         en_servidor = (self.exec == "running" and self.pp == ("VEVAS_RWS", "VevasServidor") and "VEVAS_RWS" in self.modulos)
@@ -113,12 +138,21 @@ class MockIRC5:
                 self.srv_estado = "libre"
                 return
             p["vvPcFin"] = 0
+            if self._soporta_zona():
+                p["vvPcZona"] = 0
             p["vvRbCodigo"] = 0
             p["vvRbSeq"] = p["vvPcSeq"]
             p["vvRbActivo"] = 1
+            self._reiniciar_movimiento()
             self.srv_estado = "activo"
             return
-        # activo
+        # activo: primero el robot avanza, después el programa RAPID
+        self._mover(dt)
+        if self._pendiente is not None:
+            self._encolar()
+            return
+        if self._fine_seq is not None:
+            return
         if p["vvPcFin"] != 0:
             p["vvRbActivo"] = 0
             self.exec = "stopped"
@@ -127,34 +161,95 @@ class MockIRC5:
         if p["vvPcSeq"] != p["vvRbSeq"]:
             seq = p["vvPcSeq"]
             objetivo = list(p["vvPcTarget"]) if p["vvPcTarget"] else None
-            if p["vvRbCodigo"] != 1:
-                p["vvRbCodigo"] = self._validar(objetivo)
-                if p["vvRbCodigo"] != 0:
-                    self.rechazos.append((p["vvRbCodigo"], objetivo))
-                    p["vvRbSeq"] = seq
-                    return
-                p["vvRbCodigo"] = 1
-            # mover (straight line en el espacio articular)
-            dist = [t - a for t, a in zip(objetivo, self.q)]
-            mayor = max(abs(d) for d in dist)
-            paso = self.vel * dt
-            if mayor <= paso:
-                self.q = list(objetivo)
-                p["vvRbCodigo"] = 2
-                self.ordenes.append(list(objetivo))
+            zona = self._soporta_zona() and p["vvPcZona"] == 1
+            ref = self._previo if self._en_zona else list(self.q)
+            cod = self._validar(objetivo, ref)
+            if cod != 0:
+                p["vvRbCodigo"] = cod
+                self.rechazos.append((cod, objetivo))
                 p["vvRbSeq"] = seq
+                return
+            if self.perfil_tiempo:
+                from vevas.rws_cliente import T_MIN_S, limites_c02, tiempo_movimiento, tiempo_zona
+                txt = self.textos.get("VEVAS_RWS")
+                vlim, k = limites_c02(txt) if txt and "vLim{6}" in txt else limites_c02(None)
+                T = tiempo_movimiento(objetivo, ref, vlim, k, (tiempo_zona(txt) or 0.2) if zona else T_MIN_S)
+                p["vvRbTiempo"] = round(T, 6)
+                Tm = T * self.escala_tiempo
             else:
-                self.q = [a + d * paso / mayor for a, d in zip(self.q, dist)]
+                mayor = max(abs(a - b) for a, b in zip(objetivo, ref))
+                Tm = mayor / self.vel if self.vel > 0 else float("inf")
+            self._previo, self._en_zona = list(objetivo), zona
+            if not zona:
+                p["vvRbCodigo"] = 1
+            self.movimientos.append({"seq": seq, "q": list(objetivo), "zona": zona, "T": Tm})
+            self._pendiente = {"seq": seq, "qf": list(objetivo), "Tm": Tm, "zona": zona, "q0": None, "trans": 0.0}
+            self._encolar()
 
-    def _validar(self, q):
+    def _soporta_zona(self):
+        txt = self.textos.get("VEVAS_RWS") or ""
+        return "vvPcZona" in txt and "tZona" in txt
+
+    def _reiniciar_movimiento(self):
+        """Mover el PP (o arrancar VevasServidor) borra la cola de movimiento."""
+        self._cola, self._pendiente, self._fine_seq = [], None, None
+        self._previo, self._en_zona, self._quieto = None, False, True
+
+    def _encolar(self):
+        """MoveAbsJ: entra en la cola si hay lugar (tramo en curso + 1 planificado)."""
+        s = self._pendiente
+        if len(self._cola) >= 2:
+            return
+        self._cola.append(s)
+        self._pendiente = None
+        if s["zona"]:
+            self.pers["vvRbCodigo"] = 3
+            self.pers["vvRbSeq"] = s["seq"]
+        else:
+            self._fine_seq = s["seq"]
+
+    def _mover(self, dt):
+        resto = dt
+        while self._cola and resto > 0:
+            s = self._cola[0]
+            if s["q0"] is None:
+                s["q0"], s["reposo"] = list(self.q), self._quieto
+                self._quieto = False
+            avance = min(resto, max(0.0, s["Tm"] - s["trans"]))
+            s["trans"] += avance
+            resto -= avance
+            u = 1.0 if s["Tm"] <= 0 else min(1.0, s["trans"] / s["Tm"])
+            # desde reposo: 3u²−2u³ (pico 1.5 × media, como el MoveAbsJ \T aislado); en cadena con zona: lineal
+            f = 3 * u * u - 2 * u * u * u if (self.perfil_tiempo and s["reposo"]) else u
+            self.q = [a + (b - a) * f for a, b in zip(s["q0"], s["qf"])]
+            if u < 1.0:
+                return
+            self.q = list(s["qf"])
+            self._cola.pop(0)
+            self.ordenes.append(list(s["qf"]))
+            if not s["zona"]:
+                self.pers["vvRbCodigo"] = 2
+                self.pers["vvRbSeq"] = s["seq"]
+                self._fine_seq = None
+                self._quieto = True
+                return
+            if not self._cola and self._pendiente is None:
+                # el punto siguiente no llegó a tiempo: el robot para en este punto (no es un error)
+                self.fallas_esquina += 1
+                self._quieto = True
+                self.elog.insert(0, {"code": 50024, "msgtype": "2", "tstamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                                     "title": "Corner path failure", "desc": f"Orden {s['seq']}: punto de zona convertido en punto de paro."})
+                return
+
+    def _validar(self, q, ref=None):
         if not self._modo_permitido():
             return -4
         if q is None or any(abs(v) > 1000 for v in q):
             return -1
-        for v, (lo, hi) in zip(q, LIMITES):
+        for v, (lo, hi) in zip(q, self.limites):
             if v < lo + MARGEN or v > hi - MARGEN:
                 return -2
-        if any(abs(a - b) > MAX_PASO for a, b in zip(q, self.q)):
+        if any(abs(a - b) > MAX_PASO for a, b in zip(q, self.q if ref is None else ref)):
             return -3
         return 0
 
@@ -250,6 +345,9 @@ class MockIRC5:
                     return self._r(200, estado({"_type": "rap-execution", "ctrlexecstate": S.exec, "cycle": "once"}))
                 if p == "/rw/rapid/modules" and q.get("task") == ["T_ROB1"]:
                     return self._r(200, json.dumps({"_embedded": {"_state": [{"_type": "rap-module-info-li", "_title": m, "name": m} for m in S.modulos]}}))
+                if p.startswith("/rw/rapid/modules/") and q.get("resource") == ["module-text"] and S.fallas_texto > 0:
+                    S.fallas_texto -= 1
+                    return self._err(500, "rws_resource_rapid_module.cpp[2017] Error registering callback")
                 if p.startswith("/rw/rapid/modules/") and q.get("resource") == ["module-text"]:
                     n = p.rsplit("/", 1)[1]
                     if n not in S.textos:
@@ -266,7 +364,8 @@ class MockIRC5:
                                                 **{f"ej{i + 1}": "9E+09" for i in range(6)}}))
                 if p.startswith(SIMBOLOS):
                     n = p[len(SIMBOLOS):]
-                    if "VEVAS_RWS" not in S.modulos or n not in S.pers:
+                    if ("VEVAS_RWS" not in S.modulos or n not in S.pers
+                            or (S.textos.get("VEVAS_RWS") and n not in S.textos["VEVAS_RWS"])):
                         return self._err(404, "símbolo no encontrado")
                     if n == "vvPcTarget":
                         v = S.fmt_jt(S.pers[n]) if S.pers[n] else "[[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]]"
@@ -321,6 +420,8 @@ class MockIRC5:
                     if est == "motoron":
                         if S.seguridad_abierta:
                             return self._err(403, "cadena de seguridad abierta")
+                        if S.niega_motoron:
+                            return self._err(403, "rws_component_panel.cpp[116]: org_code: -4507")
                         S.ctrlstate = "motoron"
                     else:
                         S.ctrlstate = "motoroff"
@@ -355,6 +456,7 @@ class MockIRC5:
                         return self._err(400, "programa con errores")
                     S.pp = (m, r)
                     S.srv_estado = "libre"   # la rutina empieza de nuevo (y vuelve a pedir confirmación)
+                    S._reiniciar_movimiento()
                     return self._r(204, "")
                 if p == "/rw/rapid/tasks/T_ROB1" and a == "unloadmod":
                     if not S.mastership or S.exec == "running":
@@ -387,7 +489,8 @@ class MockIRC5:
                     return self._r(200, "")
                 if p.startswith(SIMBOLOS) and a == "set":
                     n = p[len(SIMBOLOS):]
-                    if "VEVAS_RWS" not in S.modulos or n not in ("vvPcTarget", "vvPcSeq", "vvPcFin"):
+                    if ("VEVAS_RWS" not in S.modulos or n not in ("vvPcTarget", "vvPcSeq", "vvPcFin", "vvPcZona")
+                            or (S.textos.get("VEVAS_RWS") and n not in S.textos["VEVAS_RWS"])):
                         return self._err(404, "símbolo")
                     if S.opmode in ("MANR", "MANF") and S.rmmp != "GRANTED":
                         return self._err(403, "RMMP necesario en manual")

@@ -1,0 +1,28 @@
+{
+  "confirmado": true,
+  "unidad_confirmada": "cm",
+  "unidad_para_modelo": "cm",
+  "medidas_declaradas": {
+    "largo": 80,
+    "ancho": 80,
+    "base_brazo_a_superficie": 19,
+    "base_brazo_a_superior_cilindro": 18,
+    "frente_mesa_a_frente_brazo": 44.5,
+    "lado_izquierdo": 29.5,
+    "lado_derecho": 29.5,
+    "atras_mesa_a_espalda_brazo": 14
+  },
+  "referencia": {
+    "frente_eje_base": "+X",
+    "centro_huella_local_mm": [0, 0],
+    "plano_montaje_z_mm": 0
+  },
+  "geometria": {
+    "seccion_aro_mm": {"ancho": 50, "alto": 50},
+    "seccion_montaje_mm": {"ancho": 50, "alto": 50}
+  },
+  "hipotesis": [],
+  "hipotesis_visual": [
+    "La sección y ubicación de los dos apoyos inferiores son ilustrativas y están pendientes de medición."
+  ]
+}

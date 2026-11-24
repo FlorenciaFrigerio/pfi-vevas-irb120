@@ -1,5 +1,7 @@
 # Guía 3 · Primer movimiento real (J1 ±5°)
 
+> **Guía histórica.** Empezá por la [prueba de interfaz del 20/11](docs/PRUEBA_INTERFAZ_20NOV.md). Usá simulación y RWS en solo lectura. El envío real permanece bloqueado por C02 hasta verificar el límite de velocidad de cada junta. Las instrucciones históricas de esta guía quedan archivadas y el control sigue bloqueado.
+
 Hacelo SIEMPRE con una persona al lado del FlexPendant con la mano en el paro de emergencia.
 
 ## 0. Antes de tocar nada
