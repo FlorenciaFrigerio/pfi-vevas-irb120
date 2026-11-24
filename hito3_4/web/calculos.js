@@ -29,10 +29,8 @@ export function pasosPlan(plan, cfg) {
   if (plan.tipo === "pose") return pasosPose(plan, cfg);
   if (plan.figura) {
     const fig = plan.figura;
-    const plano = fig.nombre !== "saludo" && fig.plano ? ` · plano ${fig.plano}` : "";
-    const metodo = fig.nombre === "saludo"
-      ? "El saludo mueve las juntas de la muñeca."
-      : "Se busca una rama Pieper para cada punto y se mantiene la orientación del TCP.";
+    const plano = fig.plano ? ` · plano ${fig.plano}` : "";
+    const metodo = "Se busca una rama Pieper para cada punto y se mantiene la orientación del TCP.";
     const nParadas = Array.isArray(fig.paradas) ? fig.paradas.length : 0;
     const paradas = nParadas ? ` Se detiene (v = 0) en ${nParadas} ${nParadas === 1 ? "punto intermedio" : "puntos intermedios"}.` : "";
     return paso(1, "Recorrido predeterminado", plan.descripcion,

@@ -658,8 +658,8 @@ class Consola:
 
         Disponible en SIM y con el robot real por RWS con C02 verificado (mismas
         compuertas de siempre: revisión previa, GO, armado y confirmación). El
-        origen es el TCP actual y la orientación se conserva. El saludo usa
-        posturas articulares de muñeca y se identifica como tal, sin inventar IK.
+        origen es el TCP actual y la orientación se conserva. El saludo es un vaivén
+        en arco en el mismo plano (de frente por defecto), resuelto con Pieper como el resto.
         """
         from .figuras import generar_figura, paradas_figura, plano_de_vista
         if not self._movimientos_guiados_permitidos():
@@ -671,7 +671,7 @@ class Consola:
             if tamano_mm > tope_mm:
                 raise ValueError(f"Con el robot real el tamaño máximo de una figura es {tope_mm:g} mm.")
         # El generador también valida tamaño, plano, finitud y tipos.
-        offsets = generar_figura("circulo" if nombre == "saludo" else nombre, tamano_mm, plano)
+        offsets = generar_figura(nombre, tamano_mm, plano)
         plano = plano.strip().upper()
         with self.lock:
             if self.ejec is not None or self.jog is not None:
@@ -681,7 +681,7 @@ class Consola:
             # Con J5 ≈ 0 la muñeca es singular y Pieper no tiene rama continua desde el primer punto.
             # En vez de rechazar, el plan agrega una aproximación articular J5 → +30° (la misma de
             # «Preparar J5») con parada, y la figura empieza desde esa postura.
-            aproximacion = muneca_singular and nombre != "saludo"
+            aproximacion = muneca_singular
             q_actual = q0.copy()
             if aproximacion:
                 q0 = q0.copy()
@@ -690,34 +690,31 @@ class Consola:
             objetivos = origen[:3, 3] + offsets
             juntas, ramas, error_ik = [q0.copy()], [], None
             ep_max, er_max = 0.0, 0.0
-            if nombre == "saludo":
-                Q = _juntas_saludo(q0, tamano_mm, len(offsets))
-                objetivos = np.array([self.robot.fk_tcp(q)[:3, 3] for q in Q])
-            else:
-                ik = self.cfg["ik"]
-                for k, punto in enumerate(objetivos[1:], 1):
-                    T = origen.copy()
-                    T[:3, 3] = punto
-                    res = pp.resolver(self.robot, T, juntas[-1])
-                    pp.elegir_rama(res["ramas"], ik["tol_e_p_m"], ik["tol_e_R_rad"],
-                                   math.radians(ik["margen_limite_deg"]), ik["sigma_min"])
-                    validas = [r for r in res["ramas"] if r.valida and r.q is not None]
-                    if not validas:
-                        error_ik = (k, "No hay una rama de Pieper válida en ese punto.")
-                        break
-                    mejor = min(validas, key=lambda r: float(np.linalg.norm(np.asarray(r.q) - juntas[-1])))
-                    q = np.array(mejor.q, dtype=float)
-                    if float(np.degrees(np.abs(q - juntas[-1])).max()) > 12.0:
-                        error_ik = (k, "La rama requiere un salto articular; se rechaza la discontinuidad.")
-                        break
-                    if k == len(objetivos) - 1 and np.max(np.abs(q - q0)) < 1e-6:
-                        q = q0.copy()
-                    ver = self.robot.fk_tcp(q)
-                    ep_max = max(ep_max, error_posicion(ver, T))
-                    er_max = max(er_max, error_orientacion(ver[:3, :3], T[:3, :3]))
-                    juntas.append(q)
-                    ramas.append(mejor.indice)
-                Q = np.asarray(juntas)
+            # Todas las figuras, saludo incluido, se resuelven por Pieper punto a punto.
+            ik = self.cfg["ik"]
+            for k, punto in enumerate(objetivos[1:], 1):
+                T = origen.copy()
+                T[:3, 3] = punto
+                res = pp.resolver(self.robot, T, juntas[-1])
+                pp.elegir_rama(res["ramas"], ik["tol_e_p_m"], ik["tol_e_R_rad"],
+                               math.radians(ik["margen_limite_deg"]), ik["sigma_min"])
+                validas = [r for r in res["ramas"] if r.valida and r.q is not None]
+                if not validas:
+                    error_ik = (k, "No hay una rama de Pieper válida en ese punto.")
+                    break
+                mejor = min(validas, key=lambda r: float(np.linalg.norm(np.asarray(r.q) - juntas[-1])))
+                q = np.array(mejor.q, dtype=float)
+                if float(np.degrees(np.abs(q - juntas[-1])).max()) > 12.0:
+                    error_ik = (k, "La rama requiere un salto articular; se rechaza la discontinuidad.")
+                    break
+                if k == len(objetivos) - 1 and np.max(np.abs(q - q0)) < 1e-6:
+                    q = q0.copy()
+                ver = self.robot.fk_tcp(q)
+                ep_max = max(ep_max, error_posicion(ver, T))
+                er_max = max(er_max, error_orientacion(ver[:3, :3], T[:3, :3]))
+                juntas.append(q)
+                ramas.append(mejor.indice)
+            Q = np.asarray(juntas)
             tcfg = self.cfg["trayectoria"]
             # Corazón: se detiene en la punta (cúspide). Cuadrado y triángulo: en cada
             # esquina, para conservar la figura sin redondearla. La misma función
@@ -733,12 +730,12 @@ class Consola:
                             "n_puntos": len(objetivos), "puntos_objetivo_m": objetivos.tolist(),
                             "ramas": ramas, "paradas": paradas,
                             "plano_vista": plano_de_vista(objetivos - objetivos[0], plano),
-                            "metodo": "articular" if nombre == "saludo" else "Pieper con orientación constante",
+                            "metodo": "Pieper con orientación constante",
                             "falla_punto": error_ik[0] if error_ik else None,
                             "aproximacion_j5_deg": J5_PREPARADA_DEG if aproximacion else None}
             visible = {"circulo": "Círculo", "corazon": "Corazón", "triangulo": "Triángulo"}.get(nombre, nombre.capitalize())
             plan = self._armar_plan("figura", f"{visible} · {tamano_mm:g} mm · "
-                                    + ("saludo articular" if nombre == "saludo" else plano)
+                                    + plano
                                     + (f" · antes J5 → +{J5_PREPARADA_DEG:g}°" if aproximacion else ""),
                                     q_actual, Q[-1], {"figura": datos_figura}, tray=tray)
             plan["preview"]["puntos"] = objetivos.tolist()
@@ -777,19 +774,14 @@ class Consola:
         """
         from .figuras import PLANOS, generar_figura, paradas_figura, plano_de_vista
         nombre = _nombre_figura(figura)
-        offsets = generar_figura("circulo" if nombre == "saludo" else nombre, tamano_mm, plano)
+        offsets = generar_figura(nombre, tamano_mm, plano)
         plano = plano.strip().upper()
         q_med, _ = self._q_medida()
         q0 = None if q_med is None else np.asarray(q_med, dtype=float)
         if q0 is not None and not np.all(np.isfinite(q0)):
             q0 = None
         absolutos = None
-        if nombre == "saludo":
-            if q0 is None:
-                raise RuntimeError("El saludo depende de la postura actual: esperá el estado del robot.")
-            absolutos = np.array([self.robot.fk_tcp(q)[:3, 3] for q in _juntas_saludo(q0, tamano_mm, len(offsets))])
-            offsets = absolutos - absolutos[0]
-        elif q0 is not None:
+        if q0 is not None:
             if analisis_singularidad(self.robot, q0)["muneca_sin_q5"] < 0.09:
                 q0 = q0.copy()
                 q0[4] = math.radians(J5_PREPARADA_DEG)
@@ -812,7 +804,7 @@ class Consola:
             "fin": len(offsets) - 1,
             "origen_m": None if absolutos is None else absolutos[0].tolist(),
             "puntos_m": None if absolutos is None else absolutos.tolist(),
-            "metodo": "articular" if nombre == "saludo" else "Pieper con orientación constante",
+            "metodo": "Pieper con orientación constante",
             "permitida": self._movimientos_guiados_permitidos(),
             "tope_mm": tope,
             "excede_tope": float(tamano_mm) > tope,
@@ -1420,19 +1412,6 @@ def _nombre_figura(figura) -> str:
     if nombre not in FIGURAS:
         raise ValueError("Elegí círculo, corazón, cuadrado, triángulo o saludo.")
     return nombre
-
-
-def _juntas_saludo(q0, tamano_mm, n) -> np.ndarray:
-    """Saludo articular de la muñeca (J4, J5, J6) desde q0; empieza y termina en q0."""
-    q0 = np.asarray(q0, dtype=float)
-    u = np.linspace(0.0, 2.0 * math.pi, n)
-    Q = np.tile(q0, (n, 1))
-    amplitud = math.radians(float(tamano_mm) * 0.25)
-    Q[:, 3] += amplitud * np.sin(2.0 * u)
-    Q[:, 4] += (1 if q0[4] >= 0 else -1) * amplitud * (1.0 - np.cos(u)) * 0.5
-    Q[:, 5] += amplitud * np.sin(u)
-    Q[[0, -1]] = q0
-    return Q
 
 
 def pose_texto(p: dict) -> str:

@@ -234,7 +234,7 @@ Se abren desde «Poses predeterminadas»: figura, tamaño en mm (5 a 100 en SIM)
 |---|---|---|
 | Cuadrado | Lado = tamaño, empieza y termina en el TCP actual | Paradas en las 4 esquinas |
 | Círculo | Diámetro = tamaño | Recorrido continuo, frena entre puntos no colineales |
-| Saludo | Movimiento **articular** de muñeca (no cartesiano) | No pasa por Pieper punto a punto |
+| Saludo | Vaivén en arco de lado a lado (∩), de frente por defecto; para en cada extremo | Pieper punto a punto, como las demás |
 | Corazón | Curva paramétrica clásica escalada al tamaño | Parada en la cúspide |
 | Triángulo | Equilátero de lado = tamaño, un vértice en el TCP | Nuevo; paradas en los 3 vértices |
 
