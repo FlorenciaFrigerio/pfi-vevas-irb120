@@ -53,6 +53,7 @@ class Muestreador:
             try:
                 q = self.cli.joints_deg()
                 self.muestras.append((time.monotonic(), q))
+                time.sleep(0.03)
             except Falla:
                 self.errores += 1
                 time.sleep(0.01)
