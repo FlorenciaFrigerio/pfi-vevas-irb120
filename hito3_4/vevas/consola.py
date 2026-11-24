@@ -653,7 +653,7 @@ class Consola:
                                            "Volver a la postura inicial")
         raise ValueError("destino debe ser 'cero', 'inicial' o 'j5'.")
 
-    def calcular_figura(self, figura, tamano_mm=25, plano="XY") -> dict:
+    def calcular_figura(self, figura, tamano_mm=25, plano="YZ") -> dict:
         """Recorrido completo de demostración; cada punto pasa por IK y revisión.
 
         Disponible en SIM y con el robot real por RWS con C02 verificado (mismas
@@ -769,7 +769,7 @@ class Consola:
                         "ok" if plan["ejecutable"] else "aviso")
             return publico(plan)
 
-    def vista_figura(self, figura, tamano_mm=25, plano="XY") -> dict:
+    def vista_figura(self, figura, tamano_mm=25, plano="YZ") -> dict:
         """Vista previa de una figura: muestras del TCP, paradas e inicio/fin. No calcula plan ni mueve nada.
 
         Usa la misma geometría que calcular_figura (vevas/figuras.py). Si llega la postura
