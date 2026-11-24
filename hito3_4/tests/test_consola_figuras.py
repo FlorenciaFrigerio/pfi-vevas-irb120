@@ -263,9 +263,11 @@ def test_rws_c02_figura_rechaza_si_la_postura_cambio(consola_rws, monkeypatch):
 def test_rws_c02_preparar_j5_sale_de_la_singularidad(tmp_path, q0_deg):
     con, registro = _consola_rws(tmp_path, q0_deg)
     try:
-        with pytest.raises(RuntimeError, match="Preparar J5 a \\+30°"):
-            con.calcular_figura("círculo")
-        assert con.plan is None
+        fig = con.calcular_figura("círculo")
+        assert fig["ejecutable"], fig["problemas"]
+        assert fig["figura"]["aproximacion_j5_deg"] == 30.0
+        assert "antes J5" in fig["descripcion"]
+        assert next(c for c in fig["revision"]["chequeos"] if c["id"] == "singularidad")["estado"] == "aviso"
         plan = con.calcular_home("j5")
         assert plan["ejecutable"], plan["problemas"]
         assert plan["preparar_j5"]
@@ -362,14 +364,20 @@ def test_falla_de_ik_bloquea_envio_de_la_figura_aunque_el_prefijo_sea_valido(con
     envio.assert_not_called()
 
 
-def test_sim_en_j5_cero_la_figura_sugiere_preparar_j5(tmp_path):
+@pytest.mark.parametrize("nombre", ["cuadrado", "círculo", "corazón", "triángulo"])
+@pytest.mark.parametrize("q0_deg", [[0, 0, 0, 0, 0, 0], [0, -20, 30, 0, 0, 0]])
+def test_sim_en_j5_cero_la_figura_agrega_la_aproximacion_j5(tmp_path, nombre, q0_deg):
     cfg = cargar_config(Path(__file__).resolve().parents[1] / "config.json")
     registro = Registro(tmp_path, "test_sim_j5")
     try:
-        con = Consola(cfg, BackendSim(np.radians([0, -20, 30, 0, 0, 0]), ruido_deg=0), registro)
-        plan = con.calcular_figura("triángulo", 25)
-        assert not plan["ejecutable"]
-        assert "Preparar J5 a +30°" in plan["problemas"][0]
+        con = Consola(cfg, BackendSim(np.radians(q0_deg), ruido_deg=0), registro)
+        plan = con.calcular_figura(nombre, 25)
+        assert plan["ejecutable"], plan["problemas"]
+        assert plan["figura"]["aproximacion_j5_deg"] == 30.0
+        np.testing.assert_allclose(plan["q0_deg"], q0_deg, atol=1e-9)   # empieza donde está el robot
+        assert 1 in plan["figura"]["paradas"]                           # para al terminar la aproximación
+        assert any("J5 a +30°" in p for p in plan["notas"])
+        assert not any("J5" in p for p in plan["problemas"])
     finally:
         registro.cerrar()
 

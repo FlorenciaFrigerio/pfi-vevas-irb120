@@ -301,6 +301,7 @@ function conectarControles() {
   $("#modo-expo").onchange = (e) => document.body.classList.toggle("sin-expl", !e.target.checked);
   $("#btn-parar").onclick = () => parar();
   $("#btn-vista").onclick = () => est.escena.vistaInicial();
+  $("#btn-vista-frente").onclick = () => est.escena.vistaFrontal?.();
   $("#ver-marcos").onchange = (e) => est.escena.medido.verMarcos(e.target.checked);
   $("#ver-zmin").onchange = (e) => (est.escena.planoZmin.visible = e.target.checked);
   $("#ver-entorno").onchange = (e) => est.escena.verEntorno(e.target.checked);
@@ -762,7 +763,10 @@ function conectarFiguras() {
     boton.textContent = "Calculando…";
     modal.querySelector("[data-mensaje-dialogo]").textContent = "";
     const cuerpo = { figura: $("#figura-tipo").value, tamano_mm: $("#figura-tamano").valueAsNumber, plano: $("#figura-plano").value };
-    try { await calcularPlan("calcular_figura", cuerpo); }
+    try {
+      await calcularPlan("calcular_figura", cuerpo);
+      if (cuerpo.plano === "YZ") est.escena.vistaFrontal?.();   // la figura de frente se mira de frente
+    }
     finally { boton.disabled = false; boton.textContent = "Calcular trayectoria"; }
   };
 }
@@ -1000,6 +1004,7 @@ function recibirPlan(plan, irAPasos, desdeArrastre = false) {
     if (plan.verificacion) h += `Verificación FK: e<sub>p</sub> = ${plan.verificacion.e_p_m.toExponential(1)} m, e<sub>R</sub> = ${plan.verificacion.e_R_rad.toExponential(1)} rad.<br>`;
   }
   if (plan.tray) h += `${nombrePerfil(plan.tray.perfil)} · ${f(plan.tray.tf, 2)} s. Destino q = [${plan.q_obj_deg.map((x) => f(x, 1)).join(", ")}] °.<br>`;
+  if (plan.notas && plan.notas.length) h += plan.notas.map((p) => `<span class="nota-plan">${p}</span>`).join("<br>") + "<br>";
   if (plan.problemas && plan.problemas.length) h += plan.problemas.map((p) => `<span class="problema">✗ ${p}</span>`).join("<br>");
   else h += '<span style="color:#13785c">✓ Revisión previa sin bloqueos (mirá el detalle abajo).</span>';
   r.innerHTML = h;

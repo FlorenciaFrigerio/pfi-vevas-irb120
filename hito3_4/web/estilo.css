@@ -427,3 +427,5 @@ html,body{height:auto;font-size:14px;background:var(--fondo);color:var(--texto)}
 .leyenda-figura .lf-parada{border-radius:1px;background:transparent;border:2px solid #c87d27;width:7px;height:7px}
 .leyenda-figura .lf-inicio{background:#fff;border:2px solid #13785c;width:7px;height:7px}
 .pf-error{margin:5px 0 0;font-size:11px;color:#36556a;font-family:var(--mono)}
+
+.nota-plan { color: #0f6e73; }

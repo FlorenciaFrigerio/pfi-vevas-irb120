@@ -18,7 +18,7 @@ test("RWS con C02 habilita con tope de tamaño y aviso de robot real", () => {
   assert.equal(p.subtituloJ5, "robot real · RWS C02");
   assert.equal(p.maxMm, 80);
   assert.match(p.tituloFiguras, /GO, armado y confirmación/);
-  assert.match(p.textoDialogo, /Preparar J5 a \+30°/);
+  assert.match(p.textoDialogo, /J5 a \+30°/);
 });
 
 test("ROS real y RWS sin C02 quedan deshabilitados con motivo claro", () => {

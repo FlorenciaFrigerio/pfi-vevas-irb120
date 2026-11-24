@@ -193,7 +193,7 @@ def vista_figura(consola, cuerpo):
     """Vista previa de puntos de una figura. No mueve nada ni cambia el plan; los errores de
     validación (tamaño fuera de rango mientras se escribe) no se registran como avisos."""
     try:
-        vista = consola.vista_figura(cuerpo.get("figura"), cuerpo.get("tamano_mm", 25), cuerpo.get("plano", "XY"))
+        vista = consola.vista_figura(cuerpo.get("figura"), cuerpo.get("tamano_mm", 25), cuerpo.get("plano", "YZ"))
     except (ValueError, RuntimeError) as error:
         return {"ok": False, "mensaje": str(error)}
     return _ok(vista=vista)
@@ -210,7 +210,7 @@ ORDENES = {
     "calcular_junta": lambda c, b: _ok(plan=c.calcular_junta(int(b["junta"]), float(b["valor_deg"]), bool(b.get("relativo")))),
     "ik_vivo": lambda c, b: _ok(ik=c.ik_vivo_rapido({k: float(b[k]) for k in ("x", "y", "z", "rz", "ry", "rx")}, b.get("q_ref_deg"))),
     "calcular_home": lambda c, b: _ok(plan=c.calcular_home(str(b.get("destino", "cero")))),
-    "calcular_figura": lambda c, b: _ok(plan=c.calcular_figura(b.get("figura"), b.get("tamano_mm", 25), b.get("plano", "XY"))),
+    "calcular_figura": lambda c, b: _ok(plan=c.calcular_figura(b.get("figura"), b.get("tamano_mm", 25), b.get("plano", "YZ"))),
     "vista_figura": vista_figura,
     "poses_listar": lambda c, b: _con_lista(c, "ok"),
     "pose_guardar": lambda c, b: _con_lista(c, "Pose guardada.", pose=c.guardar_pose_actual(b.get("nombre"))),

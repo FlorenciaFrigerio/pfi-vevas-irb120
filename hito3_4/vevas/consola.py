@@ -593,7 +593,7 @@ class Consola:
             q0 = self._origen_para_nuevo_plan(exigir_fresco=True) if preparar_j5 else self._origen_para_nuevo_plan()
             if preparar_j5:
                 q_obj = q0.copy()
-                q_obj[4] = np.radians(30.0)
+                q_obj[4] = np.radians(J5_PREPARADA_DEG)
             else:
                 q_obj = np.radians(np.asarray(q_deg, dtype=float))
             fuera = [i + 1 for i, ok in enumerate(self.robot.dentro_de_limites(q_obj)) if not ok]
@@ -653,7 +653,7 @@ class Consola:
                                            "Volver a la postura inicial")
         raise ValueError("destino debe ser 'cero', 'inicial' o 'j5'.")
 
-    def calcular_figura(self, figura, tamano_mm=25, plano="XY") -> dict:
+    def calcular_figura(self, figura, tamano_mm=25, plano="YZ") -> dict:
         """Recorrido completo de demostración; cada punto pasa por IK y revisión.
 
         Disponible en SIM y con el robot real por RWS con C02 verificado (mismas
@@ -678,10 +678,14 @@ class Consola:
                 raise RuntimeError("Esperá a que termine el movimiento para calcular una figura.")
             q0 = self._origen_para_nuevo_plan(exigir_fresco=not simulacion)
             muneca_singular = analisis_singularidad(self.robot, q0)["muneca_sin_q5"] < 0.09
-            sugerir_j5 = ("El robot está con J5 ≈ 0 (singularidad de muñeca): usá primero «Preparar J5 a +30°» "
-                          "y después calculá la figura.")
-            if muneca_singular and not simulacion:
-                raise RuntimeError(sugerir_j5)
+            # Con J5 ≈ 0 la muñeca es singular y Pieper no tiene rama continua desde el primer punto.
+            # En vez de rechazar, el plan agrega una aproximación articular J5 → +30° (la misma de
+            # «Preparar J5») con parada, y la figura empieza desde esa postura.
+            aproximacion = muneca_singular and nombre != "saludo"
+            q_actual = q0.copy()
+            if aproximacion:
+                q0 = q0.copy()
+                q0[4] = math.radians(J5_PREPARADA_DEG)
             origen = self.robot.fk_tcp(q0)
             objetivos = origen[:3, 3] + offsets
             juntas, ramas, error_ik = [q0.copy()], [], None
@@ -719,6 +723,9 @@ class Consola:
             # esquina, para conservar la figura sin redondearla. La misma función
             # alimenta la vista previa de puntos.
             paradas = paradas_figura(nombre, objetivos, limite=len(Q))
+            if aproximacion:
+                Q = np.vstack([q_actual, Q])
+                paradas = sorted({1, *(p + 1 for p in paradas)})
             tray = (planificar_camino(Q, self.robot.vel_max, self._factor(None),
                                      tcfg["t_acel_s"], tcfg["t_min_s"], paradas=paradas)
                     if len(Q) > 1 else self._planificar_punto(q0, q0))
@@ -727,17 +734,19 @@ class Consola:
                             "ramas": ramas, "paradas": paradas,
                             "plano_vista": plano_de_vista(objetivos - objetivos[0], plano),
                             "metodo": "articular" if nombre == "saludo" else "Pieper con orientación constante",
-                            "falla_punto": error_ik[0] if error_ik else None}
+                            "falla_punto": error_ik[0] if error_ik else None,
+                            "aproximacion_j5_deg": J5_PREPARADA_DEG if aproximacion else None}
             visible = {"circulo": "Círculo", "corazon": "Corazón", "triangulo": "Triángulo"}.get(nombre, nombre.capitalize())
             plan = self._armar_plan("figura", f"{visible} · {tamano_mm:g} mm · "
-                                    + ("saludo articular" if nombre == "saludo" else plano),
-                                    q0, Q[-1], {"figura": datos_figura}, tray=tray)
+                                    + ("saludo articular" if nombre == "saludo" else plano)
+                                    + (f" · antes J5 → +{J5_PREPARADA_DEG:g}°" if aproximacion else ""),
+                                    q_actual, Q[-1], {"figura": datos_figura}, tray=tray)
             plan["preview"]["puntos"] = objetivos.tolist()
             plan["verificacion"] = {"e_p_m": ep_max, "e_R_rad": er_max}
             if error_ik:
                 k, motivo = error_ik
                 mensaje = (f"Punto {k + 1}/{len(objetivos)}: {motivo} "
-                           + (sugerir_j5 if muneca_singular else "Probá un tamaño menor o una postura inicial distinta."))
+                           + "Probá un tamaño menor, otro plano o una postura inicial distinta.")
                 plan["problemas"].insert(0, mensaje)
                 rev = plan["revision"]
                 rev["estado"], rev["bloquea_envio"] = "rechazado", True
@@ -749,8 +758,9 @@ class Consola:
             if fuera:
                 plan["problemas"].insert(0, "La figura sale de los límites en J" + ", J".join(map(str, fuera)) + ".")
                 plan["ejecutable"] = False
-            if muneca_singular and not plan["ejecutable"] and not error_ik:
-                plan["problemas"].append(sugerir_j5)
+            if aproximacion:
+                plan.setdefault("notas", []).append(f"J5 estaba en ≈ 0° (singularidad de muñeca): el plan primero lleva J5 a "
+                                         f"+{J5_PREPARADA_DEG:g}° con parada y después dibuja la figura desde ahí.")
             self.plan = plan
             self._guardar_plan(plan)
             self.avisar(f"Plan {plan['id']}: {plan['descripcion']} · "
@@ -759,7 +769,7 @@ class Consola:
                         "ok" if plan["ejecutable"] else "aviso")
             return publico(plan)
 
-    def vista_figura(self, figura, tamano_mm=25, plano="XY") -> dict:
+    def vista_figura(self, figura, tamano_mm=25, plano="YZ") -> dict:
         """Vista previa de una figura: muestras del TCP, paradas e inicio/fin. No calcula plan ni mueve nada.
 
         Usa la misma geometría que calcular_figura (vevas/figuras.py). Si llega la postura
@@ -780,6 +790,9 @@ class Consola:
             absolutos = np.array([self.robot.fk_tcp(q)[:3, 3] for q in _juntas_saludo(q0, tamano_mm, len(offsets))])
             offsets = absolutos - absolutos[0]
         elif q0 is not None:
+            if analisis_singularidad(self.robot, q0)["muneca_sin_q5"] < 0.09:
+                q0 = q0.copy()
+                q0[4] = math.radians(J5_PREPARADA_DEG)
             absolutos = self.robot.fk_tcp(q0)[:3, 3] + offsets
         vista = plano_de_vista(offsets, plano)
         i, j = PLANOS[vista]
@@ -1443,6 +1456,7 @@ CHECKLIST_GO = (
     "10_registro_y_aborto_funcionando",
     "11_condiciones_de_aborto_y_recuperacion_acordadas",
 )
+J5_PREPARADA_DEG = 30.0  # «Preparar J5» y la aproximación automática de las figuras
 CAMPOS_GO = ("autoriza", "operador_pendant", "responsable_consola", "supervisor", "alcance")
 
 

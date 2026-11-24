@@ -40,6 +40,7 @@
         <label><input type="checkbox" id="ver-zmin" checked> Altura mínima</label>
         <label id="opcion-entorno" class="oculto"><input type="checkbox" id="ver-entorno" checked> Entorno</label>
         <button id="btn-vista" class="btn-chico">Vista inicial</button>
+        <button id="btn-vista-frente" class="btn-chico" title="Mirar el robot desde adelante (como quien está parado frente al brazo)">De frente</button>
       </div>
       <div class="trazos-3d" aria-label="Recorridos del TCP">
         <label><input type="checkbox" id="ver-camino" checked> Plan</label>
@@ -267,7 +268,7 @@
       <div class="campos">
         <label>Figura <select id="figura-tipo" autofocus><option value="circulo">Círculo</option><option value="corazon">Corazón</option><option value="cuadrado">Cuadrado</option><option value="triangulo">Triángulo</option><option value="saludo">Saludo</option></select></label>
         <label>Tamaño (mm) <input type="number" id="figura-tamano" min="5" max="100" step="any" value="25" required></label>
-        <label id="figura-plano-campo">Plano base <select id="figura-plano"><option>XY</option><option>XZ</option><option>YZ</option></select></label>
+        <label id="figura-plano-campo">Vista <select id="figura-plano"><option value="YZ" selected>De frente (plano YZ, vertical)</option><option value="XY">Desde arriba (plano XY, horizontal)</option><option value="XZ">De costado (plano XZ, vertical)</option></select></label>
       </div>
       <p id="figura-descripcion" class="nota"></p>
       <div class="vista-figura-dialogo">

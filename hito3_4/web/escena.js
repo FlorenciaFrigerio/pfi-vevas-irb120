@@ -521,6 +521,14 @@ class EscenaWebGL {
     this.controles.update();
   }
 
+  // Desde adelante del brazo (sobre +X, mirando hacia la base): +Y queda a la derecha y +Z arriba,
+  // así las figuras en el plano YZ se ven derechas, como las ve quien está frente al robot.
+  vistaFrontal() {
+    this.camara.position.set(1.75, 0, 0.5);
+    this.controles.target.set(0.3, 0, 0.45);
+    this.controles.update();
+  }
+
   _redimensionar() {
     const w = this.cont.clientWidth || 600, h = this.cont.clientHeight || 400;
     this.render.setSize(w, h);
@@ -688,6 +696,7 @@ class EscenaCanvas {
    return new THREE.Ray(origen, frente.negate());
  }
  vistaInicial(){this.theta=-1.0;this.phi=.40;this.zoom=1;}
+ vistaFrontal(){this.theta=0;this.phi=.08;this.zoom=1;}
  fijarZmin(z){this.planoZmin.z=z;}
  fijarEntorno(entorno) {
    this.entorno.cajas = cajasEntorno(entorno);
