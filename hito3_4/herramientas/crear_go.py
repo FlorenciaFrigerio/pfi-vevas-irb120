@@ -16,8 +16,10 @@ RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 from vevas.consola import CHECKLIST_GO, validar_go
 from vevas.seguridad import cargar_config
+from vevas.velocidad import VEL_PCT_DEFECTO, VEL_PCT_MAX, pct_valido
 
-TOPE_DEFECTO = 5.0
+TOPE_DEFECTO = VEL_PCT_DEFECTO   # Enter = 5 %
+TOPE_MAXIMO = VEL_PCT_MAX        # 50 %; con RWS el RAPID (C02) limita igual cada junta al 5 % de la ficha
 # Campos de registro que antes se preguntaban uno por uno; se completan solos para no demorar la sesión.
 AUTOMATICOS = {
     'autoriza': 'Docente IMT-342 (ensayos del PFI)',
@@ -63,11 +65,11 @@ def velocidad(maximo, defecto):
         try:
             crudo = input(f'Tope de velocidad en % [Enter = {defecto:g}, máximo {maximo:g}]: ').strip()
             valor = float(crudo.replace(',', '.')) if crudo else defecto
-            if math.isfinite(valor) and 0 < valor <= maximo:
+            if math.isfinite(valor) and 0 < valor <= maximo and pct_valido(valor):
                 return valor
         except ValueError:
             pass
-        print('Número fuera de rango. Este porcentaje no certifica la velocidad articular ejecutada por RAPID.')
+        print(f'Número fuera de rango (0 < v ≤ {maximo:g}). Con RWS el RAPID (C02) limita igual cada junta al 5 % de la ficha.')
 
 
 def guardar(ruta, datos):
@@ -100,7 +102,7 @@ def main(argv=None):
         go = {'fecha': dt.date.today().isoformat(), 'decision': 'NO-GO'}
         go.update(AUTOMATICOS)
         listo = si('¿Zona despejada, brida sin herramienta, nada fuera de la mesa y paro de emergencia a mano?')
-        maximo = float(cfg['seguridad']['velocidad_real_max_pct'])
+        maximo = min(TOPE_MAXIMO, float(cfg['seguridad']['velocidad_real_max_pct']))
         go['velocidad_max_pct'] = velocidad(maximo, min(TOPE_DEFECTO, maximo))
         go['checklist'] = {k: listo for k in CHECKLIST_GO}
         entorno = copy.deepcopy(cfg['entorno'])

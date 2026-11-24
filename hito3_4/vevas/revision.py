@@ -12,7 +12,10 @@ Se revisan, muestra por muestra, las posiciones intermedias de la trayectoria co
 
     inicio        el plan empieza donde está el robot
     limites       juntas dentro de límites con margen
-    velocidad     velocidad de cada junta bajo su tope (hoja de datos × % permitido)
+    velocidad     velocidad de cada junta bajo su tope (hoja de datos × % permitido, 0 < % ≤ 50)
+    velocidad_fisica  (RWS con C02) el RAPID limita cada junta a vLim = 5 % de la ficha: si el plan pide más
+                  NO se rechaza (el robot no va más rápido, tarda más); es AVISO con el tiempo real estimado.
+    velocidad_verificada  (robot real sin C02) por encima del 10 % ensayado: AVISO «fuera de lo verificado».
     singularidad  valor singular mínimo del Jacobiano y tipo de singularidad
     altura        partes del brazo sobre la altura mínima (mesa)
     autocolision  brazo contra sí mismo y contra la herramienta (cápsulas)
@@ -32,6 +35,7 @@ import numpy as np
 
 from .jacobiano import analisis_singularidad
 from .robot_irb120 import VEL_MAX_DEG
+from .velocidad import VEL_PCT_MAX, VEL_PCT_VERIFICADO
 
 GRAD = 180.0 / math.pi
 
@@ -176,7 +180,8 @@ def nivel_singularidad(sigma_min: float, sigma_umbral: float) -> str:
 
 
 def revisar_trayectoria(robot, ts, Q, QD, q_medida, cfg: dict, vel_pct_max: float, exige_go: bool = False,
-                        permitir_singular_destino: bool = False, velocidad_articular_verificada: bool = True) -> dict:
+                        permitir_singular_destino: bool = False, velocidad_articular_verificada: bool = True,
+                        vlim_fisico_deg_s=None, t_fisico_s: float | None = None, vel_pct_plan: float | None = None) -> dict:
     """Revisa la trayectoria completa y devuelve el informe.
 
     ts, Q, QD   muestras de la trayectoria (s, rad, rad/s)
@@ -185,6 +190,9 @@ def revisar_trayectoria(robot, ts, Q, QD, q_medida, cfg: dict, vel_pct_max: floa
     exige_go    True con robot real o hardware sin identificar: ahí «no verificado» bloquea.
     permitir_singular_destino  solo para movimientos articulares a una postura home (q = 0): si la
                 singularidad aparece únicamente al final del recorrido, es «aviso» y no «rechazado».
+    vlim_fisico_deg_s  tope físico por junta del controlador (RWS con C02: vLim del RAPID) o None.
+    t_fisico_s  tiempo que tardará el robot real con ese tope (mismo cálculo que el RAPID) o None.
+    vel_pct_plan  % del slider con que se calculó el plan (para el aviso «fuera de lo verificado»).
     """
     ts, Q, QD = np.asarray(ts), np.asarray(Q), np.asarray(QD)
     n = len(ts)
@@ -240,7 +248,7 @@ def revisar_trayectoria(robot, ts, Q, QD, q_medida, cfg: dict, vel_pct_max: floa
                                  f"Margen mínimo a un límite: {math.degrees(peor_marg):.1f}° (se pide ≥ {math.degrees(margen_lim):.0f}°)."))
 
     # 3. velocidad planificada por junta
-    tope_pct = min(float(vel_pct_max), 100.0)
+    tope_pct = min(float(vel_pct_max), VEL_PCT_MAX)
     tope = np.array(VEL_MAX_DEG) * tope_pct / 100.0
     vmax = np.degrees(np.abs(QD)).max(axis=0)
     exceso = vmax / np.maximum(tope, 1e-9)
@@ -254,6 +262,35 @@ def revisar_trayectoria(robot, ts, Q, QD, q_medida, cfg: dict, vel_pct_max: floa
     else:
         chequeos.append(_chequeo("velocidad", "Velocidad del plan en VEVAS", "aprobado",
                                  f"Velocidad del plan verificada en VEVAS. Mayor uso de tope: J{j_ex + 1} a {vmax[j_ex]:.1f}°/s de {tope[j_ex]:.1f}°/s permitidos."))
+
+    # 3b. tope físico del RAPID (RWS con C02): el robot nunca supera vLim aunque el plan pida más. No se rechaza:
+    # el RAPID estira el tiempo de cada tramo (t = max(piso, kPico·|Δq_i|/vLim_i)); se avisa cuánto tardará.
+    if vlim_fisico_deg_s is not None:
+        vlim = np.asarray(vlim_fisico_deg_s, dtype=float)
+        uso = vmax / np.maximum(vlim, 1e-9)
+        j = int(np.argmax(uso))
+        t_plan = float(ts[-1])
+        t_txt = (f" El robot real tardará ≈ {t_fisico_s:.1f} s (C02) en vez de {t_plan:.1f} s del plan."
+                 if t_fisico_s else "")
+        excedidas = [i + 1 for i in range(6) if uso[i] > 1.001]
+        if excedidas:
+            sobre = np.degrees(np.abs(QD)) > vlim * 1.001
+            for k in np.where(sobre.any(axis=1))[0]:
+                marcar(int(k), 1, "tope físico C02")
+            lista = ", ".join(f"J{i} a {vlim[i - 1]:g}°/s" for i in excedidas)
+            chequeos.append(_chequeo("velocidad_fisica", "Tope físico del RAPID (C02)", "aviso",
+                                     f"El plan pide hasta {vmax[j]:.1f}°/s en J{j + 1}, pero el RAPID limita {lista} "
+                                     f"(5 % de la ficha): el robot no irá más rápido.{t_txt}",
+                                     obligatorio=False, juntas=excedidas))
+        else:
+            chequeos.append(_chequeo("velocidad_fisica", "Tope físico del RAPID (C02)", "aprobado",
+                                     f"El plan queda bajo vLim en las seis juntas (mayor uso: J{j + 1} a {vmax[j]:.1f} de "
+                                     f"{vlim[j]:g}°/s).{t_txt}", obligatorio=False))
+    elif exige_go and vel_pct_plan is not None and float(vel_pct_plan) > VEL_PCT_VERIFICADO + 1e-9:
+        chequeos.append(_chequeo("velocidad_verificada", "Velocidad ensayada con el robot real", "aviso",
+                                 f"Plan al {float(vel_pct_plan):g} % de la ficha: por encima del {VEL_PCT_VERIFICADO:g} % "
+                                 "ensayado con el robot real (fuera de lo verificado). Este controlador no tiene un tope "
+                                 "físico C02 que la limite.", obligatorio=False))
 
     if not velocidad_articular_verificada:
         chequeos.append(_chequeo("velocidad_controlador", "Velocidad articular en el IRC5", "no_verificado",

@@ -389,3 +389,52 @@ export function encuadreFigura(conjuntos, ancho, alto, margen = 28) {
   const v = (py) => cv - (py - alto / 2) / escala;
   return { escala, x, y, u, v, paso: pasoEje(Math.max(uMax - uMin, vMax - vMin, 2)) };
 }
+
+// ---- Velocidad: slider del plan y panel «Velocidad de las juntas»
+export const VEL_PCT_VERIFICADO = 10; // lo ensayado con el robot real; por encima: solo simulación / fuera de lo verificado
+
+// Aspecto del slider «Velocidad del plan»: nivel (ok · alto · muy-alto), aviso y nota del modo.
+export function estadoSliderVel(pct, modo = {}) {
+  const v = Number(pct);
+  const verificado = modo.vel_pct_verificado ?? VEL_PCT_VERIFICADO;
+  const nivel = !(v > verificado) ? "ok" : v > 2.5 * verificado ? "muy-alto" : "alto";
+  const c02 = modo.tipo === "rws" && (modo.tope_fisico_c02 || (modo.velocidad_articular_verificada && modo.vlim_c02_deg_s));
+  const nota = c02 ? "Robot real: tope físico C02 = 5 % de la ficha por junta" : "";
+  const aviso = nivel === "ok" ? "" : `Más del ${verificado} %: solo simulación / fuera de lo verificado`;
+  const titulo = [c02 ? "El RAPID limita cada junta al 5 % de la ficha: un plan más rápido no acelera el robot, solo tarda lo que fija C02." : "Velocidad nominal de cálculo del plan (% de la ficha, máx. 50 %).", aviso].filter(Boolean).join(" ");
+  return { nivel, aviso, nota, titulo, c02: !!c02 };
+}
+
+// Uso del tope [%] → color de la barra: verde < 80 %, naranja hasta 100 %, rojo por encima.
+export function nivelUso(pct) {
+  if (pct == null || !Number.isFinite(pct)) return "sin";
+  return pct > 100 ? "rojo" : pct >= 80 ? "naranja" : "verde";
+}
+
+// Filas por junta con lo que manda el servidor (misma cifra que se guarda en el registro de sesión).
+export function filasVelocidad(v) {
+  const med = v?.vel_medida_deg_s, plan = v?.vel_plan_deg_s, tope = v?.vel_tope_deg_s, max = v?.vel_max_mov_deg_s;
+  return [0, 1, 2, 3, 4, 5].map((j) => {
+    const m = med ? med[j] : null;
+    const t = tope ? tope[j] : null;
+    const uso = m != null && t > 0 ? (100 * Math.abs(m)) / t : null;
+    const usoMax = max && t > 0 ? (100 * max[j]) / t : null;
+    return { junta: j + 1, medida: m, plan: plan ? plan[j] : null, tope: t, uso, nivel: nivelUso(uso), max: max ? max[j] : null, usoMax, nivelMax: nivelUso(usoMax) };
+  });
+}
+
+export function panelVelocidades(v) {
+  if (!v) return '<p class="vacio">Esperando el estado del robot…</p>';
+  const filas = filasVelocidad(v);
+  const fuenteTope = v.vel_tope_fuente || "—";
+  const fuentePlan = v.vel_plan_fuente ? ` (${v.vel_plan_fuente})` : "";
+  const cuerpo = filas.map((r) => {
+    const ancho = r.uso == null ? 0 : Math.min(100, r.uso);
+    return `<tr><td>J${r.junta}</td><td class="vj-med">${f(r.medida, 1)}</td><td>${f(r.plan, 1)}</td><td>${f(r.tope, 1)}</td>`
+      + `<td class="vj-uso"><div class="vj-barra ${r.nivel}"><div style="width:${ancho.toFixed(1)}%"></div></div><span>${r.uso == null ? "—" : f(r.uso, 0) + " %"}</span></td>`
+      + `<td class="vj-max ${r.nivelMax}">${f(r.max, 1)}</td></tr>`;
+  }).join("");
+  const sinMedida = v.vel_medida_deg_s ? "" : '<p class="nota">Sin velocidad medida: faltan muestras recientes de posición.</p>';
+  return `<table class="tabla-simple tabla-vel"><thead><tr><th>Junta</th><th>Medida °/s</th><th>Plan °/s${fuentePlan}</th><th>Tope °/s</th><th>% del tope</th><th>Máx. último mov.</th></tr></thead><tbody>${cuerpo}</tbody></table>`
+    + `${sinMedida}<p class="nota">Tope: ${fuenteTope}. Medida: pendiente por mínimos cuadrados de las posiciones recibidas en ~0,3 s (con su marca de tiempo). Barra: verde &lt; 80 %, naranja hasta 100 %, rojo por encima.</p>`;
+}

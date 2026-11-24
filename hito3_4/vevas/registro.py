@@ -49,6 +49,7 @@ class Registro:
         cab += [f"q{i}_med_deg" for i in range(1, 7)]
         cab += [f"e{i}_deg" for i in range(1, 7)]
         cab += ["e_p_mm", "e_R_deg", "x_mm", "y_mm", "z_mm", "sigma_min", "vel_pct"]
+        cab += [f"v{i}_med_deg_s" for i in range(1, 7)]   # velocidad medida (regresión ~0.3 s), la misma de la interfaz
         self._csv.writerow(cab)
         self.resumenes = []
         self._n = 0

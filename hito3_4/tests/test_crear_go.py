@@ -99,3 +99,14 @@ def test_enter_usa_tope_de_5_por_ciento(archivos, monkeypatch, capsys):
     assert registro["decision"] == "GO"
     salida = capsys.readouterr().out
     assert salida.count("[s/n]") == 1  # una sola confirmación, sin nombres
+
+
+def test_tope_maximo_50_y_fuera_de_rango_se_vuelve_a_preguntar(archivos, monkeypatch, capsys):
+    config, go, args = archivos
+    monkeypatch.setattr(sys, "stdin", StringIO("s\n60\n0\n50\n"))
+    assert crear_go.main(args) == 0
+    registro = json.loads(go.read_text(encoding="utf-8"))
+    assert registro["velocidad_max_pct"] == 50 and registro["decision"] == "GO"
+    salida = capsys.readouterr().out
+    assert "máximo 50" in salida and "Enter = 5" in salida
+    assert salida.count("fuera de rango") == 2
