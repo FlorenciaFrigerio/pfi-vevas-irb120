@@ -221,7 +221,7 @@ def test_real_sin_go_no_arma_y_con_go_si():
     try:
         assert not con.armar(CHECK, "otra frase")[0]
         assert con.armar(CHECK, FRASE)[0]
-        assert con.vel_pct <= 5  # el tope del GO (5 %) manda sobre el 10 % de config
+        assert con.vel_pct <= 5  # el tope del GO (5 %) manda sobre el 50 % de config
     finally:
         cerrar(con, b)
 

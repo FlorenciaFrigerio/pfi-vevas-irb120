@@ -43,6 +43,7 @@ from .secuencias import POSTURA_INICIAL_DEG, pasos_demo
 from .revision import nivel_singularidad, problemas_de, revisar_trayectoria
 from .rws_cliente import CancelacionOrden
 from .seguridad import semaforo
+from .velocidad import VEL_PCT_MAX, VEL_PCT_VERIFICADO, MedidorVelocidad, pct_valido
 from .trayectoria import comprobar_continuidad, planificar, planificar_suave, planificar_camino
 
 FRASE_REAL = "MOVER ROBOT REAL"
@@ -75,6 +76,8 @@ class Consola:
         self.lock = threading.RLock()
         s = cfg["seguridad"]
         self.vel_pct = float(s["velocidad_inicial_pct"])
+        # Velocidad MEDIDA por junta (regresión ~0.3 s sobre las posiciones recibidas) y máximo del último movimiento
+        self.medidor_vel = MedidorVelocidad()
         self.armado = False
         self.motivo_desarmado = "Todavía no se armó el movimiento."
         self.plan = None
@@ -114,6 +117,9 @@ class Consola:
         info["exige_go"] = es_real
         info["permitir_real"] = self.permitir_real
         info["vel_max_pct"] = self._tope_vel_pct(es_real)
+        info["vel_pct_max_abs"] = VEL_PCT_MAX
+        info["vel_pct_verificado"] = VEL_PCT_VERIFICADO
+        info["tope_fisico_c02"] = self._rws_c02() and bool(info.get("vlim_c02_deg_s"))
         info["seguimiento_por_llegada"] = bool(getattr(self.backend, "seguimiento_por_llegada", False))
         permitidas = self._movimientos_guiados_permitidos()
         info["figuras_permitidas"] = permitidas
@@ -147,12 +153,71 @@ class Consola:
         """Tope de velocidad [% de la hoja de datos]. Con robot real manda el menor entre config.json y el GO."""
         s = self.cfg["seguridad"]
         if not es_real:
-            return float(s["velocidad_sim_max_pct"])
-        tope = float(s["velocidad_real_max_pct"])
+            return min(VEL_PCT_MAX, float(s["velocidad_sim_max_pct"]))
+        tope = min(VEL_PCT_MAX, float(s["velocidad_real_max_pct"]))
+        if not self._rws_c02():
+            # Sin el tope físico verificado en el IRC5 (ROS real, o RWS sin C02) no se pasa del 10 %.
+            tope = min(tope, VEL_PCT_SIN_C02)
         v_go = (self.go or {}).get("velocidad_max_pct")
-        if isinstance(v_go, (int, float)) and not isinstance(v_go, bool) and v_go > 0:
+        if pct_valido(v_go):
             tope = min(tope, float(v_go))
         return tope
+
+    # Velocidad de las juntas: tope físico (C02), tiempo real estimado y velocidad comandada
+    def _vlim_fisico(self, info: dict | None = None):
+        """vLim [°/s] por junta que impone el RAPID con RWS y C02 verificado; None en cualquier otro caso."""
+        if not self._rws_c02():
+            return None
+        vlim = (info if info is not None else self.backend.info()).get("vlim_c02_deg_s")
+        if not vlim or len(vlim) != 6:
+            return None
+        return [float(x) for x in vlim]
+
+    def _tiempo_c02(self, Q, QD):
+        """Tiempo nominal [s] que el RAPID (C02) tardará en el recorrido Q (Q[0] = origen); None sin C02."""
+        estimar = getattr(self.backend, "duracion_c02_s", None)
+        if estimar is None or not self._rws_c02():
+            return None
+        try:
+            t = estimar(Q, QD)
+        except Exception:  # noqa: BLE001
+            return None
+        return float(t) if t is not None and math.isfinite(t) and t > 0 else None
+
+    def _tope_vel_juntas(self, info: dict | None = None):
+        """(tope [°/s] por junta, fuente): vLim del RAPID con RWS C02; si no, ficha × % del slider."""
+        vlim = self._vlim_fisico(info)
+        if vlim is not None:
+            return vlim, "C02 · RAPID (5 % de la ficha)"
+        return [float(v) * self.vel_pct / 100.0 for v in VEL_MAX_DEG], f"plan · {self.vel_pct:g} % de la ficha"
+
+    def _vel_plan(self, t_est, now, por_llegada):
+        """Velocidad comandada [°/s] en este instante y su fuente, si hay una ejecución en curso."""
+        e = self.ejec
+        if e is None:
+            return None, None
+        tray = e["tray"]
+        if not por_llegada:
+            t = (t_est - e["t0"]) if t_est else e["t"]
+            _, qd, _ = tray.evaluar(min(max(0.0, t), tray.tf + 1.0))
+            return [float(x) * GRAD for x in qd], "plan"
+        # RWS: el RAPID fija el tiempo de cada tramo (C02). Se estima escalando el plan a ese tiempo.
+        T = e.get("t_c02_s")
+        if not T or tray.tf <= 0:
+            return None, None
+        k = tray.tf / T
+        t = (now - e["t0"]) * k
+        if t >= tray.tf:
+            return [0.0] * 6, "estimada · plan escalado al tiempo C02"
+        _, qd, _ = tray.evaluar(max(0.0, t))
+        return [float(x) * GRAD * k for x in qd], "estimada · plan escalado al tiempo C02"
+
+    def reiniciar_maximos_velocidad(self):
+        with self.lock:
+            self.medidor_vel.reiniciar_maximos()
+            if "vel_max_mov_deg_s" in self.vivo:
+                self.vivo = {**self.vivo, "vel_max_mov_deg_s": [0.0] * 6}
+        self.reg.evento("vel_max_reiniciado")
 
     def _validar_go_sesion(self):
         if self.ruta_go is None:
@@ -207,6 +272,9 @@ class Consola:
         q_med, t_est = self._q_medida()
         with self.lock:
             self._ciclo_n += 1
+            if q_med is not None:
+                # misma marca de tiempo = muestra repetida (el bucle va a 50 Hz; RWS entrega ~10 Hz): se descarta
+                self.medidor_vel.agregar(t_est, np.degrees(np.asarray(q_med, dtype=float)))
             edad = (now - t_est) if q_med is not None else float("inf")
             moviendo = self.ejec is not None or self.jog is not None
 
@@ -270,6 +338,7 @@ class Consola:
                     self._paso_jog(dt_c)
 
             v = {"edad_estado_s": edad, "edad_pulso_s": now - self.pulso_t}
+            v.update(self._estado_velocidad(t_est if q_med is not None else None, now, por_llegada))
             if q_med is not None:
                 M = self.robot.marcos(q_med)
                 T_med = self.robot.fk_tcp(q_med)
@@ -327,6 +396,19 @@ class Consola:
                     self._guardar_muestra(now, q_med, v, moviendo)
             self.vivo = v
 
+    def _estado_velocidad(self, t_est, now, por_llegada) -> dict:
+        vm = self.medidor_vel.velocidad(now)
+        tope, fuente = self._tope_vel_juntas()
+        plan, fuente_plan = self._vel_plan(t_est, now, por_llegada)
+        return {
+            "vel_medida_deg_s": None if vm is None else [float(x) for x in vm],
+            "vel_max_mov_deg_s": [float(x) for x in self.medidor_vel.max_mov],
+            "vel_tope_deg_s": tope,
+            "vel_tope_fuente": fuente,
+            "vel_plan_deg_s": plan,
+            "vel_plan_fuente": fuente_plan,
+        }
+
     def _guardar_muestra(self, now, q_med, v, moviendo):
         q_ref = v.get("q_ref_deg") or [float("nan")] * 6
         err = v.get("err_deg") or [float("nan")] * 6
@@ -346,6 +428,8 @@ class Consola:
             round(v["sing"]["sigma_min"], 5),
             self.vel_pct,
         ]
+        vel = v.get("vel_medida_deg_s") or [float("nan")] * 6
+        fila += [round(x, 4) for x in vel]
         self.reg.muestra(fila)
 
     # Armado y GO
@@ -386,8 +470,10 @@ class Consola:
 
     def fijar_velocidad(self, pct: float) -> float:
         with self.lock:
+            if isinstance(pct, bool) or not isinstance(pct, (int, float)) or not math.isfinite(pct):
+                raise ValueError(f"Velocidad inválida: 0 < v ≤ {VEL_PCT_MAX:g} %.")
             m = self.modo()
-            velocidad = float(max(1.0, min(pct, m["vel_max_pct"])))
+            velocidad = float(max(1.0, min(pct, m["vel_max_pct"], VEL_PCT_MAX)))
             if self.backend.tipo == "sim" and velocidad != self.vel_pct:
                 self.plan = None
             self.vel_pct = velocidad
@@ -432,9 +518,12 @@ class Consola:
         tray = tray if tray is not None else self._planificar_punto(q0, q_obj, vel_cap_deg_s)
         ts, Q, QD, _ = tray.muestrear(0.02)
         m = self.modo()
+        vlim = self._vlim_fisico(m)
+        t_c02 = self._tiempo_c02(Q, QD) if vlim is not None else None
         revision = revisar_trayectoria(self.robot, ts, Q, QD, q0, self.cfg, m["vel_max_pct"], m["exige_go"],
                                        permitir_singular_destino=permitir_singular_destino,
-                                       velocidad_articular_verificada=m.get("velocidad_articular_verificada", True))
+                                       velocidad_articular_verificada=m.get("velocidad_articular_verificada", True),
+                                       vlim_fisico_deg_s=vlim, t_fisico_s=t_c02, vel_pct_plan=self.vel_pct)
         problemas = problemas_de(revision)
         T_obj = self.robot.fk_tcp(q_obj)
         sing = analisis_singularidad(self.robot, q_obj)
@@ -477,6 +566,8 @@ class Consola:
             "ejecutable": not revision["bloquea_envio"],
             "vel_pct": self.vel_pct,
             "vel_cap_deg_s": vel_cap_deg_s,
+            "vlim_c02_deg_s": vlim,
+            "t_c02_s": t_c02,      # tiempo que tardará el robot real (RAPID, C02); None fuera de RWS con C02
         }
         plan.update(extra)
         plan["_permitir_singular_destino"] = permitir_singular_destino
@@ -987,9 +1078,12 @@ class Consola:
                 plan["_tray"] = self._planificar_punto(q_med, plan["q_obj_rad"], plan.get("vel_cap_deg_s"))
             tray = plan["_tray"]
             ts, Q, QD, QDD = tray.muestrear(self.cfg["trayectoria"]["dt_envio_s"])
+            vlim = self._vlim_fisico(m)
+            t_c02 = self._tiempo_c02(Q, QD) if vlim is not None else None
             revision = revisar_trayectoria(self.robot, ts, Q, QD, q_med, self.cfg, m["vel_max_pct"], m["exige_go"],
                                            permitir_singular_destino=plan.get("_permitir_singular_destino", False),
-                                           velocidad_articular_verificada=m.get("velocidad_articular_verificada", True))
+                                           velocidad_articular_verificada=m.get("velocidad_articular_verificada", True),
+                                           vlim_fisico_deg_s=vlim, t_fisico_s=t_c02, vel_pct_plan=plan.get("vel_pct"))
             problemas = problemas_de(revision)
             if plan["tipo"] == "pose" and plan.get("ik", {}).get("elegida") is None:
                 problemas.append("No hay rama válida.")
@@ -1028,6 +1122,9 @@ class Consola:
                 self.avisar("Envío cancelado: se desarmó o se pidió PARAR mientras se enviaba.", "error")
                 return False, "Se canceló el envío de puntos siguientes. Un tramo RWS ya emitido puede seguir en curso."
             limite_s = tray.tf * 6 + 30  # solo se usa con seguimiento por llegada
+            if t_c02 is not None:
+                # el RAPID (C02) fija el tiempo real: la vigilancia de llegada no puede usar el tiempo del plan
+                limite_s = max(limite_s, 2.0 * t_c02 + 30.0)
             est = getattr(self.backend, "duracion_estimada_s", None)
             if est is not None:
                 try:
@@ -1047,11 +1144,14 @@ class Consola:
                 "q_obj": np.array(plan["q_obj_rad"]),
                 "T_d": plan.get("_T_d"),
                 "inicio": dt.datetime.now().isoformat(timespec="seconds"),
+                "t_c02_s": t_c02,
             }
+            self.medidor_vel.reiniciar_maximos()   # «máximo del último movimiento»
             self.q_ref = None if por_llegada else tray.q0.copy()
             self.reg.evento("envio", plan_id=plan["id"], tf=tray.tf, n_puntos=len(ts) - 1, vel_pct=self.vel_pct, mensaje=msg,
-                            revision=revision["estado"])
-            self.avisar(f"Plan {plan['id']} ENVIADO al robot ({msg}). Duración planificada {tray.tf:.2f} s.", "ok")
+                            revision=revision["estado"], t_c02_s=t_c02, limite_s=limite_s)
+            extra_c02 = "" if t_c02 is None else f"; el RAPID (C02) la ejecuta en ≈ {t_c02:.1f} s"
+            self.avisar(f"Plan {plan['id']} ENVIADO al robot ({msg}). Duración planificada {tray.tf:.2f} s{extra_c02}.", "ok")
             return True, msg
 
     def _llegada_sim_verificada(self, ejecucion, q_med):
@@ -1079,7 +1179,9 @@ class Consola:
         if getattr(self.backend, "seguimiento_por_llegada", False):
             duracion = self.backend.duracion_observada_s
         r = {"plan_id": e["plan_id"], "descripcion": e["descripcion"], "inicio": e["inicio"],
-             "duracion_s": duracion, "duracion_planificada_s": e["tray"].tf}
+             "duracion_s": duracion, "duracion_planificada_s": e["tray"].tf,
+             "duracion_c02_estimada_s": e.get("t_c02_s"),
+             "vel_max_medida_deg_s": [float(x) for x in self.medidor_vel.max_mov]}
         if q_med is not None:
             err_fin = np.degrees(np.asarray(q_med) - e["q_obj"])
             T_fin = self.robot.fk_tcp(q_med)
@@ -1181,6 +1283,8 @@ class Consola:
                 return False, "No llega la posición del robot."
             if time.monotonic() - t_est > self.cfg["seguridad"]["watchdog_estado_s"]:
                 return False, "El estado del robot está desactualizado: no se mueve."
+            if self.jog is None:
+                self.medidor_vel.reiniciar_maximos()   # «máximo del último movimiento»
             base = np.asarray(q_med, dtype=float) if self.jog is None else self.q_ref
             self.q_ref = base.copy()
             self.jog = {
@@ -1393,6 +1497,7 @@ class Consola:
                     "progreso": None if getattr(self.backend, "seguimiento_por_llegada", False) else min(1.0, e["t"] / max(e["tray"].tf, 1e-6)),
                     "err_max_deg": e["err_max_deg"],
                     "e_p_max_mm": e["e_p_max_mm"],
+                    "t_c02_s": e.get("t_c02_s"),
                 }
             else:
                 v["ejec"] = None
@@ -1435,6 +1540,7 @@ CHECKLIST_GO = (
     "10_registro_y_aborto_funcionando",
     "11_condiciones_de_aborto_y_recuperacion_acordadas",
 )
+VEL_PCT_SIN_C02 = 10.0  # robot real sin tope físico verificado (C02): máximo del slider
 J5_PREPARADA_DEG = 30.0  # «Preparar J5» y la aproximación automática de las figuras
 CAMPOS_GO = ("autoriza", "operador_pendant", "responsable_consola", "supervisor", "alcance")
 
@@ -1502,8 +1608,8 @@ def validar_go(go: dict | None) -> tuple[bool, str]:
     if pend:
         return False, "Ítems del checklist GO sin confirmar: " + ", ".join(pend)
     v = go.get("velocidad_max_pct")
-    if isinstance(v, bool) or not isinstance(v, (int, float)) or not (0 < v <= 100):
-        return False, "El GO debe indicar 'velocidad_max_pct' (número entre 0 y 100)."
+    if not pct_valido(v):
+        return False, f"El GO debe indicar 'velocidad_max_pct' (número 0 < v ≤ {VEL_PCT_MAX:g})."
     if "entorno" in go:
         ok, msg = _validar_entorno_go(go["entorno"])
         if not ok:

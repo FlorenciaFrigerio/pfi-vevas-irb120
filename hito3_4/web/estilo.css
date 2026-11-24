@@ -429,3 +429,18 @@ html,body{height:auto;font-size:14px;background:var(--fondo);color:var(--texto)}
 .pf-error{margin:5px 0 0;font-size:11px;color:#36556a;font-family:var(--mono)}
 
 .nota-plan { color: #0f6e73; }
+/* Velocidad del plan (cabecera) y pestaña «Velocidades» */
+.vel{position:relative;flex-wrap:wrap}
+.vel-nota{flex-basis:100%;font-size:10px;color:#617588;line-height:1.3;max-width:260px}
+.vel.alto input{accent-color:#c87d27}.vel.alto span{color:#c87d27}
+.vel.muy-alto input{accent-color:#b62d41}.vel.muy-alto span{color:#b62d41}
+.vel.alto .vel-nota{color:#8c6518}.vel.muy-alto .vel-nota{color:#a7394a}
+.tabla-vel td{font-family:var(--mono)}
+.tabla-vel .vj-med{font-weight:700;color:#2e536b}
+.vj-uso{min-width:120px;white-space:nowrap}
+.vj-uso span{display:inline-block;min-width:38px;text-align:right;font-size:10px;color:#617588;margin-left:6px}
+.vj-barra{display:inline-block;vertical-align:middle;width:80px;height:7px;background:#e5ebf2;border-radius:4px;overflow:hidden}
+.vj-barra>div{height:100%;border-radius:4px}
+.vj-barra.verde>div{background:#13785c}.vj-barra.naranja>div{background:#c87d27}.vj-barra.rojo>div{background:#b62d41}
+.vj-max.naranja{color:#c87d27;font-weight:700}.vj-max.rojo{color:#b62d41;font-weight:700}
+.grafica-vel{height:190px;margin-top:8px}

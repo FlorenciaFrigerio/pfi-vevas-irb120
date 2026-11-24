@@ -27,8 +27,11 @@
     "dt_envio_s": 0.02
   },
   "seguridad": {
-    "velocidad_sim_max_pct": 100,
-    "velocidad_real_max_pct": 10,
+    // Slider «Velocidad del plan» en % de la ficha (250/250/250/320/320/420 °/s): 0 < v ≤ 50 en SIM y real.
+    // Con RWS el RAPID (C02) limita igual cada junta al 5 % de la ficha: el robot no va más rápido, tarda más.
+    // Por encima del 10 % la interfaz lo marca como «solo simulación / fuera de lo verificado».
+    "velocidad_sim_max_pct": 50,
+    "velocidad_real_max_pct": 50,
     "velocidad_inicial_pct": 5,
     // Altura mínima del TCP, brida, muñeca y codo sobre la base (mesa) [m]
     "z_min_m": 0.08,

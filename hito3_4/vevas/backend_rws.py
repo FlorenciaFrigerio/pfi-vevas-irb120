@@ -237,6 +237,30 @@ class BackendRWS:
             return []
         return [k for k in range(len(Q) - 1) if float(v[k].max()) <= 1e-6]
 
+    def duracion_c02_s(self, Q_rad, QD=None) -> float | None:
+        """Tiempo NOMINAL [s] que impone el RAPID (C02) al recorrido Q_rad (Q_rad[0] = origen revisado), sin
+        holguras: los mismos waypoints que ejecutar_trayectoria y, por cada uno, t = max(piso, kPico·|Δq_i|/vLim_i)
+        como Tiempo() del módulo. Es lo que el robot real tarda aunque el plan pida más velocidad. None sin vLim."""
+        if self.vlim_c02 is None:
+            return None
+        Q = np.asarray(Q_rad, dtype=float)
+        if Q.ndim != 2 or len(Q) < 2:
+            return None
+        QD1 = None if QD is None else np.asarray(QD, dtype=float)[1:]
+        origen = self._a_rws_deg(Q[0])
+        try:
+            wps, fines = self.plan_recorrido(origen, self._a_rws_deg(Q[1:]), self.paradas_de(Q[1:], QD1))
+        except Falla:
+            return None
+        continuo = fines is not None
+        fine = set(fines or ()) | {len(wps) - 1}
+        t, previo = 0.0, origen
+        for k, w in enumerate(wps):
+            piso = self.t_zona_s if (continuo and k not in fine) else T_MIN_S
+            t += tiempo_movimiento(w, previo, self.vlim_c02, self.k_c02, piso)
+            previo = w
+        return t
+
     def duracion_estimada_s(self, Q_rad) -> float:
         """Cota GRUESA y conservadora del tiempo que tarda el robot (para el tiempo límite de Consola)."""
         envio = self._ultimo_envio

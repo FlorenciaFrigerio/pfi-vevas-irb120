@@ -4,7 +4,7 @@ Antes de mover (se revisa el plan completo, muestra por muestra):
     - todas las juntas dentro de límites con margen
     - TCP, brida, muñeca y codo por encima de la altura mínima (mesa)
     - el plan empieza donde está el robot (diferencia < 1°)
-    - la velocidad pedida no supera la permitida en este modo
+    - la velocidad pedida no supera la permitida en este modo (0 < v ≤ 50 %, ver vevas/velocidad.py)
 
 Durante el movimiento (se revisa en cada ciclo):
     - error de seguimiento |q_medida - q_comandada| por junta
@@ -21,6 +21,8 @@ import os
 from copy import deepcopy
 
 import numpy as np
+
+from .velocidad import validar_config_velocidad
 
 CONFIG_POR_DEFECTO = {
     "robot": {
@@ -44,8 +46,8 @@ CONFIG_POR_DEFECTO = {
         "dt_envio_s": 0.02,
     },
     "seguridad": {
-        "velocidad_sim_max_pct": 100,
-        "velocidad_real_max_pct": 10,
+        "velocidad_sim_max_pct": 50,   # 0 < v ≤ 50 % (vevas/velocidad.py)
+        "velocidad_real_max_pct": 50,  # el GO puede bajarlo; con RWS el RAPID (C02) limita igual al 5 % por junta
         "velocidad_inicial_pct": 5,
         "z_min_m": 0.08,
         "error_seguimiento_max_deg": 3.0,
@@ -121,6 +123,7 @@ def cargar_config(ruta: str | None) -> dict:
             ent["mesa"] = mesa
             externas = [c for c in ent["cajas"] if c.get("origen") != "mesa"]
             ent["cajas"] = externas + [{**c, "origen": "mesa"} for c in mesa["cajas"]]
+        validar_config_velocidad(cfg["seguridad"])
         return cfg
     return deepcopy(CONFIG_POR_DEFECTO)
 

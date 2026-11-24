@@ -4,7 +4,7 @@ import { GraficaDeslizante, GraficaTrayectoria, COLORES_JUNTAS } from "./grafica
 import { crearArrastre } from "./arrastre.js";
 import { marcosGiroJunta } from "./orientacion.js";
 import { f, nombrePerfil, pasosPlan, permisoMovimientosGuiados, tablaRamas, panelLSPB, panelFK, panelJacobiano, panelSecuencia, panelBitacora,
-  permisoIrAPose, proyectarFigura, errorFigura, agregarMuestra } from "./calculos.js";
+  permisoIrAPose, proyectarFigura, errorFigura, agregarMuestra, estadoSliderVel, panelVelocidades } from "./calculos.js";
 import { dibujarVistaFigura } from "./vista_figura.js";
 
 const $ = (s) => document.querySelector(s);
@@ -249,6 +249,11 @@ async function iniciar() {
     unidad: "posición [mm]",
   });
   est.gRot = new GraficaDeslizante($("#g-err-rot"), {series:[{nombre:"e_R [°]",color:"#9366aa"}],unidad:"orientación [°]"});
+  est.gVel = new GraficaDeslizante($("#g-vel-juntas"), {
+    series: COLORES_JUNTAS.map((c, i) => ({ nombre: `J${i + 1}`, color: c })),
+    unidad: "velocidad medida [°/s]",
+    ventana: 10,
+  });
   est.historial=[];
   configurarGrafica();
   est.gQ = new GraficaTrayectoria($("#lspb-graficas"), "Posición q(t) [°]", "°");
@@ -264,7 +269,7 @@ async function iniciar() {
   ayudaJog();
   setInterval(() => orden("pulso"), 250);
   setInterval(redibujarLento, 400);
-  setInterval(() => { est.gJuntas.dibujar(); est.gTCP.dibujar(); est.gRot.dibujar(); if(est.pestana==="graficas") actualizarGrafica(); }, 100);
+  setInterval(() => { est.gJuntas.dibujar(); est.gTCP.dibujar(); est.gRot.dibujar(); if(est.pestana==="graficas") actualizarGrafica(); if (est.pestana === "vel") est.gVel.dibujar(); }, 100);
   animarVistaPrevia();
   abrirStream();
   cargarPoses();
@@ -322,7 +327,11 @@ function conectarControles() {
     $("#btn-comparar-pendant").focus();
   };
   $("#btn-comparar-pendant").onclick = compararPendant;
-  $("#vel").oninput = (e) => ($("#vel-txt").textContent = e.target.value + " %");
+  $("#vel").oninput = (e) => { $("#vel-txt").textContent = e.target.value + " %"; pintarSliderVel(+e.target.value); };
+  $("#btn-reiniciar-vel").onclick = async () => {
+    const d = await orden("reiniciar_vel_max");
+    if (d.ok) aviso("Máximos de velocidad reiniciados.", "ok");
+  };
   $("#vel").onchange = async (e) => {
     await fijarVelocidad(+e.target.value);
   };
@@ -530,6 +539,20 @@ async function fijarVelocidad(pct) {
   }
   $("#vel").value = d.vel_pct;
   $("#vel-txt").textContent = Math.round(d.vel_pct) + " %";
+  pintarSliderVel(d.vel_pct);
+}
+
+// Slider en naranja/rojo por encima del 10 % (solo simulación / fuera de lo verificado) y nota C02 con RWS.
+function pintarSliderVel(pct, modo = est.vivo?.modo || {}) {
+  const e = estadoSliderVel(pct, modo);
+  const clave = [e.nivel, e.nota, e.aviso].join("|");
+  $("#vel").title = e.titulo;
+  if (clave === est.ultimoSlider) return;
+  est.ultimoSlider = clave;
+  $("#vel-caja").className = "vel" + (e.nivel === "ok" ? "" : " " + e.nivel);
+  const texto = [e.nota, e.aviso].filter(Boolean).join(" · ");
+  $("#vel-nota").textContent = texto;
+  $("#vel-nota").classList.toggle("oculto", !texto);
 }
 
 async function volverHome(destino) {
@@ -1119,7 +1142,6 @@ function actualizar(v) {
   if (cambioFuente) {
     ayudaJog();
     actualizarFrecuencia(est.cfg.cfg.servidor.hz_estado, frecuenciaFuente());
-    $("#vel").title = v.modo?.tipo === "rws" ? "Velocidad nominal del plan. La velocidad física depende del módulo RAPID." : "Velocidad nominal de cálculo del plan.";
     $$(".flecha").forEach((b) => { b.disabled = v.modo?.tipo === "rws"; });
     est.escena.limpiarTraza?.();
     $("#traza-fuente").textContent = v.modo?.tipo === "sim" ? "Traza SIM" : "Traza por FK";
@@ -1146,8 +1168,11 @@ function actualizar(v) {
   pa.textContent = v.armado ? "ARMADO" : "DESARMADO";
   pa.className = "pastilla " + (v.armado ? "armado" : "desarmado");
   pa.title = v.armado ? "El robot puede moverse" : v.motivo_desarmado;
-  $("#vel").max = m.vel_max_pct || 100;
+  $("#vel").max = m.vel_max_pct || 50;
   if (document.activeElement !== $("#vel")) { $("#vel").value = v.vel_pct; $("#vel-txt").textContent = Math.round(v.vel_pct) + " %"; }
+  pintarSliderVel(+$("#vel").value, m);
+  if (v.vel_medida_deg_s) est.gVel.agregar(v.t, v.vel_medida_deg_s);
+  if (est.pestana === "vel") $("#vel-contenido").innerHTML = panelVelocidades(v);
 
   if (v.q_med_deg && v.marcos_med && v.tcp_med) {
     est.escena.recibirMedido(v.marcos_med, cambioFuente);
@@ -1304,6 +1329,7 @@ function redibujarLento(forzar = false) {
   const v = est.vivo;
   if (!v) return;
   if(est.pestana==="datos")dibujarDatos(v);
+  if (est.pestana === "vel" && forzar) $("#vel-contenido").innerHTML = panelVelocidades(v);
   if (est.pestana === "fk") $("#fk-contenido").innerHTML = panelFK(v);
   if (est.pestana === "jac") $("#jac-contenido").innerHTML = panelJacobiano(v);
   if (est.pestana === "bit") $("#bit-contenido").innerHTML = panelBitacora(v);
@@ -1382,7 +1408,7 @@ function dibujarDatos(v){
  const grupos=[ ["Estado y comunicaciones",[["Fuente","Simulador interno","Sin conexión física"],["Edad de muestra",`${f(v.edad_estado_s*1000,1)} ms`,"Edad reportada por backend"],["Plan",v.plan_id??"—","Calculado"],["Ejecución",v.ejec?`${f(v.ejec.progreso*100,1)} %`:"En espera","Simulador"]]],
  ["Cinemática",[["Ángulos q",v.q_med_deg?.map(x=>f(x,2)).join(" · ")+" °","Recibidos del simulador"],["TCP XYZ",p?`${f(p.x_mm,2)} · ${f(p.y_mm,2)} · ${f(p.z_mm,2)} mm`:"—","FK propia"],["Euler ZYX",p?`${f(p.rz_deg,2)} · ${f(p.ry_deg,2)} · ${f(p.rx_deg,2)} °`:"—","Calculado · puede tener gimbal lock"],["Cuaternión wxyz",p?.cuaternion?.map(x=>f(x,5)).join(" · ")||"—","Calculado"],["σ mínimo",s?f(s.sigma_min,6):"—","Jacobiano mixto"],["Número de condición",s?f(s.condicion,2):"—","Calculado"]]],
  ["Seguimiento",[["Error q (medida − referencia)",v.err_deg?.map(x=>f(x,3)).join(" · ")||"Sin referencia","Grados"],["Error TCP posición",v.e_p_mm==null?"Sin referencia":f(v.e_p_mm,3)+" mm","Comparación de dos FK"],["Error TCP orientación",v.e_R_deg==null?"Sin referencia":f(v.e_R_deg,4)+" °","Distancia angular"]]],
- ["Telemetría pendiente de una fuente",[["Velocidad / aceleración medidas","No disponible","Las curvas del plan no son mediciones"],["Torque / corriente / temperatura","No disponible","Sin sensores o telemetría"],["Pose medida externamente","No disponible","Requiere medición independiente"],["Estado IRC5 / seguridad física","No conectado","No se deduce de la simulación"]]] ];
+ ["Telemetría pendiente de una fuente",[["Velocidad medida",v.vel_medida_deg_s?v.vel_medida_deg_s.map(x=>f(x,1)).join(" · ")+" °/s":"—","Regresión ~0,3 s sobre las posiciones recibidas (pestaña Velocidades)"],["Aceleración medida","No disponible","Las curvas del plan no son mediciones"],["Torque / corriente / temperatura","No disponible","Sin sensores o telemetría"],["Pose medida externamente","No disponible","Requiere medición independiente"],["Estado IRC5 / seguridad física","No conectado","No se deduce de la simulación"]]] ];
  $("#datos-contenido").innerHTML=grupos.map(([titulo,filas])=>`<section class="dato-grupo"><h4>${titulo}</h4><div class="datos-tabla"><table class="tabla-simple"><tbody>${filas.map(([a,b,c])=>`<tr><td>${a}</td><td>${b}</td><td>${c}</td></tr>`).join("")}</tbody></table></div></section>`).join("");
 }
 function exportarCSV(){

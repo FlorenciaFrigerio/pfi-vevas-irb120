@@ -225,6 +225,7 @@ ORDENES = {
     "armar": lambda c, b: _res(c.armar(b.get("checklist", {}), b.get("frase", ""))),
     "desarmar": lambda c, b: (c.desarmar(), _ok("Desarmado."))[1],
     "velocidad": lambda c, b: _ok(vel_pct=c.fijar_velocidad(float(b["pct"]))),
+    "reiniciar_vel_max": lambda c, b: (c.reiniciar_maximos_velocidad(), _ok("Máximos de velocidad reiniciados."))[1],
     "jog": lambda c, b: _res(c.orden_jog(b.get("accion", "mantener"), b.get("modo", "junta"), int(b.get("eje", 1)), int(b.get("dir", 1)))),
     "secuencia": lambda c, b: _res(c.iniciar_secuencia(bool(b.get("pausar", True)))),
     "continuar": lambda c, b: (c.continuar_secuencia(), _ok())[1],
