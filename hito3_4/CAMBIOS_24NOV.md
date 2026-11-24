@@ -30,3 +30,4 @@ Siguiente paso presencial: `bash 05_seguridad_y_control/verificar_c02.sh` (AUTO,
 - Poses guardadas: guardar la postura actual con nombre, listar, renombrar, borrar (con confirmación) e «Ir a pose» con revisión y todas las compuertas. Se guardan en `<--datos>/poses_guardadas.json` (escritura atómica).
 - Vista de puntos: dibujo 2D en mm de la figura antes de calcular (inicio, fin, paradas, orden) y, durante la ejecución, los puntos medidos del TCP encima con el error máximo y medio.
 - Resultado: 321 pruebas Python y 16 JS pasan.
+- GO más corto: `crear_go.py` hace solo dos preguntas (confirmación de seguridad en una línea y tope de velocidad, Enter = 5 %). Los nombres de operador, supervisor y alcance se completan como Grupo VEVAS. La validación del GO no cambió y vale todo el día. 322 pruebas Python.

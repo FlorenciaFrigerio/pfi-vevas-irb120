@@ -185,7 +185,7 @@ bash 05_seguridad_y_control/abrir_control_real.sh
 El script:
 
 1. Exige que exista `evidencia_c02.json`; si no, pide correr primero `verificar_c02.sh`.
-2. Valida el GO de la sesión. Si no hay GO válido de hoy, lanza `crear_go.py` en modo interactivo.
+2. Valida el GO de la sesión. Si no hay GO válido de hoy, lanza `crear_go.py`, que hace solo dos preguntas: la confirmación de seguridad (zona despejada, brida sin herramienta, nada fuera de la mesa, paro de emergencia a mano) y el tope de velocidad (Enter = 5 %). El GO vale todo el día.
 3. Arranca `consola_vevas.py --modo rws --real --go GO_VEVAS.json --preparar-rapid` en el puerto 9012 y abre el navegador.
 
 En `http://127.0.0.1:9012` la cabecera debe decir **IRC5 vía RWS · ROBOT REAL** y no debe aparecer el aviso de C02. Si `--preparar-rapid` tiene que arrancar `VevasServidor`, el FlexPendant vuelve a pedir **Iniciar**.
@@ -384,7 +384,7 @@ La idea clave es que **los modelos son comunes a los tres backends**: lo que se 
 
 **fine / zona.** El último argumento de un movimiento. `fine` significa «llegar exactamente y detenerse». Una zona (por ejemplo `z1`, 1 mm) permite pasar cerca del punto sin parar y empalmar con el siguiente movimiento. Usamos `fine`, por eso hay pausas entre tramos.
 
-**GO.** Archivo JSON de autorización de la sesión (`GO_VEVAS.json`): quién autoriza, operador, supervisor, alcance, tope de velocidad, checklist y fecha. Si no está vigente, no se mueve nada. Se crea solo con `crear_go.py` respondiendo en persona.
+**GO.** Archivo JSON de autorización de la sesión (`GO_VEVAS.json`): tope de velocidad, checklist de seguridad, entorno confirmado y fecha (los datos de registro se completan como Grupo VEVAS). Si no está vigente, no se mueve nada. Se crea con `crear_go.py` respondiendo dos preguntas en persona; vale hasta el final del día.
 
 **C02.** El requisito de seguridad «ninguna junta supera su tope de velocidad». Lo cerramos con una ley de tiempo dentro del RAPID más una medición presencial guardada en `evidencia_c02.json`.
 

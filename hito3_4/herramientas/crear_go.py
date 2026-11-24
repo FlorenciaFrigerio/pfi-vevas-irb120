@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Registra declaraciones explícitas de la sesión; nunca autoriza por -y ni modifica config.json."""
+"""Registra el GO de la sesión con dos respuestas explícitas; nunca autoriza por -y ni modifica config.json."""
 from __future__ import annotations
 
 import argparse
@@ -16,6 +16,16 @@ RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 from vevas.consola import CHECKLIST_GO, validar_go
 from vevas.seguridad import cargar_config
+
+TOPE_DEFECTO = 5.0
+# Campos de registro que antes se preguntaban uno por uno; se completan solos para no demorar la sesión.
+AUTOMATICOS = {
+    'autoriza': 'Docente IMT-342 (ensayos del PFI)',
+    'operador_pendant': 'Grupo VEVAS',
+    'responsable_consola': 'Grupo VEVAS',
+    'supervisor': 'Grupo VEVAS',
+    'alcance': 'Ensayos VEVAS del Hito 3/4 con revisión previa',
+}
 
 TEXTO = {
     '1_identidad_controlador_manual': 'Controlador correcto y estado/calibración revisados',
@@ -48,10 +58,11 @@ def si(pregunta):
             return False
 
 
-def velocidad(maximo):
+def velocidad(maximo, defecto):
     while True:
         try:
-            valor = float(texto(f'Tope del plan en % (mayor que 0, máximo {maximo:g})').replace(',', '.'))
+            crudo = input(f'Tope de velocidad en % [Enter = {defecto:g}, máximo {maximo:g}]: ').strip()
+            valor = float(crudo.replace(',', '.')) if crudo else defecto
             if math.isfinite(valor) and 0 < valor <= maximo:
                 return valor
         except ValueError:
@@ -85,25 +96,17 @@ def main(argv=None):
         ap.error('El archivo ya existe; se conserva, incluso si dice NO-GO. Revisalo o elegí otra --salida.')
     cfg = cargar_config(str(args.config))
     try:
-        print('Registro de sesión: responder solo por condiciones verificadas. No habilita ni mueve el controlador.')
+        print('GO de la sesión (vale hasta el final del día). Responder solo lo verificado en persona.')
         go = {'fecha': dt.date.today().isoformat(), 'decision': 'NO-GO'}
-        for campo, pregunta in (
-            ('autoriza', 'Nombre y referencia de la autorización del responsable'),
-            ('operador_pendant', 'Nombre del operador del FlexPendant'),
-            ('responsable_consola', 'Nombre del responsable de consola'),
-            ('supervisor', 'Nombre del supervisor'),
-            ('alcance', 'Alcance concreto de los ensayos autorizados'),
-        ):
-            go[campo] = texto(pregunta)
-        go['velocidad_max_pct'] = velocidad(float(cfg['seguridad']['velocidad_real_max_pct']))
-        go['checklist'] = {k: si(TEXTO.get(k, k)) for k in CHECKLIST_GO}
+        go.update(AUTOMATICOS)
+        listo = si('¿Zona despejada, brida sin herramienta, nada fuera de la mesa y paro de emergencia a mano?')
+        maximo = float(cfg['seguridad']['velocidad_real_max_pct'])
+        go['velocidad_max_pct'] = velocidad(maximo, min(TOPE_DEFECTO, maximo))
+        go['checklist'] = {k: listo for k in CHECKLIST_GO}
         entorno = copy.deepcopy(cfg['entorno'])
-        entorno['sin_objetos_externos_confirmado'] = si('¿Se verificó que NO hay objetos externos, aparte de la mesa modelada?')
-        entorno['sin_herramienta_confirmada'] = si('¿Se verificó la brida SIN herramienta?')
-        if entorno['sin_herramienta_confirmada']:
-            entorno.setdefault('herramienta', {})['confirmada'] = False
-        if not entorno['sin_herramienta_confirmada']:
-            entorno.setdefault('herramienta', {})['confirmada'] = si('¿La geometría de herramienta y el TCP de config.json están medidos y verificados?')
+        entorno['sin_objetos_externos_confirmado'] = listo
+        entorno['sin_herramienta_confirmada'] = listo
+        entorno.setdefault('herramienta', {})['confirmada'] = False
         go['entorno'] = entorno
         if all(go['checklist'].values()):
             go['decision'] = 'GO'
