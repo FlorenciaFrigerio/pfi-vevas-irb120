@@ -31,3 +31,4 @@ Siguiente paso presencial: `bash 05_seguridad_y_control/verificar_c02.sh` (AUTO,
 - Vista de puntos: dibujo 2D en mm de la figura antes de calcular (inicio, fin, paradas, orden) y, durante la ejecución, los puntos medidos del TCP encima con el error máximo y medio.
 - Resultado: 321 pruebas Python y 16 JS pasan.
 - GO más corto: `crear_go.py` hace solo dos preguntas (confirmación de seguridad en una línea y tope de velocidad, Enter = 5 %). Los nombres de operador, supervisor y alcance se completan como Grupo VEVAS. La validación del GO no cambió y vale todo el día. 322 pruebas Python.
+- Figuras con J5 ≈ 0: en vez de rechazar («no hay rama de Pieper»), el plan agrega una aproximación articular J5 → +30° con parada y dibuja desde ahí, en un solo plan revisado. El saludo no la necesita. 329 pruebas Python y 16 JS.

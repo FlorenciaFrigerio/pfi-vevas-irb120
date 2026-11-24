@@ -1000,6 +1000,7 @@ function recibirPlan(plan, irAPasos, desdeArrastre = false) {
     if (plan.verificacion) h += `Verificación FK: e<sub>p</sub> = ${plan.verificacion.e_p_m.toExponential(1)} m, e<sub>R</sub> = ${plan.verificacion.e_R_rad.toExponential(1)} rad.<br>`;
   }
   if (plan.tray) h += `${nombrePerfil(plan.tray.perfil)} · ${f(plan.tray.tf, 2)} s. Destino q = [${plan.q_obj_deg.map((x) => f(x, 1)).join(", ")}] °.<br>`;
+  if (plan.notas && plan.notas.length) h += plan.notas.map((p) => `<span class="nota-plan">${p}</span>`).join("<br>") + "<br>";
   if (plan.problemas && plan.problemas.length) h += plan.problemas.map((p) => `<span class="problema">✗ ${p}</span>`).join("<br>");
   else h += '<span style="color:#13785c">✓ Revisión previa sin bloqueos (mirá el detalle abajo).</span>';
   r.innerHTML = h;

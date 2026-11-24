@@ -69,7 +69,7 @@ export function permisoMovimientosGuiados(modo) {
       : motivo,
     textoDialogo: sim
       ? "Trayectorias de simulación a partir de la pose actual, con perfil suave por tramos."
-      : `Trayectorias para el ROBOT REAL a partir de la pose actual (máx. ${maxMm} mm). Se revisan antes de enviar y exigen GO, armado y confirmación. Si J5 ≈ 0, usá antes «Preparar J5 a +30°».`,
+      : `Trayectorias para el ROBOT REAL a partir de la pose actual (máx. ${maxMm} mm). Se revisan antes de enviar y exigen GO, armado y confirmación. Si J5 ≈ 0, el plan lleva primero J5 a +30° y después dibuja.`,
   };
 }
 
