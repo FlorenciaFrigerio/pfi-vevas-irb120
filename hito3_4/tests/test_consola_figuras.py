@@ -29,7 +29,7 @@ def consola(tmp_path):
 
 
 @pytest.mark.parametrize(("nombre", "plano"), [
-    ("círculo", "XY"), ("corazón", "XZ"), ("cuadrado", "YZ"), ("triángulo", "XZ"), ("saludo", "XY"),
+    ("círculo", "XY"), ("corazón", "XZ"), ("cuadrado", "YZ"), ("triángulo", "XZ"), ("saludo", "YZ"),
 ])
 def test_figura_revisada_con_fk_en_los_nudos_y_en_el_trayecto(consola, nombre, plano):
     q0 = np.radians([0, -20, 30, 0, 40, 0])
@@ -67,15 +67,9 @@ def test_figura_revisada_con_fk_en_los_nudos_y_en_el_trayecto(consola, nombre, p
     assert np.linalg.norm(fk_nudos[:, :3, 3] - puntos, axis=1).max() < tol_pos
     assert plan["verificacion"]["e_p_m"] < tol_pos
     assert plan["verificacion"]["e_R_rad"] < tol_rot
-    if nombre == "saludo":
-        assert plan["figura"]["metodo"] == "articular"
-        assert plan["figura"]["ramas"] == []
-        np.testing.assert_allclose(Q[:, :3], np.tile(q0[:3], (65, 1)), atol=1e-12)
-        assert np.ptp(Q[:, 5]) > np.radians(5)
-    else:
-        assert len(plan["figura"]["ramas"]) == 64
-        np.testing.assert_allclose(puntos, origen[:3, 3] + generar_figura(nombre, 25, plano))
-        assert max(error_orientacion(T[:3, :3], origen[:3, :3]) for T in fk_nudos) < tol_rot
+    assert len(plan["figura"]["ramas"]) == 64
+    np.testing.assert_allclose(puntos, origen[:3, 3] + generar_figura(nombre, 25, plano))
+    assert max(error_orientacion(T[:3, :3], origen[:3, :3]) for T in fk_nudos) < tol_rot
 
     medios = (tiempos[:-1] + tiempos[1:]) / 2
     fk_medios = np.array([consola.robot.fk_tcp(tray.evaluar(t)[0]) for t in medios])
@@ -86,8 +80,7 @@ def test_figura_revisada_con_fk_en_los_nudos_y_en_el_trayecto(consola, nombre, p
     assert np.min(avance) > 0.2 and np.max(avance) < 0.8
     # Tolerancia geométrica intermedia: las uniones se interpolan en juntas.
     assert np.max(residual) < 0.0001
-    if nombre != "saludo":
-        assert max(error_orientacion(T[:3, :3], origen[:3, :3]) for T in fk_medios) < 0.00025
+    assert max(error_orientacion(T[:3, :3], origen[:3, :3]) for T in fk_medios) < 0.00025
 
     for previo, nudo, siguiente in zip(tiempos, tiempos[1:-1], tiempos[2:]):
         eps = min(nudo - previo, siguiente - nudo) * 1e-7
@@ -107,6 +100,8 @@ def test_figura_revisada_con_fk_en_los_nudos_y_en_el_trayecto(consola, nombre, p
         assert np.max(np.abs(tray.evaluar(tiempos[11])[1])) > 1e-3
     elif nombre == "corazón":
         assert paradas == [32]
+    elif nombre == "saludo":
+        assert paradas == [8, 24, 40, 56]
     else:
         assert paradas == []
     for k in [0, *paradas, len(tiempos) - 1]:
@@ -412,13 +407,19 @@ def test_vista_figura_devuelve_puntos_y_paradas_iguales_al_plan(consola, nombre,
     assert plan["figura"]["plano_vista"] == plano
 
 
-def test_vista_figura_saludo_usa_la_postura_actual(consola):
-    vista = consola.vista_figura("saludo", 25)
-    plan = consola.calcular_figura("saludo", 25)
+def test_saludo_de_frente_es_un_vaiven_en_arco_visible(consola):
+    vista = consola.vista_figura("saludo", 60)
+    plan = consola.calcular_figura("saludo", 60)
+    assert plan["ejecutable"], plan["problemas"]
     np.testing.assert_allclose(vista["puntos_m"], plan["figura"]["puntos_objetivo_m"], atol=1e-12)
-    assert vista["paradas"] == [] and vista["metodo"] == "articular"
-    assert vista["plano_vista"] == plan["figura"]["plano_vista"]
-    assert np.ptp(np.asarray(vista["puntos_2d_mm"]), axis=0).max() > 1.0
+    assert vista["paradas"] == plan["figura"]["paradas"] == [8, 24, 40, 56]   # se detiene en cada extremo
+    assert vista["metodo"] == "Pieper con orientación constante"
+    assert vista["plano_vista"] == plan["figura"]["plano_vista"] == "YZ"     # de frente por defecto
+    p = np.asarray(vista["offsets_mm"])
+    assert abs(np.ptp(p[:, 0])) < 1e-9                                       # nada hacia adelante/atrás
+    assert np.ptp(p[:, 1]) == pytest.approx(60.0, abs=0.5)                   # ancho = tamaño, de lado a lado
+    assert p[:, 2].max() <= 1e-12 and p[:, 2].min() < -5.0                    # arco ∩: los extremos bajan
+    assert np.sum(np.diff(np.sign(np.diff(p[:, 1]))) != 0) == 4              # va y viene dos veces
 
 
 def test_vista_figura_valida_sin_registrar_avisos(consola):

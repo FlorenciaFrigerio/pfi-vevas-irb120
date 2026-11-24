@@ -95,7 +95,7 @@ def test_paradas_y_plano_de_vista():
     assert paradas_figura("corazón", generar_figura("corazon", 20), limite=10) == []
     assert paradas_figura("cuadrado", generar_figura("cuadrado", 20), limite=20) == [16]
     assert paradas_figura("círculo", generar_figura("circulo", 20)) == []
-    assert paradas_figura("saludo", generar_figura("circulo", 20)) == []
+    assert paradas_figura("saludo", generar_figura("saludo", 20)) == [8, 24, 40, 56]
     assert plano_de_vista(generar_figura("circulo", 20, "XZ"), "XZ") == "XZ"
     # recorrido no plano: elige el plano base de mayor extensión
     p = np.zeros((5, 3))

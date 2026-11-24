@@ -723,11 +723,10 @@ function conectarFiguras() {
     circulo: "Indicá el diámetro del círculo.", corazon: "Indicá el ancho del corazón.",
     cuadrado: "Indicá el lado del cuadrado. Se detiene en cada esquina.",
     triangulo: "Indicá el lado del triángulo equilátero. Se detiene en cada esquina.",
-    saludo: "El tamaño escala la amplitud del saludo articular.",
+    saludo: "La mano va y viene en arco tres veces; el tamaño es el ancho del vaivén.",
   };
   const actualizarDescripcion = () => {
     const figura = $("#figura-tipo").value;
-    $("#figura-plano-campo").classList.toggle("oculto", figura === "saludo");
     $("#figura-descripcion").textContent = descripciones[figura];
   };
   $("#btn-poses-predeterminadas").onclick = () => {
@@ -790,7 +789,6 @@ async function pedirVistaFigura() {
   } else {
     const v = d.vista, np = v.paradas.length;
     info.textContent = `${v.n_puntos} puntos · plano ${v.plano_vista}`
-      + (v.nombre === "saludo" ? " (proyección del TCP: el saludo mueve la muñeca)" : "")
       + ` · ${np ? `${np} ${np === 1 ? "parada" : "paradas"} (v = 0)` : "sin paradas intermedias"}`
       + (v.origen_m ? " · origen en el TCP actual" : "")
       + (v.excede_tope ? ` · supera el máximo de ${v.tope_mm} mm de este modo` : "");

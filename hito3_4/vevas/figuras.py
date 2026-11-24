@@ -9,7 +9,11 @@ import numpy as np
 PLANOS = {"XY": (0, 1), "XZ": (0, 2), "YZ": (1, 2)}
 NOMBRES = {"circulo": "círculo", "círculo": "círculo", "corazon": "corazón",
            "corazón": "corazón", "cuadrado": "cuadrado", "triangulo": "triángulo",
-           "triángulo": "triángulo"}
+           "triángulo": "triángulo", "saludo": "saludo"}
+
+# Saludo: la mano va y viene en arco tres veces, como un antebrazo que pivota en el codo (∩).
+SALUDO_AMPLITUD_DEG = 40.0
+SALUDO_VAIVENES = 2  # 0 → +A → −A → +A → −A → 0
 
 
 def generar_figura(nombre, tamano_mm=25, plano="XY", *, muestras=65) -> np.ndarray:
@@ -22,7 +26,7 @@ def generar_figura(nombre, tamano_mm=25, plano="XY", *, muestras=65) -> np.ndarr
     """
     figura = NOMBRES.get(nombre.strip().lower()) if isinstance(nombre, str) else None
     if figura is None:
-        raise ValueError("Figura desconocida. Elegí círculo, corazón, cuadrado o triángulo.")
+        raise ValueError("Figura desconocida. Elegí círculo, corazón, cuadrado, triángulo o saludo.")
     ejes = PLANOS.get(plano.strip().upper()) if isinstance(plano, str) else None
     if ejes is None:
         raise ValueError("Elegí un plano válido (XY, XZ o YZ).")
@@ -39,6 +43,24 @@ def generar_figura(nombre, tamano_mm=25, plano="XY", *, muestras=65) -> np.ndarr
     por_tramo, resto = divmod(muestras - 1, tramos)
     partes = [np.linspace(i, i + 1, por_tramo + (i < resto), endpoint=False) for i in range(tramos)]
     u = np.concatenate([*partes, [float(tramos)]])
+
+    if figura == "saludo":
+        # Arco de radio R sobre un pivote imaginario debajo del TCP (el «codo»): 0 → +A → −A → +A → −A → 0.
+        # Ancho total = tamaño → R = tamaño / (2 sen A). Empieza y termina en el TCP actual.
+        # Ángulo repartido parejo a lo largo del arco (misma separación entre puntos) y con los
+        # extremos justo en muestras: ahí la mano se detiene un instante, como al saludar.
+        amp = math.radians(SALUDO_AMPLITUD_DEG)
+        giros = [0.0] + [(-1.0) ** k for k in range(2 * SALUDO_VAIVENES)] + [0.0]
+        hitos = np.concatenate([[0.0], np.cumsum(np.abs(np.diff(giros)))])  # recorrido acumulado, en unidades de A
+        u_s = np.linspace(0.0, hitos[-1], muestras)
+        th = amp * np.interp(u_s, hitos, giros)
+        radio = 1.0 / (2.0 * math.sin(amp))
+        a = radio * np.sin(th)
+        b = -radio * (1.0 - np.cos(th))
+        puntos = np.zeros((muestras, 3))
+        puntos[:, ejes] = np.column_stack((a, b)) * (tamano_mm / 1000)
+        puntos[[0, -1]] = 0.0
+        return puntos
 
     if figura == "triángulo":
         # Equilátero de lado = tamaño, con un vértice en el origen.
@@ -67,14 +89,14 @@ def nombre_canonico(nombre) -> str | None:
     if not isinstance(nombre, str):
         return None
     n = nombre.strip().lower()
-    return "saludo" if n == "saludo" else NOMBRES.get(n)
+    return NOMBRES.get(n)
 
 
 def paradas_figura(nombre, puntos, limite=None) -> list[int]:
     """Índices de las muestras donde el recorrido se detiene (v = 0).
 
     Corazón: la punta (cúspide). Cuadrado y triángulo: cada esquina (cambio de
-    dirección de más de ~37°). ``limite`` es la cantidad de muestras que llegan a
+    dirección de más de ~37°). Saludo: cada extremo del vaivén (vuelta atrás). ``limite`` es la cantidad de muestras que llegan a
     resolverse (si la IK falla antes del final, solo cuentan las previas).
     """
     figura = nombre_canonico(nombre)
@@ -84,7 +106,7 @@ def paradas_figura(nombre, puntos, limite=None) -> list[int]:
     paradas = []
     if figura == "corazón" and limite > n // 2:
         paradas.append(n // 2)
-    if figura in ("cuadrado", "triángulo"):
+    if figura in ("cuadrado", "triángulo", "saludo"):
         d = np.diff(puntos, axis=0)
         for k in range(1, min(limite - 1, len(d))):
             if np.dot(d[k - 1], d[k]) < 0.8 * np.linalg.norm(d[k - 1]) * np.linalg.norm(d[k]):
