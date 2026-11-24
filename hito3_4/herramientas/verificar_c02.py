@@ -196,11 +196,20 @@ def main(argv=None):
             if huella_modulo(cli._texto_modulo()) != huella_modulo(texto):
                 print("VevasServidor viejo en ejecución: lo detengo (Stop + motores OFF) para cargar la versión C02.")
                 cli.parar()
-        print(f"Módulo: {cli.instalar_modulo(a.modulo)}")
+            elif cli.estado_servidor()["vvRbActivo"] != 1:
+                # Misma versión, pero esperando «Iniciar» o cancelada: se reinicia desde cero.
+                print("VevasServidor quedó esperando «Iniciar» (o se canceló): lo detengo y lo arranco de nuevo.")
+                cli.parar()
+        e = cli.leer_estado(con_juntas=False)
+        if e["exec"] == "running" and cli.pp_en_servidor(e):
+            print("Módulo: ya activo (misma versión), no se reinstala.")
+        else:
+            print(f"Módulo: {cli.instalar_modulo(a.modulo)}")
         e = cli.leer_estado(con_juntas=False)
         if e["exec"] != "running" or not cli.pp_en_servidor(e):
             cli.preparar_y_arrancar()
-        print(">>> Si el FlexPendant pide «Aceptar objetivos enviados por la PC?», pulsá «Iniciar» (30 s).")
+        print(">>> En el FlexPendant aparece «Aceptar objetivos enviados por la PC?»: pulsá «Iniciar» (tenés 30 s).")
+        print("    Si no lo ves, abrí la ventana del operador (Production Window / Operator Window).")
         if not cli.esperar_servidor(60, pausa_inicial=1.0):
             print("VevasServidor no quedó activo (¿no se pulsó «Iniciar»?). No se movió nada.")
             return 1
