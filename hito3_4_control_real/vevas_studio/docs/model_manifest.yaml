@@ -11,10 +11,10 @@ operating_system: Ubuntu 24.04 LTS (disco externo)
 driver: PickNikRobotics/abb_ros2 (rama rolling) + paquete abb_irb120_support propio
 workspace: /home/huesero/abb_ws
 kinematics_reference:
-  own_model: "hito3_4/vevas/robot_irb120.py (D-H estándar, convención Truc & Lam)"
+  own_model: "hito3_4_control_real/vevas_studio/vevas/robot_irb120.py (D-H estándar, convención Truc & Lam)"
   independent_reference: "cadena del URDF de ROS-Industrial irb120_3_58 (orígenes y ejes por junta)"
-  agreement_s0: "6e-16 m en 5000 posturas (hito3_4/docs/datos/validacion_offline/casos_fk.csv)"
-  agreement_s1: null   # completar con hito3_4/docs/datos/validacion_rws.csv
+  agreement_s0: "6e-16 m en 5000 posturas (hito3_4_control_real/vevas_studio/docs/datos/validacion_offline/casos_fk.csv)"
+  agreement_s1: null   # completar con hito3_4_control_real/vevas_studio/docs/datos/validacion_rws.csv
 model_commit: null     # completar: git rev-parse --short HEAD
 model_sha256_12: null  # lo imprime herramientas/validacion_offline.py
 dh_parameters:   # a [m], alpha [rad], d [m], theta_offset [rad]
@@ -27,7 +27,7 @@ dh_parameters:   # a [m], alpha [rad], d [m], theta_offset [rad]
 base_frame: "base del robot ABB (Base del controlador, wobj0 sin desplazar)"
 flange_frame: "marco 6 D-H; tool0 = T_0^6 · Rz(180°)"
 tool_frame: tool0
-tcp_frame: "tool0 (sin herramienta); si se monta una, poner tcp_xyz_m y tcp_rpy_rad en hito3_4/config.json"
+tcp_frame: "tool0 (sin herramienta); si se monta una, poner tcp_xyz_m y tcp_rpy_rad en hito3_4_control_real/vevas_studio/config.json"
 joint_order: [joint_1, joint_2, joint_3, joint_4, joint_5, joint_6]
 joint_sign: [1, 1, 1, 1, 1, 1]
 joint_offset_deg: [0, 0, 0, 0, 0, 0]

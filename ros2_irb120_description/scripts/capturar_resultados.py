@@ -13,7 +13,7 @@ Uso
     cd scripts
     python3 capturar_resultados.py
 
-Escribe en ../docs/hito2/resultados/:
+Escribe en ../../hito2_cinematica_dinamica/docs/resultados/:
     resultados.json       cifras principales, con semilla y entorno
     salida_<modulo>.txt   salida completa de cada modulo
 
@@ -30,7 +30,9 @@ from pathlib import Path
 import numpy as np
 
 AQUI = Path(__file__).resolve().parent
-SALIDA = AQUI.parent / "docs" / "hito2" / "resultados"
+# El paquete ROS 2 vive en ros2_irb120_description/; los resultados del Hito 2
+# se versionan en hito2_cinematica_dinamica/docs/resultados/.
+SALIDA = AQUI.parent.parent / "hito2_cinematica_dinamica" / "docs" / "resultados"
 SEMILLA = 20261018
 
 MODULOS = ["pieper", "jacobiano", "lspb", "singularidad", "dinamica_1r"]

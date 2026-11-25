@@ -147,8 +147,8 @@ Esto da una explicación útil al docente: la etapa 1 ilustra `q → T`; si hay 
 
 ## Enlaces para seguir el código
 
-- [Secuencia técnica y diagrama](00_secuencia_completa.md)
-- [Índice de los 16 scripts explicados](README.md)
-- [Demo narrado, bloque por bloque](16_demo_recorrido.md)
-- [FK y tabla D-H](01_fk_irb120.md)
-- [Pieper, filtros y selección](02_pieper.md)
+- [Secuencia técnica y diagrama](../guias/codigo/00_secuencia_completa.md)
+- [Índice de los 16 scripts explicados](../guias/codigo/README.md)
+- [Demo narrado, bloque por bloque](../guias/codigo/16_demo_recorrido.md)
+- [FK y tabla D-H](../guias/codigo/01_fk_irb120.md)
+- [Pieper, filtros y selección](../guias/codigo/02_pieper.md)

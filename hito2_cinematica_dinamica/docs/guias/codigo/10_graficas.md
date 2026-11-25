@@ -127,7 +127,7 @@ def divergencia(q5_vals, norma_qd, taus, m_v, m_t,
 Importa lspb.py, jacobiano.py, singularidad.py y dinamica.py.
 
 ## Pruebas y evidencia
-Ver docs/hito2/figuras y docs/hito2/informe_ieee/img.
+Ver `hito2_cinematica_dinamica/docs/resultados/figuras/` y `hito2_cinematica_dinamica/docs/informe/informe_ieee/img/`.
 
 ## Pregunta para practicar defensa
 > ¿Por qué se separan magnitudes con unidades diferentes en paneles?

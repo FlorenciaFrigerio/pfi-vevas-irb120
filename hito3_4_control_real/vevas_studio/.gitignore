@@ -3,4 +3,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 GO_VEVAS.json
-datos/
+evidencia_c02*.json
+# Solo la carpeta de datos locales de la consola (poses guardadas), anclada a esta
+# carpeta para no ignorar docs/datos/ (evidencia de validación versionada).
+/datos/

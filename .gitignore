@@ -1,21 +1,37 @@
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
 
 # Figuras regeneradas al ejecutar el notebook en su propio directorio.
-# Las versionadas viven en docs/hito2/figuras/
-notebooks/*.pdf
+# Las versionadas viven en hito2_cinematica_dinamica/docs/resultados/figuras/
+hito2_cinematica_dinamica/notebooks/*.pdf
 
 .ipynb_checkpoints/
 figuras_recorrido/
 
+# Build de ROS 2 si se compila dentro del repo
+build/
+install/
+log/
+
 # Hito 3/4: entorno local, autorizaciones y evidencias de laboratorio
+# (nunca se versionan: GO de sesión, evidencia C02, sesiones, poses, diagnósticos)
 .venv/
+.venv_interfaz/
 sesiones/
+hito3_4_control_real/vevas_studio/datos/
 GO_VEVAS.json
 evidencia_c02*.json
 conexion-rws-*.json
+
+# Auxiliares de LaTeX (informes IEEE)
 *.aux
 *.fls
 *.fdb_latexmk
 *.synctex.gz
+*.out
+*.toc
+*.bbl
+*.blg
+*.log

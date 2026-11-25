@@ -4,9 +4,9 @@
 
 ## Leé primero
 
-1. [Cambios del 20/11](CAMBIOS_20NOV.md) y [prueba de interfaz](docs/PRUEBA_INTERFAZ_20NOV.md).
-2. [Avances y contexto](AVANCES_CONTEXTO.md) y [registro del 19/11](CAMBIOS_19NOV.md).
-3. [Prompts por tarea](docs/PROXIMOS_PROMPTS.md), [mejoras pendientes](docs/MEJORAS_EXTRAS.md) y [guía de RViz](docs/RVIZ_RWS.md).
+1. [Cambios del 20/11](../bitacora/CAMBIOS_20NOV.md) y [prueba de interfaz](../operacion/PRUEBA_INTERFAZ_20NOV.md).
+2. [Avances y contexto](AVANCES_CONTEXTO.md) y [registro del 19/11](../bitacora/CAMBIOS_19NOV.md).
+3. [Prompts por tarea](PROXIMOS_PROMPTS.md), [mejoras pendientes](MEJORAS_EXTRAS.md) y [guía de RViz](../operacion/RVIZ_RWS.md).
 
 ## Estado actual
 

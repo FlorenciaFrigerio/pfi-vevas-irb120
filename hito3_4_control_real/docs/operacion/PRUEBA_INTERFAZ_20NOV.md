@@ -5,7 +5,7 @@ Estado del 20 de noviembre de 2026. Esta continuación se prepara en la rama
 
 ## 1. Abrir la copia que contiene estos cambios
 
-Desde una terminal de Ubuntu, situarse en `hito3_4` de **esta rama**. Una copia
+Desde una terminal de Ubuntu, situarse en `hito3_4_control_real/vevas_studio` de **esta rama**. Una copia
 antigua en Descargas no recibe los cambios automáticamente.
 
 ```bash
@@ -58,7 +58,7 @@ no demuestra conexión al brazo. En el último registro compartido funcionaba
 `eno2` con `192.168.125.207/24`; esto no cambia la dirección remota configurada
 para una sesión EGM antigua. Aquí se utiliza RWS de lectura.
 
-En `hito3_4`, con la consola SIM cerrada:
+En `hito3_4_control_real/vevas_studio`, con la consola SIM cerrada:
 
 ```bash
 .venv_interfaz/bin/python consola_vevas.py --modo rws --solo-lectura --puerto 9012 --abrir

@@ -297,7 +297,7 @@ Semáforo: verde si el error es menor que la mitad del límite, ámbar si pasa l
 
 ```python
 import sys, math, numpy as np
-sys.path.insert(0, "hito3_4")                    # desde la raíz del repo
+sys.path.insert(0, "hito3_4_control_real/vevas_studio")                    # desde la raíz del repo
 from vevas.robot_irb120 import Robot, pose_desde_xyz_euler
 from vevas.pieper import resolver, elegir_rama
 from vevas.trayectoria import planificar

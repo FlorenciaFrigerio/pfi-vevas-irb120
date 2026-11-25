@@ -1,21 +1,21 @@
 # Guía navegable del código — Hito 2 ABB IRB 120
 
-> Un archivo Markdown por cada uno de los 16 scripts. Los bloques se contrastan con el código vigente en scripts/; la secuencia y el reparto siguen la exposición de 20 diapositivas.
+> Un archivo Markdown por cada uno de los 16 scripts. Los bloques se contrastan con el código vigente en `scripts/` (en el repo: [`ros2_irb120_description/scripts/`](../../../../ros2_irb120_description/scripts/)); la secuencia y el reparto siguen la exposición de 20 diapositivas.
 
 ## Guion por integrante
 
-- [Guion de diapositivas — Integrante 1](guion_integrante_1_diapos.md): portada y diapositivas 3–7.
+- [Guion de diapositivas — Integrante 1](../../presentacion/guion_integrante_1_diapos.md): portada y diapositivas 3–7.
 
 ## Empieza por el recorrido
 
-El archivo que narra las seis etapas es **demo_recorrido.py**. Se ejecuta desde scripts/, usa Python, NumPy y Matplotlib y **no necesita ROS**:
+El archivo que narra las seis etapas es **demo_recorrido.py**. Se ejecuta desde `ros2_irb120_description/scripts/`, usa Python, NumPy y Matplotlib y **no necesita ROS**:
 
 ~~~bash
-cd scripts
+cd ros2_irb120_description/scripts
 python3 demo_recorrido.py --pose --figuras
 ~~~
 
-Por defecto pausa entre etapas. Usa --seguido para recorrerlas sin pausas. Para exponer el recorrido con transiciones y justificación del orden, consulta el [guion de exposición](guion_recorrido_exposicion.md), la [secuencia técnica](00_secuencia_completa.md) y la guía del [demo](16_demo_recorrido.md).
+Por defecto pausa entre etapas. Usa --seguido para recorrerlas sin pausas. Para exponer el recorrido con transiciones y justificación del orden, consulta el [guion de exposición](../../presentacion/guion_recorrido_exposicion.md), la [secuencia técnica](00_secuencia_completa.md) y la guía del [demo](16_demo_recorrido.md).
 
 ~~~mermaid
 flowchart LR
@@ -97,7 +97,7 @@ Son cuatro scripts por persona. La pieza compartida es demo_recorrido.py: la per
 ## Documentación relacionada
 
 - [Secuencia completa](00_secuencia_completa.md)
-- [Manual de estudio y defensa](../manuales/MANUAL_HITO2.md)
-- [Módulos y comandos de scripts](../../../scripts/README.md)
-- [Anexo técnico](../anexo_tecnico.md)
-- [Resultados reproducibles](../resultados/)
+- [Manual de estudio y defensa](../MANUAL_HITO2.md)
+- [Módulos y comandos de scripts](../../../../ros2_irb120_description/scripts/README.md)
+- [Anexo técnico](../../informe/anexo_tecnico.md)
+- [Resultados reproducibles](../../resultados/)

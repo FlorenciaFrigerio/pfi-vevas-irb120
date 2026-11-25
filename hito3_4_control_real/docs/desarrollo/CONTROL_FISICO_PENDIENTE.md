@@ -11,7 +11,7 @@
 > la suavidad física (paradas en cada tramo `fine`) sigue pendiente. SpeedLimAxis/LimitSpeed queda como alternativa oficial.
 
 
-El módulo actual acepta un destino por RWS y ejecuta `MoveAbsJ objetivo,vPc,fine,tool0`. El IRC5 genera el movimiento y se detiene en cada destino. La PC revisa las velocidades de su plan y espera la llegada antes de enviar el siguiente objetivo. Los tiempos del plan y sus picos articulares describen la referencia. La velocidad ejecutada requiere evidencia del controlador. En esta versión `BackendRWS.velocidad_articular_verificada` vale `False` y el envío físico está bloqueado. [Módulo RAPID](../rapid/VEVAS_RWS.mod) · [Backend RWS](../vevas/backend_rws.py) · [Revisión de trayectoria](../vevas/revision.py)
+El módulo actual acepta un destino por RWS y ejecuta `MoveAbsJ objetivo,vPc,fine,tool0`. El IRC5 genera el movimiento y se detiene en cada destino. La PC revisa las velocidades de su plan y espera la llegada antes de enviar el siguiente objetivo. Los tiempos del plan y sus picos articulares describen la referencia. La velocidad ejecutada requiere evidencia del controlador. En esta versión `BackendRWS.velocidad_articular_verificada` vale `False` y el envío físico está bloqueado. [Módulo RAPID](../../vevas_studio/rapid/VEVAS_RWS.mod) · [Backend RWS](../../vevas_studio/vevas/backend_rws.py) · [Revisión de trayectoria](../../vevas_studio/vevas/revision.py)
 
 ## Qué puede limitar RobotWare 6
 
@@ -26,7 +26,7 @@ Véanse *MoveAbsJ*, págs. 378–381, *SpeedLimAxis*, págs. 734–737, y *VelSe
 
 ## Propuesta para evaluar en el controlador virtual RW6.12
 
-Para el IRB 120-3/0.6, ABB publica 250, 250, 250, 320, 320 y 420 °/s. Al 5 % corresponden 12,5, 12,5, 12,5, 16, 16 y 21 °/s. El 5 % es el valor de la plantilla del GO. Para una sesión se debe usar el porcentaje autorizado y respetar cualquier límite inferior aplicable. [Ficha ABB, sección 1.8.3](https://library.e.abb.com/public/b11cfa9db47643579c66187c2c755952/3HAC035960%20PS%20IRB%20120-en.pdf) · [Plantilla GO](../GO_VEVAS_plantilla.json)
+Para el IRB 120-3/0.6, ABB publica 250, 250, 250, 320, 320 y 420 °/s. Al 5 % corresponden 12,5, 12,5, 12,5, 16, 16 y 21 °/s. El 5 % es el valor de la plantilla del GO. Para una sesión se debe usar el porcentaje autorizado y respetar cualquier límite inferior aplicable. [Ficha ABB, sección 1.8.3](https://library.e.abb.com/public/b11cfa9db47643579c66187c2c755952/3HAC035960%20PS%20IRB%20120-en.pdf) · [Plantilla GO](../../vevas_studio/GO_VEVAS_plantilla.json)
 
 Este fragmento ilustra únicamente la configuración del caso de 5 % en `T_ROB1`. Requiere comprobar el nombre de la unidad mecánica. Está sin compilar y sin instalar.
 

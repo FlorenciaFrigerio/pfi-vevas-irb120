@@ -1,6 +1,6 @@
 # Bastidor abierto del IRB 120
 
-El perfil en [mesa_medidas.json](../modelo/mesa_medidas.json) recoge las cotas confirmadas del marco azul. Las distancias horizontales se toman entre las caras exteriores del bastidor y los bordes de la huella de montaje del brazo.
+El perfil en [mesa_medidas.json](../../vevas_studio/modelo/mesa_medidas.json) recoge las cotas confirmadas del marco azul. Las distancias horizontales se toman entre las caras exteriores del bastidor y los bordes de la huella de montaje del brazo.
 
 | Cota | Medida |
 | --- | ---: |

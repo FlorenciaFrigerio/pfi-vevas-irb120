@@ -185,7 +185,7 @@ def analizar(carpeta):
             md.append(f"- {d}")
     md += [
         "",
-        "## Entradas de bitácora (copiar en docs/bitacora.md y completar)",
+        "## Entradas de bitácora (copiar en hito3_4_control_real/docs/bitacora/bitacora.md y completar)",
         "",
     ]
     for r in resumen:

@@ -64,6 +64,6 @@ python3 -m venv .venv_interfaz
 .venv_interfaz/bin/python consola_vevas.py --modo sim --puerto 9012 --abrir
 ```
 
-Seguir [PRUEBA_INTERFAZ_20NOV.md](PRUEBA_INTERFAZ_20NOV.md). La siguiente etapa
+Seguir [PRUEBA_INTERFAZ_20NOV.md](../operacion/PRUEBA_INTERFAZ_20NOV.md). La siguiente etapa
 con el brazo es solo lectura y comparación; el envío físico sigue bloqueado por
 la verificación pendiente de velocidad por junta.

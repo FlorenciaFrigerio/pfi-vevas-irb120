@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# subir_git.sh — sube esta carpeta a hito3_4/ del repo del grupo en la rama 19NOV y después la fusiona en main.
+# subir_git.sh — sube esta carpeta a hito3_4_control_real/vevas_studio/ del repo del grupo en la rama 19NOV
+# y después la fusiona en main. Script histórico del 19/11 (la carpeta se llamaba hito3_4/ hasta la
+# reorganización por hitos); DESTINO=otra/ruta ./subir_git.sh cambia la carpeta de destino.
 #   ./subir_git.sh               (pregunta antes de tocar main)
 #   REPO=~/otra/ruta ./subir_git.sh   si ya tenés el repo clonado en otro lado
 set -euo pipefail
@@ -8,6 +10,7 @@ ORIGEN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 URL="https://github.com/FlorenciaFrigerio/pfi-vevas-irb120.git"
 REPO="${REPO:-$HOME/pfi-vevas-irb120}"
 RAMA="19NOV"
+DESTINO="${DESTINO:-hito3_4_control_real/vevas_studio}"
 
 if [ ! -d "$REPO/.git" ]; then
   echo "== Clonando el repo en $REPO"
@@ -33,14 +36,14 @@ else
   git checkout -B "$RAMA"
 fi
 
-echo "== Copiando la carpeta del prototipo a hito3_4/ (sin GO_VEVAS.json, sesiones ni cachés)"
-mkdir -p hito3_4
+echo "== Copiando la carpeta del prototipo a $DESTINO/ (sin GO_VEVAS.json, sesiones ni cachés)"
+mkdir -p "$DESTINO"
 tar -C "$ORIGEN" \
   --exclude=./.git --exclude=./sesiones --exclude=./GO_VEVAS.json \
   --exclude='__pycache__' --exclude='.pytest_cache' --exclude='*.pyc' --exclude='*.log' \
-  -cf - . | tar -C hito3_4 -xf -
+  -cf - . | tar -C "$DESTINO" -xf -
 
-git add hito3_4
+git add "$DESTINO"
 if git diff --cached --quiet; then
   echo "No hay cambios para subir."
 else
@@ -66,4 +69,4 @@ if [ "$R" = "s" ] || [ "$R" = "S" ]; then
 else
   echo "Listo: $RAMA subida. main no se tocó."
 fi
-echo "Ver: https://github.com/FlorenciaFrigerio/pfi-vevas-irb120/tree/$RAMA/hito3_4"
+echo "Ver: https://github.com/FlorenciaFrigerio/pfi-vevas-irb120/tree/$RAMA/$DESTINO"

@@ -5,7 +5,7 @@ Ingeniería Mecatrónica, Depto. de Ciencias de la Tecnología e Innovación, UC
 IMT-342 Robótica, docente M.Sc. Ing. Bernardo Quiroga Turdera. Repositorio: github.com/FlorenciaFrigerio/pfi-vevas-irb120.
 Guía final, estado al 24/11/2026 (noche).
 
-Esta guía junta en un solo lugar qué hace el sistema, cómo se usa, cómo está construido, por qué se decidió cada cosa, los cálculos, los resultados, los incidentes y lo que falta. Las mediciones salen de la bitácora del 24/11 (`docs/bitacora.md`), de `CAMBIOS_24NOV.md` y del informe IEEE del hito. Los demás números se calcularon con los módulos de `vevas/` (se indica cuando es así). La guía no contiene claves, GO ni datos de sesiones.
+Esta guía junta en un solo lugar qué hace el sistema, cómo se usa, cómo está construido, por qué se decidió cada cosa, los cálculos, los resultados, los incidentes y lo que falta. Las mediciones salen de la bitácora del 24/11 ([`docs/bitacora/bitacora.md`](../bitacora/bitacora.md)), de [`CAMBIOS_24NOV.md`](../bitacora/CAMBIOS_24NOV.md) y del [informe IEEE del hito](../informe/). Los demás números se calcularon con los módulos de `vevas_studio/vevas/` (se indica cuando es así). La guía no contiene claves, GO ni datos de sesiones.
 
 ## Índice rápido
 
@@ -124,7 +124,7 @@ Los ocho pasos que ve el usuario en la interfaz son: Objetivo, Pieper, Verificac
 Hay dos lugares desde donde se corren comandos:
 
 1. La **raíz del proyecto** en la PC del laboratorio: `~/Descargas/ROBOTICA_01/proyecto_brazo`. Ahí están los lanzadores: `02_conexion/diagnosticar.sh`, `02_conexion/abrir_solo_lectura.sh`, `05_seguridad_y_control/verificar_c02.sh` y `05_seguridad_y_control/abrir_control_real.sh`. Usan el entorno `.venv` de la raíz (lo crea `preparar_ubuntu.sh`) y guardan datos en `08_datos_locales/`.
-2. La **carpeta del código**: `~/Descargas/ROBOTICA_01/proyecto_brazo/00_codigo/hito3_4` (en el repositorio es `hito3_4/`). Ahí están `consola_vevas.py`, `herramientas/`, `rapid/`, `web/` y `tests/`.
+2. La **carpeta del código**: `~/Descargas/ROBOTICA_01/proyecto_brazo/00_codigo/hito3_4` (en el repositorio es `hito3_4_control_real/vevas_studio/`). Ahí están `consola_vevas.py`, `herramientas/`, `rapid/`, `web/` y `tests/`.
 
 La clave de RWS no se escribe en ningún comando de esta guía. Si hace falta, se carga en la variable de entorno `VEVAS_RWS_CLAVE` en la terminal de la sesión, sin guardarla en archivos del repositorio.
 
@@ -183,7 +183,7 @@ cd ~/Descargas/ROBOTICA_01/proyecto_brazo/00_codigo/hito3_4
 .venv_interfaz/bin/python consola_vevas.py --modo sim --puerto 9013 --abrir
 ```
 
-Se abre `http://127.0.0.1:9013`. La cabecera dice SIMULACIÓN. Ahí se ensaya todo (arrastre, figuras, poses guardadas, Volver a cero, Preparar J5) sin riesgo. En SIM las figuras admiten de 5 a 100 mm y el slider llega a 50 %. Sin `--datos`, las poses se guardan en `hito3_4/datos/poses_guardadas.json` (carpeta ignorada por git).
+Se abre `http://127.0.0.1:9013`. La cabecera dice SIMULACIÓN. Ahí se ensaya todo (arrastre, figuras, poses guardadas, Volver a cero, Preparar J5) sin riesgo. En SIM las figuras admiten de 5 a 100 mm y el slider llega a 50 %. Sin `--datos`, las poses se guardan en `vevas_studio/datos/poses_guardadas.json` (carpeta ignorada por git).
 
 ### 2.4 Diagnóstico de conexión (solo lectura, no mueve nada)
 
@@ -377,7 +377,7 @@ Panel **POSES GUARDADAS** en la pestaña Control.
 
 Reglas de nombre: hasta 40 caracteres; letras, números, espacios y `. , - + ( ) # °`; empieza con letra o número; no se repite (sin distinguir mayúsculas). Máximo 200 poses.
 
-Dónde se guardan: en `<--datos>/poses_guardadas.json`. Con `abrir_control_real.sh` es `~/Descargas/ROBOTICA_01/proyecto_brazo/08_datos_locales/poses_guardadas.json`; sin `--datos`, `hito3_4/datos/` (ignorada por git). La escritura es atómica (archivo temporal + reemplazo). Si el archivo está dañado, la consola avisa, lo ignora y guarda una copia `.danado-<fecha>` antes de volver a escribir.
+Dónde se guardan: en `<--datos>/poses_guardadas.json`. Con `abrir_control_real.sh` es `~/Descargas/ROBOTICA_01/proyecto_brazo/08_datos_locales/poses_guardadas.json`; sin `--datos`, `vevas_studio/datos/` (ignorada por git). La escritura es atómica (archivo temporal + reemplazo). Si el archivo está dañado, la consola avisa, lo ignora y guarda una copia `.danado-<fecha>` antes de volver a escribir.
 
 Compuertas de «Ir»: las mismas que «Volver a cero». En SIM siempre; con el robot real por RWS **solo con C02 verificado**; después pasa por revisión previa, GO, armado, checklist y confirmación. Si la postura cambió desde que se calculó, hay que recalcular. Un destino singular (por ejemplo una pose guardada en q = 0) se acepta como aviso solo con RWS + C02.
 
@@ -1080,7 +1080,7 @@ El IRC5 simulado incluye un perfil que **no** respeta el tiempo, para comprobar 
 1. HOME es singular: σmin(0) = 1,2e-16. «Volver a cero» con RWS + C02 da **aviso**; sin la excepción, **rechazado**. «Preparar J5 a +30°» cumple el criterio de salida.
 2. Figuras resueltas con Pieper punto a punto, orientación constante, 65 puntos, salto máximo 12°, ≤ 80 mm en real, de frente por defecto. En SIM, desde q = 0, las cinco figuras de 25 mm de frente salen ejecutables con la aproximación J5 y la nota en el plan (calculado con `Consola` + `BackendSim`).
 3. Movimiento continuo: «Volver a cero» desde la postura inicial sale en 4 puntos (3 con zona y el último con `fine`), sin paradas intermedias y con el mismo 6,25 s; los recorridos largos y las figuras ya no frenan entre puntos, salvo en sus paradas (calculado con el IRC5 simulado y `muestrear_con_paradas`).
-4. Archivos de evidencia: `evidencia_c02.json`, sesiones en `08_datos_locales/sesiones` (con velocidad medida), `docs/bitacora.md`, informe IEEE con figuras de `generar_figuras.py`.
+4. Archivos de evidencia: `evidencia_c02.json`, sesiones en `08_datos_locales/sesiones` (con velocidad medida), `docs/bitacora/bitacora.md`, informe IEEE con figuras de `docs/informe/informe_ieee/generar_figuras.py`.
 
 ## 9. Incidentes y cómo se resolvieron
 
@@ -1220,26 +1220,27 @@ Pendiente por mínimos cuadrados sobre ~0,3 s de posiciones recibidas, descartan
 
 ## 12. Mapa de archivos del repo
 
-### 12.1 Repositorio `pfi-vevas-irb120` (rama `24NOV`, fusionable en `main`)
+### 12.1 Repositorio `pfi-vevas-irb120` (estructura por hitos)
+
+> [!NOTE]
+> Desde la reorganización del 24/11 el repositorio tiene una carpeta por hito. Lo que antes era `hito3_4/` ahora es `hito3_4_control_real/vevas_studio/` (mismo contenido, sin reordenar por dentro) y `docs/hito3_4/` se unificó en `hito3_4_control_real/docs/`. En la PC del laboratorio la carpeta del código sigue llamándose `00_codigo/hito3_4`.
 
 | Ruta | Para qué sirve |
 |---|---|
-| `README.md`, `LICENSE` | Portada del PFI (Hitos 1 y 2) y licencia |
-| `CMakeLists.txt`, `package.xml`, `launch/display.launch.py`, `rviz/irb120.rviz` | Paquete ROS 2 del Hito 1 para ver el URDF en RViz |
-| `urdf/irb120.urdf`, `urdf/irb120_manual.urdf` | Gemelo digital URDF del Hito 1 |
-| `web/` | Web 3D del Hito 1 para explorar las piezas del brazo |
-| `scripts/` | Hito 2: `fk_irb120.py`, `pieper.py`, `jacobiano.py`, `singularidad.py`, `lspb.py`, `dinamica.py`, `demo_recorrido.py` y otros |
-| `notebooks/Hito2_VEVAS.ipynb` | Cuaderno del Hito 2 |
-| `docs/hito1/` | Informe, presentación y validación del Hito 1 |
-| `docs/hito2/` | Informe, anexo técnico, figuras, guía, informe IEEE y resultados del Hito 2 |
-| `docs/hito3_4/GUIA_COMPLETA_HITO3_4.md` | Esta guía |
-| `docs/hito3_4/Informe_Hito3_4.pdf` | Informe del hito en PDF |
-| `docs/hito3_4/informe_ieee/` | Fuente del informe IEEE: `informe_hito3_4_ieee.tex`, `informe_hito3_4_ieee.pdf`, `generar_figuras.py` (figuras con los mismos módulos), `img/` (arquitectura, secuencia, C02, σ, tubería), `IEEEtran.cls`, `spanish.ldf` |
-| `hito3_4/` | Código de VEVAS Studio (tabla 12.2) |
+| `README.md`, `LICENSE` | Portada del PFI (los tres hitos) y licencia |
+| `docs/` | Índice general, cronología del proyecto e imágenes comunes (banners) |
+| `ros2_irb120_description/` | Paquete ROS 2 `irb120_description`: `CMakeLists.txt`, `package.xml`, `launch/display.launch.py`, `rviz/`, `urdf/` (gemelo del Hito 1) y `scripts/` (Hito 1 y Hito 2: `fk_irb120.py`, `pieper.py`, `jacobiano.py`, `singularidad.py`, `lspb.py`, `dinamica.py`, `demo_recorrido.py` y otros) |
+| `hito1_gemelo_digital/` | Hito 1: web 3D (`visor_web/`), informe, presentación y validación |
+| `hito2_cinematica_dinamica/` | Hito 2: `notebooks/Hito2_VEVAS.ipynb`, informe IEEE, anexo técnico, guías y resultados |
+| `hito3_4_control_real/docs/guias/GUIA_COMPLETA_HITO3_4.md` | Esta guía |
+| `hito3_4_control_real/docs/informe/Informe_Hito3_4.pdf` | Informe del hito en PDF |
+| `hito3_4_control_real/docs/informe/informe_ieee/` | Fuente del informe IEEE: `informe_hito3_4_ieee.tex`, `informe_hito3_4_ieee.pdf`, `generar_figuras.py` (figuras con los mismos módulos), `img/` (arquitectura, secuencia, C02, σ, tubería), `IEEEtran.cls`, `spanish.ldf` |
+| `hito3_4_control_real/docs/{operacion,solucion_de_problemas,bitacora,desarrollo}` | Procedimientos del laboratorio, recuperación, bitácora con `CAMBIOS_*.md` y notas internas |
+| `hito3_4_control_real/vevas_studio/` | Código de VEVAS Studio (tabla 12.2) |
 
 Presentación de la defensa (Slides): https://claude.ai/artifact/2cXikzrdtavuHUr3bijWGg
 
-### 12.2 Carpeta `hito3_4/` (en el laboratorio: `00_codigo/hito3_4`)
+### 12.2 Carpeta `hito3_4_control_real/vevas_studio/` (en el laboratorio: `00_codigo/hito3_4`)
 
 | Ruta | Para qué sirve |
 |---|---|
@@ -1249,15 +1250,15 @@ Presentación de la defensa (Slides): https://claude.ai/artifact/2cXikzrdtavuHUr
 | `iniciar_real.sh`, `iniciar_simulacion.sh`, `iniciar_real_egm.sh` | Lanzadores locales (chequeo, solo lectura, simulación, EGM) |
 | `subir_git.sh` | Subida de la rama 19NOV (histórico; para el 24/11 se usa `subir_24nov.sh`) |
 | `GO_VEVAS_plantilla.json`, `plantillas/` | Plantilla vacía del GO (no es una autorización) |
-| `CAMBIOS_19NOV.md` … `CAMBIOS_24NOV.md` | Lista de cambios por día; `CAMBIOS_24NOV.md` es la de esta guía |
+| `../docs/bitacora/CAMBIOS_19NOV.md` … `CAMBIOS_24NOV.md` | Lista de cambios por día; `CAMBIOS_24NOV.md` es la de esta guía (en el repo están en `hito3_4_control_real/docs/bitacora/`) |
 | `vevas/` | Paquete Python: modelos, revisión, C02, velocidad, poses, backends, cliente RWS, servidor (tabla 3.3) |
 | `web/` | Interfaz: `index.html`, `estilo.css`, `app.js`, `calculos.js`, `vista_figura.js`, `escena.js`, `graficas.js`, `arrastre.js`, `orientacion.js`, `modelo/` (STL, alineación y créditos), `vendor/` (Three.js, OrbitControls, uPlot, KaTeX) |
 | `rapid/VEVAS_RWS.mod` | Módulo RAPID del servidor (4707 caracteres) |
-| `rapid/TRob1Main_VEVAS.mod`, `EGM_ROS.mod` (en la raíz de `hito3_4/`) | Vía EGM/ROS opcional |
+| `rapid/TRob1Main_VEVAS.mod`, `EGM_ROS.mod` (en la raíz de `vevas_studio/`) | Vía EGM/ROS opcional |
 | `herramientas/` | `verificar_c02.py`, `crear_go.py`, `conectar_robot.py`, `rws_irc5.py`, `comparar_pendant.py`, `analizar_sesion.py`, `validacion_offline.py`, `verificar_convencion_rws.py`, `nodo_rws_ros.py`, `rviz_rws.launch.py`, `empaquetar_robotica01.py` |
 | `modelo/` | URDF para RViz con RWS y medidas de la mesa |
 | `tests/` | 346 pruebas Python (incluye `mock_rws.py`) y 20 JS |
-| `docs/` | Guías parciales 1 a 8, `bitacora.md`, `arquitectura.md`, `CONTROL_FISICO_PENDIENTE.md`, `CONEXION_23NOV.md`, `RVIZ_RWS.md` y otras |
+| `docs/` | Solo `datos/validacion_offline/` (la escribe `herramientas/validacion_offline.py`), `model_manifest.yaml` y `README_AREA.md`. Las guías parciales 1 a 8, `arquitectura.md`, la bitácora, `CONEXION_23NOV.md`, `RVIZ_RWS.md` y el resto están en `hito3_4_control_real/docs/` (guias/, operacion/, bitacora/, desarrollo/) |
 
 No se versionan (están en `.gitignore`): `GO_VEVAS.json`, `evidencia_c02*.json`, `sesiones/`, `datos/`, `conexion-rws-*.json`, `.venv/`.
 

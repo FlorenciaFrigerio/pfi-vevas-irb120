@@ -144,19 +144,19 @@ Se leyó el repositorio del docente (`berquiroga/planificacion-UCB`, semanas 12 
 2. Primero calcular posiciones y ángulos, elegir la mejor rama comprobando que el error sea el mínimo, y **recién ahí** mandar al robot.
 3. El GO lo emite el grupo ("simulen ustedes el GO"), la trayectoria la genera la IA, y hay que mandarle un **video del robot físico moviéndose** mientras se mandan los datos.
 
-Eso es exactamente lo que hace la **consola VEVAS** (carpeta `hito3_4/`), que está en este repo.
+Eso es exactamente lo que hace la **consola VEVAS** (carpeta `hito3_4_control_real/vevas_studio/`), que está en este repo.
 
 ## Parte D. Lo que se agregó ahora (esta entrega)
 
 | Qué | Dónde | Estado |
 |---|---|---|
-| Núcleo de cálculo propio: FK, Pieper 8 ramas, selección de rama, Jacobiano, LSPB, seguridad | `hito3_4/vevas/` | HECHO, 18 pruebas automáticas pasan |
-| Consola gráfica en tiempo real (3D, cálculos paso a paso, 8 ramas, LSPB, error en vivo, flechas del teclado) | `hito3_4/consola_vevas.py` y `hito3_4/web/` | HECHO en simulación; falta probar con ROS en tu Ubuntu |
-| Validación offline S0 contra el URDF de ROS-Industrial | `hito3_4/docs/datos/validacion_offline/` | HECHO: error 6e-16 en 5000 posturas |
-| Herramienta de solo lectura FK propia vs controlador | `hito3_4/herramientas/verificar_convencion_rws.py` | Lista; falta correrla con el robot |
-| Análisis automático de sesiones | `hito3_4/herramientas/analizar_sesion.py` | HECHO |
-| RAPID de EGM sin movimiento al arrancar | `hito3_4/rapid/TRob1Main_VEVAS.mod` | Listo; lo carga el encargado |
-| Plantilla del GO | `hito3_4/plantillas/GO_VEVAS_plantilla.json` | Lista |
+| Núcleo de cálculo propio: FK, Pieper 8 ramas, selección de rama, Jacobiano, LSPB, seguridad | `hito3_4_control_real/vevas_studio/vevas/` | HECHO, 18 pruebas automáticas pasan |
+| Consola gráfica en tiempo real (3D, cálculos paso a paso, 8 ramas, LSPB, error en vivo, flechas del teclado) | `hito3_4_control_real/vevas_studio/consola_vevas.py` y `hito3_4_control_real/vevas_studio/web/` | HECHO en simulación; falta probar con ROS en tu Ubuntu |
+| Validación offline S0 contra el URDF de ROS-Industrial | `hito3_4_control_real/vevas_studio/docs/datos/validacion_offline/` | HECHO: error 6e-16 en 5000 posturas |
+| Herramienta de solo lectura FK propia vs controlador | `hito3_4_control_real/vevas_studio/herramientas/verificar_convencion_rws.py` | Lista; falta correrla con el robot |
+| Análisis automático de sesiones | `hito3_4_control_real/vevas_studio/herramientas/analizar_sesion.py` | HECHO |
+| RAPID de EGM sin movimiento al arrancar | `hito3_4_control_real/vevas_studio/rapid/TRob1Main_VEVAS.mod` | Listo; lo carga el encargado |
+| Plantilla del GO | `hito3_4_control_real/vevas_studio/plantillas/GO_VEVAS_plantilla.json` | Lista |
 
 Un dato importante que salió de la validación offline: **nuestra tabla D-H y el URDF de ROS-Industrial dan exactamente la misma pose** (diferencia de 6e-16 en 5000 posturas al azar), siempre que el marco 6 de D-H se gire 180° en z para llegar al tool0 de ABB. Eso quiere decir que el ángulo de cada junta en ROS y en el FlexPendant es el mismo q de nuestra tabla: signo +1 y offset 0 en las seis juntas. Falta confirmarlo con el robot real (Guía 2, paso 5).
 

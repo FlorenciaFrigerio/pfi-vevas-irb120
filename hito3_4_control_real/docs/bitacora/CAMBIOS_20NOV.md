@@ -27,7 +27,7 @@ la cara superior del marco está a **19 cm**, y el tope del cilindro a **18 cm**
 La diferencia es **1 cm**; no se suman. Las interpretaciones de 37/39 cm quedan
 descartadas. Los claros son 29,5 a cada lateral, 44,5 del lado opuesto a los
 conectores y 14 del lado de los conectores. La huella 21,5 × 21 cm es deducida.
-Ver [referencia y límites del modelo](docs/MESA_ENTORNO.md).
+Ver [referencia y límites del modelo](../guias/MESA_ENTORNO.md).
 
 ## Correcciones del control
 
@@ -83,12 +83,12 @@ del recorrido, frecuencia, comparación con fixture y envío explícito a SIM.
 No se enviaron órdenes al IRC5 físico.
 
 Los resultados antes y después y la captura de la interfaz están en
-[docs/datos/pruebas_20nov](docs/datos/pruebas_20nov/README.md).
+`docs/datos/pruebas_20nov/` (evidencia local del 20/11, no versionada en el repositorio).
 
 ## Siguiente paso
 
 La revisión está destinada a prueba en **SIM y solo lectura**. Seguir
-[PRUEBA_INTERFAZ_20NOV.md](docs/PRUEBA_INTERFAZ_20NOV.md). Antes de movimiento
+[PRUEBA_INTERFAZ_20NOV.md](../operacion/PRUEBA_INTERFAZ_20NOV.md). Antes de movimiento
 físico, resolver C02, medir herramienta y entorno y completar la verificación
-presencial. Las ideas adicionales están en [MEJORAS_EXTRAS.md](docs/MEJORAS_EXTRAS.md)
-y las tareas para retomar en [PROXIMOS_PROMPTS.md](docs/PROXIMOS_PROMPTS.md).
+presencial. Las ideas adicionales están en [MEJORAS_EXTRAS.md](../desarrollo/MEJORAS_EXTRAS.md)
+y las tareas para retomar en [PROXIMOS_PROMPTS.md](../desarrollo/PROXIMOS_PROMPTS.md).

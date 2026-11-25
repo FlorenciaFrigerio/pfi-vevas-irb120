@@ -45,7 +45,7 @@ Para preparar un ensayo, el flujo actual registra el GO manual y la confirmació
   - `mover`: arranca el servidor si hace falta;
   - `diagnostico`: muestra el registro de eventos del IRC5;
   - `texto`: compara el módulo que tiene el controlador con el archivo local.
-- El nodo ROS que acompaña a la consola publica `/joint_states` en solo lectura. El flujo de visualización abre RViz sin exponer la acción `FollowJointTrajectory` ni arrancar ejecución de MoveIt. Ver [RViz con la postura del ABB IRB 120](docs/RVIZ_RWS.md).
+- El nodo ROS que acompaña a la consola publica `/joint_states` en solo lectura. El flujo de visualización abre RViz sin exponer la acción `FollowJointTrajectory` ni arrancar ejecución de MoveIt. Ver [RViz con la postura del ABB IRB 120](../operacion/RVIZ_RWS.md).
 - El lanzador del 19/11 preparaba RWS, iniciaba el módulo RAPID y abría el nodo ROS y la consola. El GO automático se retiró. `herramientas/crear_go.py` registra el GO manual y la confirmación del entorno en su archivo de ensayo.
 
 ### Revisión previa y seguridad (auditoría C01–C04)

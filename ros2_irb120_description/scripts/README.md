@@ -3,7 +3,7 @@
 Los módulos numéricos y el demo corren con Python 3 y NumPy. Matplotlib se usa al generar figuras. **La ruta por consola no requiere ROS.** El nodo opcional nodo_hito2.py sí requiere ROS 2. Los módulos se importan entre sí como hermanos, así que se ejecutan desde esta carpeta.
 
 ```bash
-cd scripts
+cd ros2_irb120_description/scripts
 python3 demo_recorrido.py
 ```
 
@@ -46,7 +46,7 @@ que están más abajo en la tabla.
 | Archivo | Qué hace |
 | --- | --- |
 | `resolver_en_vivo.py` | Resolvedor interactivo para la defensa. Acepta la pose en cinco formatos; la opción 7 explica qué significa cada número |
-| `capturar_resultados.py` | Ejecuta los cinco módulos y genera el registro reproducible en `docs/hito2/resultados/` |
+| `capturar_resultados.py` | Ejecuta los cinco módulos y genera el registro reproducible en `hito2_cinematica_dinamica/docs/resultados/` |
 | `graficas.py` | Figuras del informe, con paleta validada para daltonismo |
 
 ### Extras, no exigidos por la guía
@@ -93,8 +93,10 @@ declarado.
 
 | Qué | Dónde |
 | --- | --- |
-| Cada módulo explicado línea por línea | [`../docs/hito2/guia/`](../docs/hito2/guia/) |
-| Manuales de estudio y defensa | [`../docs/hito2/manuales/`](../docs/hito2/manuales/) |
-| Salida literal de los cinco módulos | [`../docs/hito2/resultados/`](../docs/hito2/resultados/) |
-| Informe IEEE | [`../docs/hito2/Informe_Hito2.pdf`](../docs/hito2/Informe_Hito2.pdf) |
-| Cuaderno reproducible | [`../notebooks/Hito2_VEVAS.ipynb`](../notebooks/) |
+| Qué es este paquete y qué script es de cada hito | [`../README.md`](../README.md) |
+| Cada módulo explicado línea por línea | [`hito2_cinematica_dinamica/docs/guias/codigo/`](../../hito2_cinematica_dinamica/docs/guias/codigo/) |
+| Manual de estudio y defensa | [`hito2_cinematica_dinamica/docs/guias/MANUAL_HITO2.md`](../../hito2_cinematica_dinamica/docs/guias/MANUAL_HITO2.md) |
+| Salida literal de los cinco módulos | [`hito2_cinematica_dinamica/docs/resultados/`](../../hito2_cinematica_dinamica/docs/resultados/) |
+| Informe IEEE del Hito 2 | [`hito2_cinematica_dinamica/docs/informe/Informe_Hito2.pdf`](../../hito2_cinematica_dinamica/docs/informe/Informe_Hito2.pdf) |
+| Cuaderno reproducible | [`hito2_cinematica_dinamica/notebooks/Hito2_VEVAS.ipynb`](../../hito2_cinematica_dinamica/notebooks/Hito2_VEVAS.ipynb) |
+| Material del Hito 1 (informe, validación) | [`hito1_gemelo_digital/`](../../hito1_gemelo_digital/README.md) |

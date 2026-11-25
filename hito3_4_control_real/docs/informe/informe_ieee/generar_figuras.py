@@ -5,7 +5,7 @@ Usa SOLO los módulos del proyecto (vevas/) y los valores medidos del 24/11/2026
 (HECHOS_24NOV.md). No se inventa ninguna medición: lo medido se copia tal cual
 (rangos de velocidad por grupo de juntas) y todo lo demás se calcula aquí.
 
-    python3 docs/hito3_4/informe_ieee/generar_figuras.py     (desde la raíz del repo)
+    python3 hito3_4_control_real/docs/informe/informe_ieee/generar_figuras.py     (desde la raíz del repo)
 
 Salida: img/fig_c02.pdf, img/fig_sigma.pdf y un resumen numérico por consola.
 """
@@ -21,7 +21,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
-RAIZ = os.path.abspath(os.path.join(AQUI, "..", "..", "..", "hito3_4"))
+RAIZ = os.path.abspath(os.path.join(AQUI, "..", "..", "..", "vevas_studio"))
 sys.path.insert(0, RAIZ)
 
 from vevas.jacobiano import analisis_singularidad  # noqa: E402

@@ -4,7 +4,7 @@ La vista usa `modelo/irb120_rws.urdf`, que conserva la geometría de primitivas 
 
 ## Ensayo en Ubuntu 24.04 con ROS 2 Jazzy, sin conexión al IRC5
 
-Desde `hito3_4`, abrir dos terminales. Cargar en ambas el mismo entorno. Si faltan paquetes en Ubuntu, instalar `ros-jazzy-robot-state-publisher`, `ros-jazzy-rviz2` y `ros-jazzy-tf2-ros`.
+Desde `hito3_4_control_real/vevas_studio`, abrir dos terminales. Cargar en ambas el mismo entorno. Si faltan paquetes en Ubuntu, instalar `ros-jazzy-robot-state-publisher`, `ros-jazzy-rviz2` y `ros-jazzy-tf2-ros`.
 
 ```bash
 source /opt/ros/jazzy/setup.bash

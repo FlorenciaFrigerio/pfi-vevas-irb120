@@ -172,7 +172,7 @@ def filtrar(soluciones, T_d, tol_pose=1e-6):
 Lo llaman resolver_en_vivo.py y nodo_hito2.py. Depende de fk_irb120.py.
 
 ## Pruebas y evidencia
-El cuaderno y docs/hito2/resultados registran barrido aleatorio y pruebas dirigidas de límites, muñeca casi singular y vueltas de J6.
+El cuaderno y `hito2_cinematica_dinamica/docs/resultados/` registran barrido aleatorio y pruebas dirigidas de límites, muñeca casi singular y vueltas de J6.
 
 ## Pregunta para practicar defensa
 > ¿En qué orden se filtran las ramas? ¿Por qué el signo de q3 no basta para nombrar la rama del codo?

@@ -325,4 +325,4 @@ Ese residuo demuestra cierre numérico del modelo, no precisión física del rob
 2. **La muñeca esférica separa posición y orientación en la cinemática inversa.**
 3. **Las ramas se verifican; una prueba numérica no reemplaza la validación física.**
 
-Para estudiar cada script por bloques, revisa [fk_irb120.py](01_fk_irb120.md), [pieper.py](02_pieper.md), [resolver_en_vivo.py](08_resolver_en_vivo.md) y [compare_urdf.py](14_compare_urdf.md).
+Para estudiar cada script por bloques, revisa [fk_irb120.py](../guias/codigo/01_fk_irb120.md), [pieper.py](../guias/codigo/02_pieper.md), [resolver_en_vivo.py](../guias/codigo/08_resolver_en_vivo.md) y [compare_urdf.py](../guias/codigo/14_compare_urdf.md).

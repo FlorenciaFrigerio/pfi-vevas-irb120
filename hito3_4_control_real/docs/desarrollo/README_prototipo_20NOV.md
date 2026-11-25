@@ -12,7 +12,7 @@ python3 -m venv .venv_interfaz
 .venv_interfaz/bin/python consola_vevas.py --modo sim --puerto 9012 --abrir
 ```
 
-La consola abre en `http://127.0.0.1:9012`. Para probar el arrastre del TCP, usá las flechas y los anillos, revisá el plan y probá el envío simulado. Seguí la [prueba de interfaz del 20/11](docs/PRUEBA_INTERFAZ_20NOV.md).
+La consola abre en `http://127.0.0.1:9012`. Para probar el arrastre del TCP, usá las flechas y los anillos, revisá el plan y probá el envío simulado. Seguí la [prueba de interfaz del 20/11](../operacion/PRUEBA_INTERFAZ_20NOV.md).
 
 ## RWS en solo lectura
 
@@ -24,15 +24,15 @@ bash iniciar_real.sh --solo-chequeo
 bash iniciar_real.sh --solo-lectura
 ```
 
-Si ROS 2 o RViz no están disponibles, agregá `--sin-rviz` a la segunda línea para usar solo la consola web. La visualización usa el nodo RWS en lectura y RViz, sin ejecutar MoveIt. Ver [RViz con la postura del ABB IRB 120](docs/RVIZ_RWS.md).
+Si ROS 2 o RViz no están disponibles, agregá `--sin-rviz` a la segunda línea para usar solo la consola web. La visualización usa el nodo RWS en lectura y RViz, sin ejecutar MoveIt. Ver [RViz con la postura del ABB IRB 120](../operacion/RVIZ_RWS.md).
 
 ## Documentación
 
-- [Conexión al robot el 23/11](docs/CONEXION_23NOV.md), [prueba de figuras en SIM](docs/PRUEBA_SIM_FIGURAS.md) y [cambios/verificación final](CAMBIOS_23NOV.md).
+- [Conexión al robot el 23/11](../operacion/CONEXION_23NOV.md), [prueba de figuras en SIM](../operacion/PRUEBA_SIM_FIGURAS.md) y [cambios/verificación final](../bitacora/CAMBIOS_23NOV.md).
 
-- [Aplicar el parche en Ubuntu y subir la rama](docs/SUBIR_20NOV.md).
-- [Cambios del 20/11](CAMBIOS_20NOV.md) y [contexto del proyecto](AVANCES_CONTEXTO.md).
-- [Cambios históricos del 19/11](CAMBIOS_19NOV.md).
-- [Handoff para retomar el proyecto](PROMPT_SIGUIENTE_IA.md) y [prompts por tarea](docs/PROXIMOS_PROMPTS.md).
-- [Mejoras priorizadas y evidencia pendiente](docs/MEJORAS_EXTRAS.md).
-- [Créditos del modelo 3D](web/modelo/CREDITOS.md).
+- [Aplicar el parche en Ubuntu y subir la rama](SUBIR_20NOV.md).
+- [Cambios del 20/11](../bitacora/CAMBIOS_20NOV.md) y [contexto del proyecto](AVANCES_CONTEXTO.md).
+- [Cambios históricos del 19/11](../bitacora/CAMBIOS_19NOV.md).
+- [Handoff para retomar el proyecto](PROMPT_SIGUIENTE_IA.md) y [prompts por tarea](PROXIMOS_PROMPTS.md).
+- [Mejoras priorizadas y evidencia pendiente](MEJORAS_EXTRAS.md).
+- [Créditos del modelo 3D](../../vevas_studio/web/modelo/CREDITOS.md).

@@ -117,9 +117,9 @@ revision docente/laboratorio requerida:
 
 Hecho en desarrollo: controles 3D J1–J6 y anillos, cálculo/revisión explícitos con identificación del plan, comparación RWS/FlexPendant de solo lectura, perfil compartido de mesa abierta, RViz de lectura y correcciones de GO/cancelación/frescura/módulo. Desde los tornillos, marco a 19 cm y cilindro a 18 cm: diferencia 1 cm, sin sumar.
 
-La primera suite tuvo 147/148 por un reloj inconsistente del simulador. Se corrigió el paso de integración sin cambiar el umbral; la suite posterior pasó 152/152 y JavaScript 5/5. La interfaz se revisó en navegador con datos SIM. Evidencia y detalle en [CAMBIOS_20NOV.md](../CAMBIOS_20NOV.md) y [pruebas de software](datos/pruebas_20nov/README.md).
+La primera suite tuvo 147/148 por un reloj inconsistente del simulador. Se corrigió el paso de integración sin cambiar el umbral; la suite posterior pasó 152/152 y JavaScript 5/5. La interfaz se revisó en navegador con datos SIM. Evidencia y detalle en [CAMBIOS_20NOV.md](CAMBIOS_20NOV.md) y pruebas de software en `docs/datos/pruebas_20nov/` (evidencia local, no versionada).
 
-Pendiente: velocidad por junta y suavidad ejecutada en IRC5 (C02), validación presencial de comparación y RViz, herramienta/TCP, obstáculos, informe y video. El envío físico queda bloqueado. Siguiente paso: [ensayo SIM y solo lectura](PRUEBA_INTERFAZ_20NOV.md). No se modificó el IRC5 ni la copia del Ubuntu del laboratorio; esta revisión todavía debe publicarse y descargarse.
+Pendiente: velocidad por junta y suavidad ejecutada en IRC5 (C02), validación presencial de comparación y RViz, herramienta/TCP, obstáculos, informe y video. El envío físico queda bloqueado. Siguiente paso: [ensayo SIM y solo lectura](../operacion/PRUEBA_INTERFAZ_20NOV.md). No se modificó el IRC5 ni la copia del Ubuntu del laboratorio; esta revisión todavía debe publicarse y descargarse.
 
 
 ## 20/11/2026 · Publicación pendiente
@@ -134,7 +134,7 @@ Los enlaces de archivo del chat no funcionaron en Ubuntu. Se subió el ZIP compl
 
 ## 23/11/2026 · Integración y preparación del laboratorio
 
-Se integraron las mejoras de figuras/suavidad/arrastre/confirmación y traza, junto con diagnóstico RWS de solo lectura y guía de conexión. La suite final pasó 232 pruebas Python y 6 JS. Las capturas de RWS son sintéticas. El envío físico sigue bloqueado por C02; se documentó la propuesta ABB SpeedLimAxis/LimitSpeed sin instalarla. Ver [CAMBIOS_23NOV.md](../CAMBIOS_23NOV.md). Pendiente recibir la ruta/ping y lectura del Ubuntu real, herramienta/TCP y entorno, y validar el control en laboratorio.
+Se integraron las mejoras de figuras/suavidad/arrastre/confirmación y traza, junto con diagnóstico RWS de solo lectura y guía de conexión. La suite final pasó 232 pruebas Python y 6 JS. Las capturas de RWS son sintéticas. El envío físico sigue bloqueado por C02; se documentó la propuesta ABB SpeedLimAxis/LimitSpeed sin instalarla. Ver [CAMBIOS_23NOV.md](CAMBIOS_23NOV.md). Pendiente recibir la ruta/ping y lectura del Ubuntu real, herramienta/TCP y entorno, y validar el control en laboratorio.
 
 ## 23/11/2026 · Proyecto independiente ROBOTICA_01
 

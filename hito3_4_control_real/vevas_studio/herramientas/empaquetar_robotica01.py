@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Crea una entrega independiente por áreas, sin cambiar el robot ni la PC del usuario.
 
-Solo copia archivos versionados de hito3_4 y materiales explícitos opcionales.
+Solo copia archivos versionados de VEVAS Studio (hito3_4_control_real/vevas_studio en el repo,
+00_codigo/hito3_4 en el laboratorio), la documentación del hito y materiales explícitos opcionales.
 No exporta el directorio .git, credenciales del sistema, venv ni sesiones locales.
 El bundle opcional contiene el historial versionado de HEAD, tal como estaba.
 """
@@ -16,7 +17,12 @@ import shutil
 import subprocess
 import zipfile
 
-REPO = Path(__file__).resolve().parents[2]
+CODIGO_REPO = Path(__file__).resolve().parents[1]      # hito3_4_control_real/vevas_studio
+DOCS_REPO = CODIGO_REPO.parent / "docs"                 # hito3_4_control_real/docs
+REPO = Path(subprocess.check_output(["git", "-C", str(CODIGO_REPO), "rev-parse", "--show-toplevel"],
+                                    text=True).strip())
+CARPETA_CODIGO = CODIGO_REPO.relative_to(REPO).as_posix()
+CARPETA_DOCS = DOCS_REPO.relative_to(REPO).as_posix()
 
 
 def git(*args: str) -> bytes:
@@ -52,10 +58,10 @@ def main() -> None:
     rama = git("branch", "--show-current").decode().strip()
     copiados = 0
     omitidos: list[str] = []
-    for nombre in git("ls-files", "-z", "--", "hito3_4").decode().split("\0"):
+    for nombre in git("ls-files", "-z", "--", CARPETA_CODIGO).decode().split("\0"):
         if not nombre:
             continue
-        relativo = Path(nombre).relative_to("hito3_4")
+        relativo = Path(nombre).relative_to(CARPETA_CODIGO)
         partes = relativo.parts
         if (partes[0] == "hito3_4" or any(p in {".venv", ".venv_interfaz", "__pycache__", ".pytest_cache", "sesiones", "node_modules"} for p in partes)
                 or relativo.suffix == ".pyc" or relativo.name == "GO_VEVAS.json"):
@@ -69,6 +75,20 @@ def main() -> None:
         shutil.copy2(origen, destino)
         copiados += 1
     shutil.copy2(REPO / "LICENSE", raiz / "00_codigo" / "LICENSE")
+    # Documentación del hito (en el repo vive junto al código, en hito3_4_control_real/docs):
+    # se copia a 00_codigo/docs y sus links a ../../vevas_studio/ pasan a ../../hito3_4/.
+    for nombre in git("ls-files", "-z", "--", CARPETA_DOCS).decode().split("\0"):
+        if not nombre:
+            continue
+        relativo = Path(nombre).relative_to(CARPETA_DOCS)
+        destino = raiz / "00_codigo" / "docs" / relativo
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        if destino.suffix == ".md":
+            texto = (REPO / nombre).read_text(encoding="utf-8")
+            destino.write_text(texto.replace("vevas_studio/", "hito3_4/"), encoding="utf-8")
+        else:
+            shutil.copy2(REPO / nombre, destino)
+        copiados += 1
 
     escribir(raiz, "00_codigo/README.md", """
 # Código único del proyecto
@@ -102,9 +122,9 @@ IP del IRC5 por defecto: 192.168.125.1. Para otra IP confirmada, usá
 `VEVAS_ROBOT_IP=... bash 02_conexion/diagnosticar.sh` y la misma variable al abrir.
 Los JSON nuevos quedan en `08_datos_locales/conexion` sin sobrescribir capturas.
 No se arranca RAPID ni se envía movimiento. No se necesita ROS para esta web.
-[Procedimiento técnico](../00_codigo/hito3_4/docs/CONEXION_23NOV.md),
-[comparar FlexPendant](../00_codigo/hito3_4/docs/COMPARAR_FLEXPENDANT.md),
-[ROS/RViz opcional](../00_codigo/hito3_4/docs/RVIZ_RWS.md).
+[Procedimiento técnico](../00_codigo/docs/operacion/CONEXION_23NOV.md),
+[comparar FlexPendant](../00_codigo/docs/operacion/COMPARAR_FLEXPENDANT.md),
+[ROS/RViz opcional](../00_codigo/docs/operacion/RVIZ_RWS.md).
 Las rutas de entrega antiguas de esas guías son históricas; aquí usá estos lanzadores.
 """),
         "03_calculos": ("Cinemática y trayectorias", """
@@ -128,13 +148,13 @@ Laterales 29,5 cm; longitudinales 44,5 cm al lado opuesto a conectores y 14 cm a
 Las cuatro barras superiores se modelan para colisión. Soportes inferiores ilustrativos:
 medidas no confirmadas. Herramienta/bracket y obstáculos externos todavía por medir.
 Modelo: `00_codigo/hito3_4/modelo/irb120_rws.urdf` y `web/modelo/*.stl`.
-[Explicación geométrica](../00_codigo/hito3_4/docs/MESA_ENTORNO.md).
+[Explicación geométrica](../00_codigo/docs/guias/MESA_ENTORNO.md).
 """),
         "05_seguridad_y_control": ("Revisión y control físico pendiente", """
 El envío físico continúa bloqueado por C02: falta verificar el límite de velocidad
 de cada junta en el controlador. No habilitar el booleano por configuración ni
 confundir TCP, frecuencia de lectura o porcentaje visual con límites articulares.
-[Trabajo físico pendiente](../00_codigo/hito3_4/docs/CONTROL_FISICO_PENDIENTE.md)
+[Trabajo físico pendiente](../00_codigo/docs/desarrollo/CONTROL_FISICO_PENDIENTE.md)
 contiene la propuesta SpeedLimAxis/LimitSpeed y las verificaciones presenciales.
 Las plantillas GO son plantillas vacías, no autorizaciones completadas.
 Recalibrar en la interfaz compara lecturas; no calibra encoders ni actualiza contadores.
@@ -158,7 +178,7 @@ Empezá por [CONTEXTO_PARA_PROYECTO_BRAZO.md](CONTEXTO_PARA_PROYECTO_BRAZO.md),
 El código conserva bitácora, CAMBIOS_19/20/22/23NOV y guías previas.
 Son documentos fechados: las notas nuevas de esta carpeta y los bloqueos de seguridad
 prevalecen sobre instrucciones antiguas de carpetas y arranque físico.
-[Extras posibles](../00_codigo/hito3_4/docs/MEJORAS_EXTRAS.md).
+[Extras posibles](../00_codigo/docs/desarrollo/MEJORAS_EXTRAS.md).
 Los requisitos públicos del docente, si se aportaron al exportar, quedan en
 `09_historial/fuentes_docente` con su procedencia original.
 """),
@@ -365,7 +385,7 @@ profunda para control físico. Preguntar antes de asumir medidas ambiguas.
 
 ## Fuentes y propiedad
 
-Repo principal: https://github.com/FlorenciaFrigerio/pfi-vevas-irb120, hito3_4.
+Repo principal: https://github.com/FlorenciaFrigerio/pfi-vevas-irb120, hito3_4_control_real/vevas_studio.
 Referencia de Marcelo: robotica-IMT342, rama proyectoHito3y4,
 2-2026/IMT342/equipo/proyecto. Referencia, no destino de escritura.
 La rama local es la que consta en ORIGEN.json. No afirmar push exitoso: los intentos

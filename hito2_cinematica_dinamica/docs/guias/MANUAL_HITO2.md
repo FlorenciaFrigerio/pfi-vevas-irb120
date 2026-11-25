@@ -1159,7 +1159,7 @@ distinguir nada.
 El resolvedor en vivo se abre así:
 
 ```bash
-cd pfi-vevas-irb120/scripts
+cd pfi-vevas-irb120/ros2_irb120_description/scripts
 python3 resolver_en_vivo.py
 ```
 

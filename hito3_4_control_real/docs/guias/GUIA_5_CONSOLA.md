@@ -4,7 +4,7 @@ Grupo VEVAS · Interfaz gráfica con cálculos y error en tiempo real
 
 ## 1. Qué es y cómo funciona por dentro
 
-La consola es un programa de Python que corre en la PC y muestra todo en una página web local (`http://127.0.0.1:8000`). Python hace **todos** los cálculos (FK, Pieper, Jacobiano, LSPB, errores, seguridad) con nuestro propio código de `hito3_4/vevas/`; la página solo los dibuja. No usa MoveIt ni ningún solucionador automático de IK (regla "anti caja negra" de la guía del PFI).
+La consola es un programa de Python que corre en la PC y muestra todo en una página web local (`http://127.0.0.1:8000`). Python hace **todos** los cálculos (FK, Pieper, Jacobiano, LSPB, errores, seguridad) con nuestro propio código de `hito3_4_control_real/vevas_studio/vevas/`; la página solo los dibuja. No usa MoveIt ni ningún solucionador automático de IK (regla "anti caja negra" de la guía del PFI).
 
 ```mermaid
 flowchart LR
@@ -28,7 +28,7 @@ La consola pregunta al `controller_manager` de ROS qué hardware está cargado y
 
 ## 2. Instalar y abrir (5 minutos)
 
-El repo del grupo va dentro del workspace de ROS, en `~/abb_ws/src/pfi-vevas-irb120`, y la consola en su carpeta `hito3_4`:
+El repo del grupo va dentro del workspace de ROS, en `~/abb_ws/src/pfi-vevas-irb120`, y la consola en su carpeta `hito3_4_control_real/vevas_studio`:
 
 ```bash
 cd ~/abb_ws/src
@@ -161,7 +161,7 @@ Con `--real`, para armar se pide: el archivo GO del día completo, cuatro casill
 
 ## 8. Registros y análisis
 
-Cada vez que se abre la consola se crea `hito3_4/sesiones/<fecha>_<modo>/` con:
+Cada vez que se abre la consola se crea `hito3_4_control_real/vevas_studio/sesiones/<fecha>_<modo>/` con:
 
 | Archivo | Contenido |
 |---|---|

@@ -22,8 +22,8 @@ Chromium con visor compatible: las cuatro figuras se calcularon; cuadrado y salu
 
 ## Laboratorio
 
-Seguir [CONEXION_23NOV.md](docs/CONEXION_23NOV.md). No recalibrar si el FlexPendant confirma calibración y contadores válidos. Si hay avisos, corresponde revisar el procedimiento ABB de esa unidad antes del movimiento.
+Seguir [CONEXION_23NOV.md](../operacion/CONEXION_23NOV.md). No recalibrar si el FlexPendant confirma calibración y contadores válidos. Si hay avisos, corresponde revisar el procedimiento ABB de esa unidad antes del movimiento.
 
-El envío físico sigue bloqueado por C02. Se documentó una solución candidata con `SpeedLimAxis` y señales de sistema `LimitSpeed`, que aún necesita compilación y verificación en el IRC5 RW6.12. Un porcentaje TCP o una variable booleana no sustituyen esa comprobación. La propuesta está en [CONTROL_FISICO_PENDIENTE.md](docs/CONTROL_FISICO_PENDIENTE.md). Siguen pendientes herramienta/TCP, obstáculos y la validación presencial de FK/RViz, informe y video.
+El envío físico sigue bloqueado por C02. Se documentó una solución candidata con `SpeedLimAxis` y señales de sistema `LimitSpeed`, que aún necesita compilación y verificación en el IRC5 RW6.12. Un porcentaje TCP o una variable booleana no sustituyen esa comprobación. La propuesta está en [CONTROL_FISICO_PENDIENTE.md](../desarrollo/CONTROL_FISICO_PENDIENTE.md). Siguen pendientes herramienta/TCP, obstáculos y la validación presencial de FK/RViz, informe y video.
 
-[Evidencia de software](docs/datos/pruebas_23nov/README.md) · [Guía SIM](docs/PRUEBA_SIM_FIGURAS.md)
+Evidencia de software en `docs/datos/pruebas_23nov/` (local, no versionada) · [Guía SIM](../operacion/PRUEBA_SIM_FIGURAS.md)

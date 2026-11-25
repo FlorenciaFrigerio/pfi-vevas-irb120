@@ -56,7 +56,7 @@ Marco exterior de 80 × 80 cm, perfil de 5 × 5 cm, claro de 29,5 cm en cada lat
 ## Cómo seguir
 
 1. Validar en simulación el arrastre y los anillos de rotación incorporados en la revisión. El arrastre con envío y la rotación del TCP siguen pendientes de validación física.
-2. Seguir la [guía de RViz](docs/RVIZ_RWS.md) con posturas sintéticas y luego con RWS en solo lectura. Recuperar los logs de la sesión original para diagnosticar la pantalla vacía.
+2. Seguir la [guía de RViz](../operacion/RVIZ_RWS.md) con posturas sintéticas y luego con RWS en solo lectura. Recuperar los logs de la sesión original para diagnosticar la pantalla vacía.
 3. Validar la escena medida, herramienta y obstáculos. El GO manual guarda las confirmaciones del ensayo. `confirmarEnPendant := TRUE` sigue vigente hasta que el docente decida si cambia.
 4. Comparar las juntas del FlexPendant con RWS y el modelo mediante la verificación guiada en lectura. Revisar en SIM la transición a cero y la suavidad. Registrar muestras y frecuencia efectiva antes de evaluar velocidad medida o seguimiento con el brazo.
 5. Completar el informe del Hito 3/4 con los logs originales, registros de movimientos y video que se puedan recuperar o producir en el laboratorio.

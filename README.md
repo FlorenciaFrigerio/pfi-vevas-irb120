@@ -17,9 +17,9 @@ Docente: M.Sc. Ing. Bernardo Quiroga Turdera
 | | Hito 1 — Gemelo digital | Hito 2 — Cinemática y dinámica |
 | --- | --- | --- |
 | **Qué** | Descripción URDF del IRB 120 validada contra la cinemática directa analítica | Pipeline completo de pose objetivo a demanda de torque |
-| **Informe** | [`docs/hito1/Informe_Hito1_VEVAS.pdf`](docs/hito1/Informe_Hito1_VEVAS.pdf) | [`docs/hito2/Informe_Hito2.pdf`](docs/hito2/Informe_Hito2.pdf) |
+| **Informe** | [`docs/hito1/Informe_Hito1_VEVAS.pdf`](hito1_gemelo_digital/docs/informe/Informe_Hito1_VEVAS.pdf) | [`docs/hito2/Informe_Hito2.pdf`](hito2_cinematica_dinamica/docs/informe/Informe_Hito2.pdf) |
 | **Presentación** | [`docs/hito1/Hito1_Gemelo_Digital_IRB120.pdf`](docs/hito1/) | — |
-| **Evidencia** | [`docs/hito1/validacion_hito1.txt`](docs/hito1/validacion_hito1.txt) | [`docs/hito2/resultados/`](docs/hito2/resultados/) |
+| **Evidencia** | [`docs/hito1/validacion_hito1.txt`](hito1_gemelo_digital/docs/resultados/validacion_hito1.txt) | [`docs/hito2/resultados/`](hito2_cinematica_dinamica/docs/resultados/) |
 | **Tag** | `v1.0-hito1` | `v2.0-hito2` |
 
 **Para ver todo el recorrido de una vez**, sin leer código:
@@ -58,7 +58,7 @@ Perfil LSPB 1R de referencia → dinámica reducida → τ(t)
 | Alcance a₂ + k vs. fabricante | 0.580 m / 0.580 m |
 
 El registro completo, con semillas y entorno, está en
-[`docs/hito2/resultados/resultados.json`](docs/hito2/resultados/resultados.json).
+[`docs/hito2/resultados/resultados.json`](hito2_cinematica_dinamica/docs/resultados/resultados.json).
 
 ## Pruebas dirigidas
 
@@ -74,7 +74,7 @@ aparecieron bajo pruebas dirigidas a fronteras y singularidades:
 Una muestra uniforme del espacio de trabajo visita las fronteras con
 probabilidad despreciable: si el fallo vive sobre un tope, hay que ir a
 buscarlo ahí. El detalle está en
-[`docs/hito2/anexo_tecnico.md`](docs/hito2/anexo_tecnico.md), sección 4.
+[`docs/hito2/anexo_tecnico.md`](hito2_cinematica_dinamica/docs/informe/anexo_tecnico.md), sección 4.
 
 ## Módulos
 
@@ -142,7 +142,7 @@ eje z₆. Las cifras pueden ir en una línea o repartidas en varias. La
 ### Compilar el informe
 
 El fuente usa la clase `IEEEtran`. En Overleaf: New Project → Upload
-Project con la carpeta [`docs/hito2/informe_ieee/`](docs/hito2/informe_ieee/),
+Project con la carpeta [`docs/hito2/informe_ieee/`](hito2_cinematica_dinamica/docs/informe/informe_ieee/),
 compilador pdfLaTeX, dos pasadas. Localmente requiere `texlive-publishers`.
 
 ## Documentación del Hito 2
@@ -150,9 +150,9 @@ compilador pdfLaTeX, dos pasadas. Localmente requiere `texlive-publishers`.
 | Dónde | Qué |
 | --- | --- |
 | [`docs/hito2/guia/`](docs/hito2/guia/) | un archivo por módulo, explicado línea por línea |
-| [`docs/hito2/manuales/`](docs/hito2/manuales/) | manuales de estudio, defensa y demostración |
-| [`docs/hito2/anexo_tecnico.md`](docs/hito2/anexo_tecnico.md) | material de respaldo que no entró al informe |
-| [`docs/hito2/resultados/`](docs/hito2/resultados/) | salida literal de los cinco módulos |
+| [`docs/hito2/manuales/`](hito2_cinematica_dinamica/docs/guias/) | manuales de estudio, defensa y demostración |
+| [`docs/hito2/anexo_tecnico.md`](hito2_cinematica_dinamica/docs/informe/anexo_tecnico.md) | material de respaldo que no entró al informe |
+| [`docs/hito2/resultados/`](hito2_cinematica_dinamica/docs/resultados/) | salida literal de los cinco módulos |
 
 ## Alcance y limitaciones
 
@@ -180,7 +180,7 @@ Denavit-Hartenberg y validada contra la cinemática directa analítica.
 
 ## Web interactiva del brazo ABB
 
-La carpeta [`web/`](web/) contiene el explorador técnico del **ABB IRB
+La carpeta [`web/`](hito1_gemelo_digital/visor_web/) contiene el explorador técnico del **ABB IRB
 120**: modelo 3D, selección de conjuntos, vista de articulaciones y
 celda de trabajo.
 

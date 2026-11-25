@@ -5,7 +5,7 @@
 ## Para qué sirve
 Ejecuta módulos, guarda salidas y recompone métricas en JSON con semilla y entorno.
 
-**Entrada y salida:** Entrada: scripts del análisis. Salida: TXT y resultados.json en docs/hito2/resultados.
+**Entrada y salida:** Entrada: scripts del análisis. Salida: TXT y resultados.json en `hito2_cinematica_dinamica/docs/resultados/`.
 
 ## Recorrido por bloques
 
@@ -129,7 +129,7 @@ if __name__ == "__main__":
 Ejecuta pieper.py, jacobiano.py, lspb.py, singularidad.py y dinamica_1r.py.
 
 ## Pruebas y evidencia
-Los TXT y JSON versionados están en docs/hito2/resultados.
+Los TXT y JSON versionados están en `hito2_cinematica_dinamica/docs/resultados/`.
 
 ## Pregunta para practicar defensa
 > ¿Qué aporta la semilla? ¿Qué datos de entorno se guardan?

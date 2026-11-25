@@ -5,7 +5,7 @@ Con el brazo detenido, compará las juntas y la pose que muestra el FlexPendant 
 En VEVAS conectado por RWS, abrí el asistente de recalibración y tomá la captura con el brazo detenido. La misma comprobación está disponible desde la terminal de Ubuntu.
 
 ```bash
-cd hito3_4
+cd hito3_4_control_real/vevas_studio
 python3 herramientas/comparar_pendant.py --ip 192.168.125.1
 python3 herramientas/comparar_pendant.py --ip 192.168.125.1 --json
 ```
