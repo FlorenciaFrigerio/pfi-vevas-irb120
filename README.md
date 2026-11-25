@@ -1,4 +1,41 @@
-# Proyecto Final Integrador — ABB IRB 120
+![Proyecto final de Robótica · Grupo VEVAS](01_docs/06_figuras/00_proyecto.png)
+
+[Catálogo numerado de todos los archivos](01_docs/07_CATALOGO_DE_ARCHIVOS.md)
+
+# Proyecto final de Robótica · Grupo VEVAS
+
+El grupo construyó una representación del ABB IRB 120, resolvió cómo llevar su herramienta a una pose y llevó esos cálculos a una consola que permite contrastar el plan con lo observado en el controlador. Cada hito conserva el informe, la explicación del método y sus resultados.
+
+## Informes y defensa
+
+| Material | Para qué sirve |
+| --- | --- |
+| [Informe del Hito 1](02_hito1_gemelo_digital/01_docs/01_informe/01_Informe_Hito1_VEVAS.pdf) | Geometría, URDF y marcos de referencia. |
+| [Informe del Hito 2](03_hito2_cinematica_dinamica/01_docs/01_informe/01_Informe_Hito2.pdf) | Cinemática inversa, singularidades, trayectorias y torque. |
+| [Informe del Hito 3/4](04_hito3_4_control_real/01_docs/01_informe/01_Informe_Hito3_4.pdf) | Integración de VEVAS Studio con el ABB IRC5. |
+
+[Diapositivas de defensa](04_hito3_4_control_real/01_docs/02_presentacion/02_Defensa_Grupo_VEVAS.pdf) · [Guía de entrega del 24/11](04_hito3_4_control_real/01_docs/03_guias/02_Guia_aportada_24NOV.md)
+
+## Recorrido del proyecto
+
+| Material | Para qué sirve |
+| --- | --- |
+| [01 · Gemelo digital](02_hito1_gemelo_digital/README.md) | Explorar el robot articulado y contrastar TF con la cinemática directa. |
+| [02 · Cinemática y dinámica](03_hito2_cinematica_dinamica/README.md) | Elegir una rama de Pieper y calcular una trayectoria sincronizada. |
+| [03–04 · Control del robot](04_hito3_4_control_real/README.md) | Examinar el plan, la operación de la consola y la evidencia de laboratorio. |
+| [VEVAS Studio](04_hito3_4_control_real/02_vevas_studio/README.md) | Abrir la documentación del software, las pruebas y el simulador. |
+
+## Cómo interpretar las evidencias
+
+| Hito | Qué se compara | Dónde está el resultado |
+| --- | --- | --- |
+| 1 | Pose analítica frente a transformación TF | [Registro de las 501 muestras válidas](02_hito1_gemelo_digital/01_docs/04_resultados/01_validacion_hito1.txt) |
+| 2 | Pose objetivo frente a la pose recuperada por cinemática directa | [Registro numérico del Hito 2](03_hito2_cinematica_dinamica/01_docs/04_resultados/resultados.json) |
+| 3/4 | Velocidades por junta y observaciones del controlador | [Figura de la entrega C02](01_docs/06_figuras/05_velocidades_c02.png) |
+
+El orden de los hitos también sirve para investigar un resultado inesperado. Primero se verifica la geometría y la convención de los ejes. Luego se comprueba si la postura y la trayectoria son admisibles. Finalmente se contrasta lo esperado con la evidencia fechada del controlador.
+
+## Equipo y materia
 
 **Grupo VEVAS** · Robótica IMT-342 · Gestión II-2026
 Carrera de Ingeniería Mecatrónica
@@ -9,24 +46,6 @@ Susann A. Baldiviezo Castellanos · Alejandro J. Bejarano Romero ·
 Florencia Frigerio Arízaga · Benjamín Soruco Guzmán
 
 Docente: M.Sc. Ing. Bernardo Quiroga Turdera
-
-![VEVAS · ABB IRB 120](01_docs/banner-vevas.svg)
-
-Del gemelo digital al control del ABB IRB 120. El proyecto reúne el modelo del robot, los cálculos de movimiento y VEVAS Studio.
-
-[**Documentación →**](01_docs/) · [**Defensa →**](hito3_4_control_real/01_docs/02_presentacion/02_Defensa_Grupo_VEVAS.pdf) · [**Simulación →**](hito3_4_control_real/COMO_EJECUTAR.md)
-
-## 01 · Recorrido por hitos
-
-| Hito | Alcance | Ejecución |
-| --- | --- | --- |
-| [Hito 1 · Gemelo digital](hito1_gemelo_digital/README.md) | Modelo URDF del ABB IRB 120 y validación de cinemática directa. | [Cómo ejecutar](hito1_gemelo_digital/COMO_EJECUTAR.md) |
-| [Hito 2 · Cinemática y dinámica](hito2_cinematica_dinamica/README.md) | Cinemática inversa de Pieper, Jacobiano, singularidades, perfiles LSPB y dinámica reducida. | [Cómo ejecutar](hito2_cinematica_dinamica/COMO_EJECUTAR.md) |
-| [Hitos 3 y 4 · Control del robot](hito3_4_control_real/README.md) | VEVAS Studio integra la simulación, la cinemática y la supervisión del ABB IRB 120 mediante RWS. | [Cómo ejecutar](hito3_4_control_real/COMO_EJECUTAR.md) |
-
-[01 · Índice general](01_docs/INDICE.md) · [02 · Cronología](01_docs/CRONOLOGIA.md) · [03 · Material de defensa](01_docs/04_LISTA_DE_ENTREGA.md) · [04 · Mapa del repositorio](01_docs/05_MAPA_DEL_REPOSITORIO.md)
-
-## 02 · Resultados
 
 <details>
 <summary>Resultados y notas técnicas</summary>
@@ -56,7 +75,7 @@ Perfil LSPB 1R de referencia → dinámica reducida → τ(t)
 | Alcance a₂ + k vs. fabricante | 0.580 m / 0.580 m |
 
 El registro completo, con semillas y entorno, está en
-[`docs/hito2/resultados/resultados.json`](hito2_cinematica_dinamica/01_docs/04_resultados/resultados.json).
+[resultados.json](03_hito2_cinematica_dinamica/01_docs/04_resultados/resultados.json).
 
 ## Pruebas dirigidas
 
@@ -72,7 +91,7 @@ aparecieron bajo pruebas dirigidas a fronteras y singularidades:
 Una muestra uniforme del espacio de trabajo visita las fronteras con
 probabilidad despreciable: si el fallo vive sobre un tope, hay que ir a
 buscarlo ahí. El detalle está en
-[`docs/hito2/anexo_tecnico.md`](hito2_cinematica_dinamica/01_docs/01_informe/anexo_tecnico.md), sección 4.
+[02_anexo_tecnico.md](03_hito2_cinematica_dinamica/01_docs/01_informe/02_anexo_tecnico.md), sección 4.
 
 ## Módulos
 
@@ -102,7 +121,7 @@ Extras, no exigidos por la guía del Hito 2:
 
 ```bash
 git clone https://github.com/FlorenciaFrigerio/pfi-vevas-irb120.git
-cd pfi-vevas-irb120/scripts
+cd pfi-vevas-irb120/05_ros2_irb120_description/04_scripts
 
 # El recorrido completo, narrado
 python3 demo_recorrido.py                    # pausa entre etapas
@@ -117,11 +136,11 @@ python3 singularidad.py    # experimento de singularidad
 python3 dinamica_1r.py     # modelo 1R sobre la trayectoria
 
 # Cuaderno completo
-cd ../notebooks
-python3 -m nbconvert --to notebook --execute --inplace Hito2_VEVAS.ipynb
+cd ../../03_hito2_cinematica_dinamica/02_notebooks
+python3 -m nbconvert --to notebook --execute --inplace 01_Hito2_VEVAS.ipynb
 
 # Registro completo de resultados
-cd ../scripts
+cd ../../05_ros2_irb120_description/04_scripts
 python3 capturar_resultados.py
 ```
 
@@ -140,17 +159,17 @@ eje z₆. Las cifras pueden ir en una línea o repartidas en varias. La
 ### Compilar el informe
 
 El fuente usa la clase `IEEEtran`. En Overleaf: New Project → Upload
-Project con la carpeta [`docs/hito2/informe_ieee/`](hito2_cinematica_dinamica/01_docs/01_informe/informe_ieee/),
+Project con la carpeta [01_informe_ieee](03_hito2_cinematica_dinamica/01_docs/01_informe/01_informe_ieee/),
 compilador pdfLaTeX, dos pasadas. Localmente requiere `texlive-publishers`.
 
 ## Documentación del Hito 2
 
 | Dónde | Qué |
 | --- | --- |
-| [`hito2_cinematica_dinamica/01_docs/guias/codigo/`](hito2_cinematica_dinamica/01_docs/03_guias/codigo/) | un archivo por módulo, explicado línea por línea |
-| [`docs/hito2/manuales/`](hito2_cinematica_dinamica/01_docs/03_guias/) | manuales de estudio, defensa y demostración |
-| [`docs/hito2/anexo_tecnico.md`](hito2_cinematica_dinamica/01_docs/01_informe/anexo_tecnico.md) | material de respaldo que no entró al informe |
-| [`docs/hito2/resultados/`](hito2_cinematica_dinamica/01_docs/04_resultados/) | salida literal de los cinco módulos |
+| [01_codigo](03_hito2_cinematica_dinamica/01_docs/03_guias/01_codigo/) | un archivo por módulo, explicado línea por línea |
+| [03_guias](03_hito2_cinematica_dinamica/01_docs/03_guias/) | manuales de estudio, defensa y demostración |
+| [02_anexo_tecnico.md](03_hito2_cinematica_dinamica/01_docs/01_informe/02_anexo_tecnico.md) | material de respaldo que no entró al informe |
+| [04_resultados](03_hito2_cinematica_dinamica/01_docs/04_resultados/) | salida literal de los cinco módulos |
 
 ## Alcance y limitaciones
 
@@ -178,7 +197,7 @@ Denavit-Hartenberg y validada contra la cinemática directa analítica.
 
 ## Web interactiva del brazo ABB
 
-La carpeta [`web/`](hito1_gemelo_digital/visor_web/) contiene el explorador técnico del **ABB IRB
+La carpeta [`08_web/`](02_hito1_gemelo_digital/02_visor_web/) contiene el explorador técnico del **ABB IRB
 120**: modelo 3D, selección de conjuntos, vista de articulaciones y
 celda de trabajo.
 
@@ -261,10 +280,10 @@ Se mantienen **dos** de forma deliberada:
 
 | Archivo | Para qué |
 | --- | --- |
-| `urdf/irb120_manual.urdf` | escrito a mano, documenta el razonamiento de cada número |
-| `urdf/irb120.urdf` | generado por script, lo demuestra (no editar a mano) |
+| `01_urdf/irb120_manual.urdf` | escrito a mano, documenta el razonamiento de cada número |
+| `01_urdf/irb120.urdf` | generado por script, lo demuestra (no editar a mano) |
 
-`scripts/compare_urdf.py` verifica que sean el mismo robot.
+`04_scripts/compare_urdf.py` verifica que sean el mismo robot.
 
 ## Visualización en RViz
 
@@ -280,17 +299,7 @@ ros2 launch irb120_description display.launch.py
 
 ## Estructura del repositorio
 
-```
-pfi-vevas-irb120/
-├── scripts/              los 17 modulos de Python
-├── notebooks/            cuaderno reproducible del Hito 2
-├── urdf/                 los dos URDF del Hito 1
-├── launch/  rviz/        visualizacion ROS 2
-├── web/                  explorador 3D interactivo
-└── docs/
-    ├── hito1/            informe, presentacion, fuente LaTeX, validacion
-    └── hito2/            informe IEEE, anexo, guia, manuales, resultados
-```
+[Mapa de las carpetas](01_docs/05_MAPA_DEL_REPOSITORIO.md) · [Catálogo completo](01_docs/07_CATALOGO_DE_ARCHIVOS.md)
 
 ## Convenciones
 
