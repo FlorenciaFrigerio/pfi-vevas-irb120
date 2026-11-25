@@ -1,10 +1,12 @@
-# Hito 2 · Cinemática y dinámica
+# 02 · Hito 2 · Cinemática y dinámica
 
 ![VEVAS](../docs/banner-vevas.svg)
 
+[![Abrir documentos del hito](https://img.shields.io/badge/02-Documentos-be185d)](docs/INDICE.md) [![Consultar ejecución](https://img.shields.io/badge/Guía-Ejecución-831843)](COMO_EJECUTAR.md)
+
 Cinemática inversa de Pieper, Jacobiano, singularidades, perfiles LSPB y dinámica reducida.
 
-[Cómo ejecutar](COMO_EJECUTAR.md) · [Informe](docs/informe/Informe_Hito2.pdf) · [Índice de documentos](docs/INDICE.md)
+[1. Cómo ejecutar](COMO_EJECUTAR.md) · [2. Informe](docs/informe/01_Informe_Hito2.pdf) · [3. Índice de documentos](docs/INDICE.md)
 
 El método analítico calcula candidatos articulares y comprueba la pose con cinemática directa.
 

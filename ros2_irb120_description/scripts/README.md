@@ -95,8 +95,8 @@ declarado.
 | --- | --- |
 | Qué es este paquete y qué script es de cada hito | [`../../README.md`](../../README.md) |
 | Cada módulo explicado línea por línea | [`hito2_cinematica_dinamica/docs/guias/codigo/`](../../hito2_cinematica_dinamica/docs/guias/codigo/) |
-| Manual de estudio y defensa | [`hito2_cinematica_dinamica/docs/guias/MANUAL_HITO2.md`](../../hito2_cinematica_dinamica/docs/guias/MANUAL_HITO2.md) |
+| Manual de estudio y defensa | [`hito2_cinematica_dinamica/docs/guias/MANUAL_HITO2.md`](../../hito2_cinematica_dinamica/docs/guias/01_MANUAL_HITO2.md) |
 | Salida literal de los cinco módulos | [`hito2_cinematica_dinamica/docs/resultados/`](../../hito2_cinematica_dinamica/docs/resultados/) |
-| Informe IEEE del Hito 2 | [`hito2_cinematica_dinamica/docs/informe/Informe_Hito2.pdf`](../../hito2_cinematica_dinamica/docs/informe/Informe_Hito2.pdf) |
+| Informe IEEE del Hito 2 | [`hito2_cinematica_dinamica/docs/informe/Informe_Hito2.pdf`](../../hito2_cinematica_dinamica/docs/informe/01_Informe_Hito2.pdf) |
 | Cuaderno reproducible | [`hito2_cinematica_dinamica/notebooks/Hito2_VEVAS.ipynb`](../../hito2_cinematica_dinamica/notebooks/Hito2_VEVAS.ipynb) |
 | Material del Hito 1 (informe, validación) | [`hito1_gemelo_digital/`](../../hito1_gemelo_digital/README.md) |

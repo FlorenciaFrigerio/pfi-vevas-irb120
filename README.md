@@ -24,13 +24,17 @@ flowchart TD
     C --> D["ABB IRB 120 · medición por RWS"]
 ```
 
+## 01 · Recorrido por hitos
+
 | Hito | Alcance | Ejecución |
 | --- | --- | --- |
 | [Hito 1 · Gemelo digital](hito1_gemelo_digital/README.md) | Modelo URDF del ABB IRB 120 y validación de cinemática directa. | [Cómo ejecutar](hito1_gemelo_digital/COMO_EJECUTAR.md) |
 | [Hito 2 · Cinemática y dinámica](hito2_cinematica_dinamica/README.md) | Cinemática inversa de Pieper, Jacobiano, singularidades, perfiles LSPB y dinámica reducida. | [Cómo ejecutar](hito2_cinematica_dinamica/COMO_EJECUTAR.md) |
 | [Hitos 3 y 4 · Control del robot](hito3_4_control_real/README.md) | VEVAS Studio integra la simulación, la cinemática y la supervisión del ABB IRB 120 mediante RWS. | [Cómo ejecutar](hito3_4_control_real/COMO_EJECUTAR.md) |
 
-[Índice de documentos](docs/INDICE.md) · [Cronología](docs/CRONOLOGIA.md)
+[01 · Índice general](docs/INDICE.md) · [02 · Cronología](docs/CRONOLOGIA.md) · [03 · Material de defensa](docs/04_LISTA_DE_ENTREGA.md) · [04 · Mapa del repositorio](docs/05_MAPA_DEL_REPOSITORIO.md)
+
+## 02 · Resultados
 
 <details>
 <summary>Resultados y notas técnicas</summary>

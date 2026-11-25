@@ -1,23 +1,34 @@
-# Documentos · Hito 1 · Gemelo digital
+# Documentos del hito
 
-## Informe
+[Portada del hito](../README.md) · [Cómo ejecutar](../COMO_EJECUTAR.md) · [Índice general](../../docs/INDICE.md)
 
-- [Informe Hito1 VEVAS](informe/Informe_Hito1_VEVAS.pdf)
+## 01 · Informe
 
-## Presentacion
+| N.º | Archivo |
+| --- | --- |
+| 01.01 | [Informe Hito1 VEVAS](informe/01_Informe_Hito1_VEVAS.pdf) |
 
-- [Hito1 Gemelo Digital IRB120](presentacion/Hito1_Gemelo_Digital_IRB120.pdf)
-- [Hito1 Gemelo Digital IRB120](presentacion/Hito1_Gemelo_Digital_IRB120.pptx)
+## 02 · Presentación
 
-## Guias
+| N.º | Archivo |
+| --- | --- |
+| 02.01 | [Hito1 Gemelo Digital IRB120](presentacion/01_Hito1_Gemelo_Digital_IRB120.pdf) |
 
-- [README](guias/README.md)
+## 03 · Guías
 
-## Resultados
+| N.º | Archivo |
+| --- | --- |
+| 03.01 | [Contenido y enlaces](guias/README.md) |
 
-- [validacion hito1](resultados/validacion_hito1.txt)
-- [worksheet A a J](resultados/worksheet_A_a_J.pdf)
+## 04 · Resultados
 
-## Bitacora
+| N.º | Archivo |
+| --- | --- |
+| 04.01 | [validacion hito1](resultados/01_validacion_hito1.txt) |
+| 04.02 | [worksheet A a J](resultados/02_worksheet_A_a_J.pdf) |
 
-- [README](bitacora/README.md)
+## 05 · Bitácora
+
+| N.º | Archivo |
+| --- | --- |
+| 05.01 | [Contenido y enlaces](bitacora/README.md) |

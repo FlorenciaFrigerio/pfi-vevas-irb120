@@ -1,28 +1,40 @@
-# Documentos · Hito 2 · Cinemática y dinámica
+# Documentos del hito
 
-## Informe
+[Portada del hito](../README.md) · [Cómo ejecutar](../COMO_EJECUTAR.md) · [Índice general](../../docs/INDICE.md)
 
-- [anexo tecnico](informe/anexo_tecnico.md)
-- [Informe Hito2](informe/Informe_Hito2.pdf)
+## 01 · Informe
 
-## Presentacion
+| N.º | Archivo |
+| --- | --- |
+| 01.01 | [Informe Hito2](informe/01_Informe_Hito2.pdf) |
+| 01.02 | [anexo tecnico](informe/anexo_tecnico.md) |
 
-- [guion integrante 1 diapos](presentacion/guion_integrante_1_diapos.md)
-- [guion recorrido exposicion](presentacion/guion_recorrido_exposicion.md)
+## 02 · Presentación
 
-## Guias
+| N.º | Archivo |
+| --- | --- |
+| 02.01 | [guion integrante 1 diapos](presentacion/01_guion_integrante_1_diapos.md) |
+| 02.02 | [guion recorrido exposicion](presentacion/02_guion_recorrido_exposicion.md) |
 
-- [MANUAL HITO2](guias/MANUAL_HITO2.md)
+## 03 · Guías
 
-## Resultados
+| N.º | Archivo |
+| --- | --- |
+| 03.01 | [MANUAL HITO2](guias/01_MANUAL_HITO2.md) |
 
-- [resultados](resultados/resultados.json)
-- [salida dinamica 1r](resultados/salida_dinamica_1r.txt)
-- [salida jacobiano](resultados/salida_jacobiano.txt)
-- [salida lspb](resultados/salida_lspb.txt)
-- [salida pieper](resultados/salida_pieper.txt)
-- [salida singularidad](resultados/salida_singularidad.txt)
+## 04 · Resultados
 
-## Bitacora
+| N.º | Archivo |
+| --- | --- |
+| 04.01 | [resultados](resultados/resultados.json) |
+| 04.02 | [salida dinamica 1r](resultados/salida_dinamica_1r.txt) |
+| 04.03 | [salida jacobiano](resultados/salida_jacobiano.txt) |
+| 04.04 | [salida lspb](resultados/salida_lspb.txt) |
+| 04.05 | [salida pieper](resultados/salida_pieper.txt) |
+| 04.06 | [salida singularidad](resultados/salida_singularidad.txt) |
 
-- [README](bitacora/README.md)
+## 05 · Bitácora
+
+| N.º | Archivo |
+| --- | --- |
+| 05.01 | [Contenido y enlaces](bitacora/README.md) |

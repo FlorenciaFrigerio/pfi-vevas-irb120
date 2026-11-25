@@ -4,7 +4,7 @@
 
 ## Guion por integrante
 
-- [Guion de diapositivas — Integrante 1](../../presentacion/guion_integrante_1_diapos.md): portada y diapositivas 3–7.
+- [Guion de diapositivas — Integrante 1](../../presentacion/01_guion_integrante_1_diapos.md): portada y diapositivas 3–7.
 
 ## Empieza por el recorrido
 
@@ -15,7 +15,7 @@ cd ros2_irb120_description/scripts
 python3 demo_recorrido.py --pose --figuras
 ~~~
 
-Por defecto pausa entre etapas. Usa --seguido para recorrerlas sin pausas. Para exponer el recorrido con transiciones y justificación del orden, consulta el [guion de exposición](../../presentacion/guion_recorrido_exposicion.md), la [secuencia técnica](00_secuencia_completa.md) y la guía del [demo](16_demo_recorrido.md).
+Por defecto pausa entre etapas. Usa --seguido para recorrerlas sin pausas. Para exponer el recorrido con transiciones y justificación del orden, consulta el [guion de exposición](../../presentacion/02_guion_recorrido_exposicion.md), la [secuencia técnica](00_secuencia_completa.md) y la guía del [demo](16_demo_recorrido.md).
 
 ~~~mermaid
 flowchart LR
@@ -97,7 +97,7 @@ Son cuatro scripts por persona. La pieza compartida es demo_recorrido.py: la per
 ## Documentación relacionada
 
 - [Secuencia completa](00_secuencia_completa.md)
-- [Manual de estudio y defensa](../MANUAL_HITO2.md)
+- [Manual de estudio y defensa](../01_MANUAL_HITO2.md)
 - [Módulos y comandos de scripts](../../../../ros2_irb120_description/scripts/README.md)
 - [Anexo técnico](../../informe/anexo_tecnico.md)
 - [Resultados reproducibles](../../resultados/)
