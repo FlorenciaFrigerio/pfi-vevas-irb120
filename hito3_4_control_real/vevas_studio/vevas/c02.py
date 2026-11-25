@@ -14,7 +14,7 @@ Cómo se cierra C02 en esta versión (24/11/2026):
    kPico·|Δq|/vLim pero con piso tZona (0.2 s) y Δq contra el objetivo anterior. verificar_c02.py agrega una
    prueba corta de streaming (J6 ±δ en 8 puntos) y evaluar() la exige si el módulo soporta streaming.
 
-Limitaciones (documentadas también en hito3_4_control_real/docs/desarrollo/CONTROL_FISICO_PENDIENTE.md): la velocidad se estima desde
+Limitaciones (documentadas también en hito3_4_control_real/01_docs/08_desarrollo/CONTROL_FISICO_PENDIENTE.md): la velocidad se estima desde
 posiciones leídas por RWS (no es una traza interna del controlador) y una diferencia finita promedia en
 su ventana. Por eso el tope del RAPID usa kPico = 2.5 de margen sobre la velocidad media.
 """

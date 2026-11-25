@@ -1,12 +1,16 @@
-# 02 · Hito 2 · Cinemática y dinámica
+# Hito 2 · Cinemática y dinámica
 
-![VEVAS](../docs/banner-vevas.svg)
+![VEVAS](../01_docs/banner-vevas.svg)
 
-[![Abrir documentos del hito](https://img.shields.io/badge/02-Documentos-be185d)](docs/INDICE.md) [![Consultar ejecución](https://img.shields.io/badge/Guía-Ejecución-831843)](COMO_EJECUTAR.md)
+**Sigue el cálculo desde la pose deseada hasta la trayectoria y el torque.**
+
+[Abrir notebook](notebooks/Hito2_VEVAS.ipynb) · [Documentación](01_docs/)
+
+## Material del hito
 
 Cinemática inversa de Pieper, Jacobiano, singularidades, perfiles LSPB y dinámica reducida.
 
-[1. Cómo ejecutar](COMO_EJECUTAR.md) · [2. Informe](docs/informe/01_Informe_Hito2.pdf) · [3. Índice de documentos](docs/INDICE.md)
+[1. Cómo ejecutar](COMO_EJECUTAR.md) · [2. Informe](01_docs/01_informe/01_Informe_Hito2.pdf) · [3. Índice de documentos](01_docs/INDICE.md)
 
 El método analítico calcula candidatos articulares y comprueba la pose con cinemática directa.
 
@@ -17,7 +21,7 @@ flowchart TD
  C --> D[Trayectoria LSPB]
 ```
 
-[Figura de trayectoria LSPB](docs/resultados/figuras/fig_lspb.pdf)
+[Figura de trayectoria LSPB](01_docs/04_resultados/figuras/fig_lspb.pdf)
 
 <details>
 <summary>Resultados de cinemática y dinámica</summary>
@@ -27,8 +31,8 @@ La trayectoria LSPB sincroniza el movimiento de las seis juntas. El modelo diná
 $$\tau = I\ddot{q} + \tau_g(q)$$
 
 - [Notebook del Hito 2](notebooks/Hito2_VEVAS.ipynb)
-- [Resultados reproducibles](docs/resultados/resultados.json)
-- [Figura de manipulabilidad](docs/resultados/figuras/fig_manipulabilidad.pdf)
-- [Figura del torque 1R](docs/resultados/figuras/fig_torque_1r.pdf)
+- [Resultados reproducibles](01_docs/04_resultados/resultados.json)
+- [Figura de manipulabilidad](01_docs/04_resultados/figuras/fig_manipulabilidad.pdf)
+- [Figura del torque 1R](01_docs/04_resultados/figuras/fig_torque_1r.pdf)
 
 </details>

@@ -10,19 +10,11 @@ Florencia Frigerio Arízaga · Benjamín Soruco Guzmán
 
 Docente: M.Sc. Ing. Bernardo Quiroga Turdera
 
----
+![VEVAS · ABB IRB 120](01_docs/banner-vevas.svg)
 
-![VEVAS](docs/banner-vevas.svg)
+Del gemelo digital al control del ABB IRB 120. El proyecto reúne el modelo del robot, los cálculos de movimiento y VEVAS Studio.
 
-![Curso de Robótica IMT-342](https://img.shields.io/badge/Robótica-IMT--342-be185d)
-![Modelo ABB IRB 120](https://img.shields.io/badge/ABB-IRB%20120-9d174d)
-
-```mermaid
-flowchart TD
-    A["Gemelo digital · URDF y validación"] --> B["Cinemática y dinámica · pose y trayectoria"]
-    B --> C["VEVAS Studio · simulación y control"]
-    C --> D["ABB IRB 120 · medición por RWS"]
-```
+[**Documentación →**](01_docs/) · [**Defensa →**](hito3_4_control_real/01_docs/02_presentacion/02_Defensa_Grupo_VEVAS.pdf) · [**Simulación →**](hito3_4_control_real/COMO_EJECUTAR.md)
 
 ## 01 · Recorrido por hitos
 
@@ -32,7 +24,7 @@ flowchart TD
 | [Hito 2 · Cinemática y dinámica](hito2_cinematica_dinamica/README.md) | Cinemática inversa de Pieper, Jacobiano, singularidades, perfiles LSPB y dinámica reducida. | [Cómo ejecutar](hito2_cinematica_dinamica/COMO_EJECUTAR.md) |
 | [Hitos 3 y 4 · Control del robot](hito3_4_control_real/README.md) | VEVAS Studio integra la simulación, la cinemática y la supervisión del ABB IRB 120 mediante RWS. | [Cómo ejecutar](hito3_4_control_real/COMO_EJECUTAR.md) |
 
-[01 · Índice general](docs/INDICE.md) · [02 · Cronología](docs/CRONOLOGIA.md) · [03 · Material de defensa](docs/04_LISTA_DE_ENTREGA.md) · [04 · Mapa del repositorio](docs/05_MAPA_DEL_REPOSITORIO.md)
+[01 · Índice general](01_docs/INDICE.md) · [02 · Cronología](01_docs/CRONOLOGIA.md) · [03 · Material de defensa](01_docs/04_LISTA_DE_ENTREGA.md) · [04 · Mapa del repositorio](01_docs/05_MAPA_DEL_REPOSITORIO.md)
 
 ## 02 · Resultados
 
@@ -64,7 +56,7 @@ Perfil LSPB 1R de referencia → dinámica reducida → τ(t)
 | Alcance a₂ + k vs. fabricante | 0.580 m / 0.580 m |
 
 El registro completo, con semillas y entorno, está en
-[`docs/hito2/resultados/resultados.json`](hito2_cinematica_dinamica/docs/resultados/resultados.json).
+[`docs/hito2/resultados/resultados.json`](hito2_cinematica_dinamica/01_docs/04_resultados/resultados.json).
 
 ## Pruebas dirigidas
 
@@ -80,7 +72,7 @@ aparecieron bajo pruebas dirigidas a fronteras y singularidades:
 Una muestra uniforme del espacio de trabajo visita las fronteras con
 probabilidad despreciable: si el fallo vive sobre un tope, hay que ir a
 buscarlo ahí. El detalle está en
-[`docs/hito2/anexo_tecnico.md`](hito2_cinematica_dinamica/docs/informe/anexo_tecnico.md), sección 4.
+[`docs/hito2/anexo_tecnico.md`](hito2_cinematica_dinamica/01_docs/01_informe/anexo_tecnico.md), sección 4.
 
 ## Módulos
 
@@ -148,17 +140,17 @@ eje z₆. Las cifras pueden ir en una línea o repartidas en varias. La
 ### Compilar el informe
 
 El fuente usa la clase `IEEEtran`. En Overleaf: New Project → Upload
-Project con la carpeta [`docs/hito2/informe_ieee/`](hito2_cinematica_dinamica/docs/informe/informe_ieee/),
+Project con la carpeta [`docs/hito2/informe_ieee/`](hito2_cinematica_dinamica/01_docs/01_informe/informe_ieee/),
 compilador pdfLaTeX, dos pasadas. Localmente requiere `texlive-publishers`.
 
 ## Documentación del Hito 2
 
 | Dónde | Qué |
 | --- | --- |
-| [`hito2_cinematica_dinamica/docs/guias/codigo/`](hito2_cinematica_dinamica/docs/guias/codigo/) | un archivo por módulo, explicado línea por línea |
-| [`docs/hito2/manuales/`](hito2_cinematica_dinamica/docs/guias/) | manuales de estudio, defensa y demostración |
-| [`docs/hito2/anexo_tecnico.md`](hito2_cinematica_dinamica/docs/informe/anexo_tecnico.md) | material de respaldo que no entró al informe |
-| [`docs/hito2/resultados/`](hito2_cinematica_dinamica/docs/resultados/) | salida literal de los cinco módulos |
+| [`hito2_cinematica_dinamica/01_docs/guias/codigo/`](hito2_cinematica_dinamica/01_docs/03_guias/codigo/) | un archivo por módulo, explicado línea por línea |
+| [`docs/hito2/manuales/`](hito2_cinematica_dinamica/01_docs/03_guias/) | manuales de estudio, defensa y demostración |
+| [`docs/hito2/anexo_tecnico.md`](hito2_cinematica_dinamica/01_docs/01_informe/anexo_tecnico.md) | material de respaldo que no entró al informe |
+| [`docs/hito2/resultados/`](hito2_cinematica_dinamica/01_docs/04_resultados/) | salida literal de los cinco módulos |
 
 ## Alcance y limitaciones
 

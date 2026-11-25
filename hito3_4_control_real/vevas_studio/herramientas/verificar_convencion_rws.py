@@ -161,7 +161,7 @@ def main():
             print("Revisa: cable en SERVICE, IP 192.168.125.10/24, ping 192.168.125.1, usuario y clave.")
             sys.exit(1)
 
-    salida = os.path.join(RAIZ, "docs", "datos")
+    salida = os.path.join(RAIZ, "01_docs", "datos")
     os.makedirs(salida, exist_ok=True)
     ruta_csv = os.path.join(salida, "validacion_rws.csv")
     nuevo = not os.path.exists(ruta_csv)

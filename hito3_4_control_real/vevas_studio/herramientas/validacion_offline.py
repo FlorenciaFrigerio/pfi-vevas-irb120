@@ -18,7 +18,7 @@ Casos (los nombres son los del protocolo):
     SING    barrido de q5 hacia 0: sigma_min y velocidad articular para 0.1 m/s
 
 Uso:
-    python3 herramientas/validacion_offline.py            (salida en docs/datos/validacion_offline/)
+    python3 herramientas/validacion_offline.py            (salida en 01_docs/datos/validacion_offline/)
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ def fk_referencia(q, tcp=np.eye(4)):
 
 
 def main():
-    salida = os.path.join(RAIZ, "docs", "datos", "validacion_offline")
+    salida = os.path.join(RAIZ, "01_docs", "datos", "validacion_offline")
     os.makedirs(salida, exist_ok=True)
     robot = Robot()
     commit = os.popen(f"git -C {RAIZ} rev-parse --short HEAD 2>/dev/null").read().strip() or "sin_git"

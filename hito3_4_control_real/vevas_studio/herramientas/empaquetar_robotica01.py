@@ -18,7 +18,7 @@ import subprocess
 import zipfile
 
 CODIGO_REPO = Path(__file__).resolve().parents[1]      # hito3_4_control_real/vevas_studio
-DOCS_REPO = CODIGO_REPO.parent / "docs"                 # hito3_4_control_real/docs
+DOCS_REPO = CODIGO_REPO.parent / "01_docs"                 # hito3_4_control_real/01_docs
 REPO = Path(subprocess.check_output(["git", "-C", str(CODIGO_REPO), "rev-parse", "--show-toplevel"],
                                     text=True).strip())
 CARPETA_CODIGO = CODIGO_REPO.relative_to(REPO).as_posix()
@@ -75,7 +75,7 @@ def main() -> None:
         shutil.copy2(origen, destino)
         copiados += 1
     shutil.copy2(REPO / "LICENSE", raiz / "00_codigo" / "LICENSE")
-    # Documentación del hito (en el repo vive junto al código, en hito3_4_control_real/docs):
+    # Documentación del hito (en el repo vive junto al código, en hito3_4_control_real/01_docs):
     # se copia a 00_codigo/docs y sus links a ../../vevas_studio/ pasan a ../../hito3_4/.
     for nombre in git("ls-files", "-z", "--", CARPETA_DOCS).decode().split("\0"):
         if not nombre:
@@ -122,9 +122,9 @@ IP del IRC5 por defecto: 192.168.125.1. Para otra IP confirmada, usá
 `VEVAS_ROBOT_IP=... bash 02_conexion/diagnosticar.sh` y la misma variable al abrir.
 Los JSON nuevos quedan en `08_datos_locales/conexion` sin sobrescribir capturas.
 No se arranca RAPID ni se envía movimiento. No se necesita ROS para esta web.
-[Procedimiento técnico](../00_codigo/docs/operacion/CONEXION_23NOV.md),
-[comparar FlexPendant](../00_codigo/docs/operacion/COMPARAR_FLEXPENDANT.md),
-[ROS/RViz opcional](../00_codigo/docs/operacion/RVIZ_RWS.md).
+[Procedimiento técnico](../00_codigo/docs/06_operacion/CONEXION_23NOV.md),
+[comparar FlexPendant](../00_codigo/docs/06_operacion/COMPARAR_FLEXPENDANT.md),
+[ROS/RViz opcional](../00_codigo/docs/06_operacion/RVIZ_RWS.md).
 Las rutas de entrega antiguas de esas guías son históricas; aquí usá estos lanzadores.
 """),
         "03_calculos": ("Cinemática y trayectorias", """
@@ -136,7 +136,7 @@ perfiles quinticos C²; [figuras.py](../00_codigo/hito3_4/vevas/figuras.py) gene
 El plan se calcula antes de enviar y se revisa el camino, no solo el destino.
 Hay verificaciones de límites, FK de la IK, singularidad y colisiones aproximadas.
 Los resultados de validación offline y sus casos deliberadamente incorrectos están
-en `00_codigo/hito3_4/docs/datos/validacion_offline`.
+en `00_codigo/hito3_4/01_docs/datos/validacion_offline`.
 La suavidad verificada es de simulación; no es una certificación de jerk ni del IRC5.
 """),
         "04_modelo_y_mesa": ("Robot, mesa y entorno", """
@@ -148,13 +148,13 @@ Laterales 29,5 cm; longitudinales 44,5 cm al lado opuesto a conectores y 14 cm a
 Las cuatro barras superiores se modelan para colisión. Soportes inferiores ilustrativos:
 medidas no confirmadas. Herramienta/bracket y obstáculos externos todavía por medir.
 Modelo: `00_codigo/hito3_4/modelo/irb120_rws.urdf` y `web/modelo/*.stl`.
-[Explicación geométrica](../00_codigo/docs/guias/MESA_ENTORNO.md).
+[Explicación geométrica](../00_codigo/docs/03_guias/MESA_ENTORNO.md).
 """),
         "05_seguridad_y_control": ("Revisión y control físico pendiente", """
 El envío físico continúa bloqueado por C02: falta verificar el límite de velocidad
 de cada junta en el controlador. No habilitar el booleano por configuración ni
 confundir TCP, frecuencia de lectura o porcentaje visual con límites articulares.
-[Trabajo físico pendiente](../00_codigo/docs/desarrollo/CONTROL_FISICO_PENDIENTE.md)
+[Trabajo físico pendiente](../00_codigo/docs/08_desarrollo/CONTROL_FISICO_PENDIENTE.md)
 contiene la propuesta SpeedLimAxis/LimitSpeed y las verificaciones presenciales.
 Las plantillas GO son plantillas vacías, no autorizaciones completadas.
 Recalibrar en la interfaz compara lecturas; no calibra encoders ni actualiza contadores.
@@ -168,7 +168,7 @@ Usa pytest sobre la copia de código, guarda el log en `08_datos_locales/pruebas
 y ejecuta 6 pruebas JavaScript si está instalado Node. Si Node falta, lo indica.
 La suite de origen del 23/11 terminó con 232 pruebas Python y 6 JavaScript correctas.
 La verificación de esta reorganización se documenta en `VERIFICACION_ORGANIZACION.md`.
-[Evidencias de origen](../00_codigo/hito3_4/docs/datos/pruebas_23nov/README.md).
+[Evidencias de origen](../00_codigo/hito3_4/01_docs/datos/pruebas_23nov/README.md).
 Las pruebas con controladores HTTP simulados no son pruebas físicas del robot.
 """),
         "07_documentacion": ("Guías y continuación", """
@@ -178,7 +178,7 @@ Empezá por [CONTEXTO_PARA_PROYECTO_BRAZO.md](CONTEXTO_PARA_PROYECTO_BRAZO.md),
 El código conserva bitácora, CAMBIOS_19/20/22/23NOV y guías previas.
 Son documentos fechados: las notas nuevas de esta carpeta y los bloqueos de seguridad
 prevalecen sobre instrucciones antiguas de carpetas y arranque físico.
-[Extras posibles](../00_codigo/docs/desarrollo/MEJORAS_EXTRAS.md).
+[Extras posibles](../00_codigo/docs/08_desarrollo/MEJORAS_EXTRAS.md).
 Los requisitos públicos del docente, si se aportaron al exportar, quedan en
 `09_historial/fuentes_docente` con su procedencia original.
 """),
@@ -213,7 +213,7 @@ Los ZIP de entregas intermedias se omiten por redundantes; sus cambios están en
         "modelo": "URDF del IRB120 y medidas de la mesa, consumidos por la configuración y el modelo 3D.",
         "rapid": "Módulos RAPID conservados para revisión. Extraer o abrir esta carpeta no los carga ni ejecuta en el IRC5.",
         "tests": "Pruebas automatizadas offline con mocks; usar 06_pruebas/ejecutar_pruebas.sh. No certifican el montaje físico.",
-        "docs": "Bitácoras, guías fechadas y evidencia. Consultar primero 07_documentacion y las notas del 23/11.",
+        "01_docs": "Bitácoras, guías fechadas y evidencia. Consultar primero 07_documentacion y las notas del 23/11.",
         "plantillas": "Plantillas para documentar una sesión; no son GO completados ni autorización permanente.",
     }.items():
         escribir(codigo, f"{carpeta}/README_AREA.md", f"# {carpeta}\n\n{explicacion}")

@@ -46,7 +46,7 @@ que están más abajo en la tabla.
 | Archivo | Qué hace |
 | --- | --- |
 | `resolver_en_vivo.py` | Resolvedor interactivo para la defensa. Acepta la pose en cinco formatos; la opción 7 explica qué significa cada número |
-| `capturar_resultados.py` | Ejecuta los cinco módulos y genera el registro reproducible en `hito2_cinematica_dinamica/docs/resultados/` |
+| `capturar_resultados.py` | Ejecuta los cinco módulos y genera el registro reproducible en `hito2_cinematica_dinamica/01_docs/resultados/` |
 | `graficas.py` | Figuras del informe, con paleta validada para daltonismo |
 
 ### Extras, no exigidos por la guía
@@ -94,9 +94,9 @@ declarado.
 | Qué | Dónde |
 | --- | --- |
 | Qué es este paquete y qué script es de cada hito | [`../../README.md`](../../README.md) |
-| Cada módulo explicado línea por línea | [`hito2_cinematica_dinamica/docs/guias/codigo/`](../../hito2_cinematica_dinamica/docs/guias/codigo/) |
-| Manual de estudio y defensa | [`hito2_cinematica_dinamica/docs/guias/MANUAL_HITO2.md`](../../hito2_cinematica_dinamica/docs/guias/01_MANUAL_HITO2.md) |
-| Salida literal de los cinco módulos | [`hito2_cinematica_dinamica/docs/resultados/`](../../hito2_cinematica_dinamica/docs/resultados/) |
-| Informe IEEE del Hito 2 | [`hito2_cinematica_dinamica/docs/informe/Informe_Hito2.pdf`](../../hito2_cinematica_dinamica/docs/informe/01_Informe_Hito2.pdf) |
+| Cada módulo explicado línea por línea | [`hito2_cinematica_dinamica/01_docs/guias/codigo/`](../../hito2_cinematica_dinamica/01_docs/03_guias/codigo/) |
+| Manual de estudio y defensa | [`hito2_cinematica_dinamica/01_docs/guias/MANUAL_HITO2.md`](../../hito2_cinematica_dinamica/01_docs/03_guias/01_MANUAL_HITO2.md) |
+| Salida literal de los cinco módulos | [`hito2_cinematica_dinamica/01_docs/resultados/`](../../hito2_cinematica_dinamica/01_docs/04_resultados/) |
+| Informe IEEE del Hito 2 | [`hito2_cinematica_dinamica/01_docs/informe/Informe_Hito2.pdf`](../../hito2_cinematica_dinamica/01_docs/01_informe/01_Informe_Hito2.pdf) |
 | Cuaderno reproducible | [`hito2_cinematica_dinamica/notebooks/Hito2_VEVAS.ipynb`](../../hito2_cinematica_dinamica/notebooks/Hito2_VEVAS.ipynb) |
 | Material del Hito 1 (informe, validación) | [`hito1_gemelo_digital/`](../../hito1_gemelo_digital/README.md) |
