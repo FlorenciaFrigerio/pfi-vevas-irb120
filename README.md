@@ -12,26 +12,18 @@ Docente: M.Sc. Ing. Bernardo Quiroga Turdera
 
 ---
 
-## Los dos hitos
+![VEVAS](docs/banner-vevas.svg)
 
-| | Hito 1 — Gemelo digital | Hito 2 — Cinemática y dinámica |
+| Hito | Alcance | Ejecución |
 | --- | --- | --- |
-| **Qué** | Descripción URDF del IRB 120 validada contra la cinemática directa analítica | Pipeline completo de pose objetivo a demanda de torque |
-| **Informe** | [`docs/hito1/Informe_Hito1_VEVAS.pdf`](hito1_gemelo_digital/docs/informe/Informe_Hito1_VEVAS.pdf) | [`docs/hito2/Informe_Hito2.pdf`](hito2_cinematica_dinamica/docs/informe/Informe_Hito2.pdf) |
-| **Presentación** | [`docs/hito1/Hito1_Gemelo_Digital_IRB120.pdf`](docs/hito1/) | — |
-| **Evidencia** | [`docs/hito1/validacion_hito1.txt`](hito1_gemelo_digital/docs/resultados/validacion_hito1.txt) | [`docs/hito2/resultados/`](hito2_cinematica_dinamica/docs/resultados/) |
-| **Tag** | `v1.0-hito1` | `v2.0-hito2` |
+| [Hito 1 · Gemelo digital](hito1_gemelo_digital/README.md) | Modelo URDF del ABB IRB 120 y validación de cinemática directa. | [Cómo ejecutar](hito1_gemelo_digital/COMO_EJECUTAR.md) |
+| [Hito 2 · Cinemática y dinámica](hito2_cinematica_dinamica/README.md) | Cinemática inversa de Pieper, Jacobiano, singularidades, perfiles LSPB y dinámica reducida. | [Cómo ejecutar](hito2_cinematica_dinamica/COMO_EJECUTAR.md) |
+| [Hitos 3 y 4 · Control del robot](hito3_4_control_real/README.md) | VEVAS Studio integra la simulación, la cinemática y la supervisión del ABB IRB 120 mediante RWS. | [Cómo ejecutar](hito3_4_control_real/COMO_EJECUTAR.md) |
 
-**Para ver todo el recorrido de una vez**, sin leer código:
+[Índice de documentos](docs/INDICE.md) · [Cronología](docs/CRONOLOGIA.md)
 
-```bash
-cd scripts
-python3 demo_recorrido.py
-```
-
-Seis etapas narradas —directa, inversa, Jacobiano, singularidad, trayectoria y dinámica— explican qué hace cada bloque. El torque 1R se calcula sobre un perfil LSPB de referencia independiente.
-
----
+<details>
+<summary>Resultados y notas técnicas</summary>
 
 # HITO 2 — Cinemática inversa, trayectorias, singularidades y dinámica
 
@@ -149,7 +141,7 @@ compilador pdfLaTeX, dos pasadas. Localmente requiere `texlive-publishers`.
 
 | Dónde | Qué |
 | --- | --- |
-| [`docs/hito2/guia/`](docs/hito2/guia/) | un archivo por módulo, explicado línea por línea |
+| [`hito2_cinematica_dinamica/docs/guias/codigo/`](hito2_cinematica_dinamica/docs/guias/codigo/) | un archivo por módulo, explicado línea por línea |
 | [`docs/hito2/manuales/`](hito2_cinematica_dinamica/docs/guias/) | manuales de estudio, defensa y demostración |
 | [`docs/hito2/anexo_tecnico.md`](hito2_cinematica_dinamica/docs/informe/anexo_tecnico.md) | material de respaldo que no entró al informe |
 | [`docs/hito2/resultados/`](hito2_cinematica_dinamica/docs/resultados/) | salida literal de los cinco módulos |
@@ -303,3 +295,5 @@ pfi-vevas-irb120/
 ## Licencia
 
 MIT. Ver [`LICENSE`](LICENSE).
+
+</details>

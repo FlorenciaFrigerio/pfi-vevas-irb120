@@ -93,7 +93,7 @@ declarado.
 
 | Qué | Dónde |
 | --- | --- |
-| Qué es este paquete y qué script es de cada hito | [`../README.md`](../README.md) |
+| Qué es este paquete y qué script es de cada hito | [`../../README.md`](../../README.md) |
 | Cada módulo explicado línea por línea | [`hito2_cinematica_dinamica/docs/guias/codigo/`](../../hito2_cinematica_dinamica/docs/guias/codigo/) |
 | Manual de estudio y defensa | [`hito2_cinematica_dinamica/docs/guias/MANUAL_HITO2.md`](../../hito2_cinematica_dinamica/docs/guias/MANUAL_HITO2.md) |
 | Salida literal de los cinco módulos | [`hito2_cinematica_dinamica/docs/resultados/`](../../hito2_cinematica_dinamica/docs/resultados/) |
