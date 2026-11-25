@@ -16,3 +16,17 @@ flowchart TD
 ```
 
 [Figura de trayectoria LSPB](docs/resultados/figuras/fig_lspb.pdf)
+
+<details>
+<summary>Resultados de cinemática y dinámica</summary>
+
+La trayectoria LSPB sincroniza el movimiento de las seis juntas. El modelo dinámico reducido usa un perfil de referencia para calcular el torque de una junta.
+
+$$\tau = I\ddot{q} + \tau_g(q)$$
+
+- [Notebook del Hito 2](notebooks/Hito2_VEVAS.ipynb)
+- [Resultados reproducibles](docs/resultados/resultados.json)
+- [Figura de manipulabilidad](docs/resultados/figuras/fig_manipulabilidad.pdf)
+- [Figura del torque 1R](docs/resultados/figuras/fig_torque_1r.pdf)
+
+</details>

@@ -14,6 +14,16 @@ Docente: M.Sc. Ing. Bernardo Quiroga Turdera
 
 ![VEVAS](docs/banner-vevas.svg)
 
+![Curso de Robótica IMT-342](https://img.shields.io/badge/Robótica-IMT--342-be185d)
+![Modelo ABB IRB 120](https://img.shields.io/badge/ABB-IRB%20120-9d174d)
+
+```mermaid
+flowchart TD
+    A["Gemelo digital · URDF y validación"] --> B["Cinemática y dinámica · pose y trayectoria"]
+    B --> C["VEVAS Studio · simulación y control"]
+    C --> D["ABB IRB 120 · medición por RWS"]
+```
+
 | Hito | Alcance | Ejecución |
 | --- | --- | --- |
 | [Hito 1 · Gemelo digital](hito1_gemelo_digital/README.md) | Modelo URDF del ABB IRB 120 y validación de cinemática directa. | [Cómo ejecutar](hito1_gemelo_digital/COMO_EJECUTAR.md) |

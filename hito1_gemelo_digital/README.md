@@ -11,3 +11,14 @@ La cinemática directa compone las transformaciones de las seis juntas.
 $$T_0^6 = T_0^1 T_1^2 T_2^3 T_3^4 T_4^5 T_5^6$$
 
 [Registro de validación](docs/resultados/validacion_hito1.txt)
+
+<details>
+<summary>Modelo, presentación y validación</summary>
+
+![Robot industrial ABB IRB 120](docs/informe/fuente/img/abb_irb_120.png)
+
+- [Presentación del gemelo digital](docs/presentacion/Hito1_Gemelo_Digital_IRB120.pdf)
+- [Hoja de trabajo A–J](docs/resultados/worksheet_A_a_J.pdf)
+- [Descripción y scripts ROS 2](../ros2_irb120_description/scripts/README.md)
+
+</details>
