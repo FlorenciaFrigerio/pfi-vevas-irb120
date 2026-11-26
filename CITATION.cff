@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+title: "PFI VEVAS · ABB IRB 120: Gemelo Digital URDF, Cinemática Analítica y Control Real RWS/RAPID"
+message: "Si utilizas este repositorio, sus modelos URDF o VEVAS Studio como referencia académica, cítalo con los metadatos siguientes."
+type: software
+license: MIT
+repository-code: "https://github.com/FlorenciaFrigerio/pfi-vevas-irb120"
+version: "3.0.0"
+date-released: "2026-11-26"
+keywords:
+  - robotics
+  - abb-irb120
+  - ros2-jazzy
+  - urdf
+  - inverse-kinematics
+  - pieper
+  - lspb
+  - abb-irc5
+  - robot-web-services
+authors:
+  - family-names: "Baldiviezo Castellanos"
+    given-names: "Susann A."
+    affiliation: "Universidad Católica Boliviana San Pablo, Sede Tarija"
+  - family-names: "Bejarano Romero"
+    given-names: "Alejandro J."
+    affiliation: "Universidad Católica Boliviana San Pablo, Sede Tarija"
+  - family-names: "Frigerio Arízaga"
+    given-names: "Florencia"
+    affiliation: "Universidad Católica Boliviana San Pablo, Sede Tarija"
+  - family-names: "Soruco Guzmán"
+    given-names: "Benjamín"
+    affiliation: "Universidad Católica Boliviana San Pablo, Sede Tarija"

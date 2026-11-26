@@ -1,26 +1,29 @@
 # Catálogo de archivos
 
-392 archivos versionados. Cada identificador corresponde a una sección y a la posición del archivo dentro de su carpeta.
+398 archivos versionados. Cada identificador corresponde a una sección y a la posición del archivo dentro de su carpeta.
 
 ## 01 · Raíz
 
 - **01.01** [.gitignore](../.gitignore)
-- **01.02** [LICENSE](../LICENSE)
-- **01.03** [README.md](../README.md)
+- **01.02** [CITATION.cff](../CITATION.cff)
+- **01.03** [LICENSE](../LICENSE)
+- **01.04** [README.md](../README.md)
 
 ## 02 · .github/workflows
 
 - **02.01** [ci.yml](../.github/workflows/ci.yml)
+- **02.02** [pages.yml](../.github/workflows/pages.yml)
 
 ## 03 · 01_docs
 
 - **03.01** [01_CRONOLOGIA.md](01_CRONOLOGIA.md)
 - **03.02** [02_INDICE.md](02_INDICE.md)
-- **03.03** [04_LISTA_DE_ENTREGA.md](04_LISTA_DE_ENTREGA.md)
-- **03.04** [05_MAPA_DEL_REPOSITORIO.md](05_MAPA_DEL_REPOSITORIO.md)
-- **03.05** [07_CATALOGO_DE_ARCHIVOS.md](07_CATALOGO_DE_ARCHIVOS.md)
-- **03.06** [banner-vevas.svg](banner-vevas.svg)
-- **03.07** [README.md](README.md)
+- **03.03** [03_FICHA_EJECUTIVA_DEFENSA.md](03_FICHA_EJECUTIVA_DEFENSA.md)
+- **03.04** [04_LISTA_DE_ENTREGA.md](04_LISTA_DE_ENTREGA.md)
+- **03.05** [05_MAPA_DEL_REPOSITORIO.md](05_MAPA_DEL_REPOSITORIO.md)
+- **03.06** [07_CATALOGO_DE_ARCHIVOS.md](07_CATALOGO_DE_ARCHIVOS.md)
+- **03.07** [banner-vevas.svg](banner-vevas.svg)
+- **03.08** [README.md](README.md)
 
 ## 04 · 01_docs/06_figuras
 
@@ -38,18 +41,21 @@
 - **04.12** [11_hito2_pose_y_ramas.png](06_figuras/11_hito2_pose_y_ramas.png)
 - **04.13** [12_hito2_trayectoria_pose.png](06_figuras/12_hito2_trayectoria_pose.png)
 - **04.14** [13_evidencia_sesion_tcp.png](06_figuras/13_evidencia_sesion_tcp.png)
-- **04.15** [compuertas_seguridad_irc5.svg](06_figuras/compuertas_seguridad_irc5.svg)
-- **04.16** [divisor_seccion.svg](06_figuras/divisor_seccion.svg)
-- **04.17** [ficha_sesion_defensa.svg](06_figuras/ficha_sesion_defensa.svg)
-- **04.18** [generar_evidencia_visual.py](06_figuras/generar_evidencia_visual.py)
-- **04.19** [hero_hito1.svg](06_figuras/hero_hito1.svg)
-- **04.20** [hero_hito2.svg](06_figuras/hero_hito2.svg)
-- **04.21** [hero_hito3_4.svg](06_figuras/hero_hito3_4.svg)
-- **04.22** [hero_portada_vevas.svg](06_figuras/hero_portada_vevas.svg)
-- **04.23** [hero_videos.svg](06_figuras/hero_videos.svg)
-- **04.24** [kpi_resumen_global.svg](06_figuras/kpi_resumen_global.svg)
-- **04.25** [pipeline_4_hitos.svg](06_figuras/pipeline_4_hitos.svg)
-- **04.26** [recuadro_torque_1r.svg](06_figuras/recuadro_torque_1r.svg)
+- **04.15** [14_animacion_corazon_3d_2d.gif](06_figuras/14_animacion_corazon_3d_2d.gif)
+- **04.16** [15_animacion_hito2_pieper_lspb.gif](06_figuras/15_animacion_hito2_pieper_lspb.gif)
+- **04.17** [compuertas_seguridad_irc5.svg](06_figuras/compuertas_seguridad_irc5.svg)
+- **04.18** [divisor_seccion.svg](06_figuras/divisor_seccion.svg)
+- **04.19** [ficha_sesion_defensa.svg](06_figuras/ficha_sesion_defensa.svg)
+- **04.20** [generar_animaciones_gif.py](06_figuras/generar_animaciones_gif.py)
+- **04.21** [generar_evidencia_visual.py](06_figuras/generar_evidencia_visual.py)
+- **04.22** [hero_hito1.svg](06_figuras/hero_hito1.svg)
+- **04.23** [hero_hito2.svg](06_figuras/hero_hito2.svg)
+- **04.24** [hero_hito3_4.svg](06_figuras/hero_hito3_4.svg)
+- **04.25** [hero_portada_vevas.svg](06_figuras/hero_portada_vevas.svg)
+- **04.26** [hero_videos.svg](06_figuras/hero_videos.svg)
+- **04.27** [kpi_resumen_global.svg](06_figuras/kpi_resumen_global.svg)
+- **04.28** [pipeline_4_hitos.svg](06_figuras/pipeline_4_hitos.svg)
+- **04.29** [recuadro_torque_1r.svg](06_figuras/recuadro_torque_1r.svg)
 
 ## 05 · 02_hito1_gemelo_digital
 

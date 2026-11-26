@@ -35,3 +35,6 @@ conexion-rws-*.json
 *.bbl
 *.blg
 *.log
+
+# Respaldos locales de empaquetado Git
+*.bundle

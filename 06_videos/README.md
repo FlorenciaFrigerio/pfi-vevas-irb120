@@ -30,14 +30,14 @@ Cada subcarpeta organiza las tomas de demostración del **ABB IRB 120 + IRC5** j
     </td>
     <td width="50%" valign="top">
       <h4 align="center"><a href="02_hito2_cinematica_dinamica/README.md">02 · Hito 2 — Pose completa, Pieper y LSPB</a></h4>
-      <a href="02_hito2_cinematica_dinamica/README.md"><img src="../01_docs/06_figuras/11_hito2_pose_y_ramas.png" alt="Escena Hito 2"></a>
+      <a href="02_hito2_cinematica_dinamica/README.md"><img src="../01_docs/06_figuras/15_animacion_hito2_pieper_lspb.gif" alt="Animación Hito 2"></a>
       <p><b>Tomas previstas:</b> <code>resolver_en_vivo.py</code> con pose dictada, selección de la Rama #1, sincronización LSPB (<code>0,7746 s</code>) y paso por singularidad $q_5 \to 0$.</p>
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
       <h4 align="center"><a href="03_hito3_4_simulacion/README.md">03 · Hitos 3/4 SIM — Figuras YZ y vista TCP</a></h4>
-      <a href="03_hito3_4_simulacion/README.md"><img src="../01_docs/06_figuras/13_evidencia_sesion_tcp.png" alt="Escena SIM TCP"></a>
+      <a href="03_hito3_4_simulacion/README.md"><img src="../01_docs/06_figuras/14_animacion_corazon_3d_2d.gif" alt="Animación SIM TCP"></a>
       <p><b>Tomas previstas:</b> trazado del corazón de <code>40 mm</code> en plano frontal <code>YZ</code> al <code>5 %</code>, superposición 2D del TCP (<a href="../04_hito3_4_control_real/01_docs/04_resultados/01_sesion_evidencia/muestras_corazon_yz_40mm.csv">CSV asociado</a>) y aborto seguro.</p>
     </td>
     <td width="50%" valign="top">

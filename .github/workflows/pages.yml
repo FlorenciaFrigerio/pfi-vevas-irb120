@@ -1,0 +1,47 @@
+name: Publicar Visor 3D en GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publicar-visor:
+    name: Desplegar Visor 3D ABB IRB 120
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar sitio estático del visor 3D
+        run: |
+          mkdir -p _site
+          cp -r 02_hito1_gemelo_digital/02_visor_web/* _site/
+
+      - name: Configurar GitHub Pages (activo tras habilitar Pages en Settings)
+        id: cfg
+        continue-on-error: true
+        uses: actions/configure-pages@v5
+
+      - name: Empaquetar artefacto web
+        if: steps.cfg.outcome == 'success'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Desplegar en GitHub Pages
+        id: deployment
+        if: steps.cfg.outcome == 'success'
+        uses: actions/deploy-pages@v4

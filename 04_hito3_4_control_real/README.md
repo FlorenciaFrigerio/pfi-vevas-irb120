@@ -24,6 +24,8 @@ Para demostrar de extremo a extremo cómo **VEVAS Studio** traduce una figura ge
 
 ![Ficha de trazabilidad de la sesión central](../01_docs/06_figuras/ficha_sesion_defensa.svg)
 
+![Animación en vivo del brazo 3D trazando el corazón de 40 mm y las muestras medidas del TCP](../01_docs/06_figuras/14_animacion_corazon_3d_2d.gif)
+
 ![Evidencia visual de sesión: figura solicitada, trayectoria planificada y muestras medidas del TCP](../01_docs/06_figuras/13_evidencia_sesion_tcp.png)
 
 ### Enlaces directos y metadatos de esta misma ejecución

@@ -14,12 +14,13 @@
 </p>
 
 <p>
+  <a href="01_docs/03_FICHA_EJECUTIVA_DEFENSA.md"><kbd>★ Ficha Tribunal</kbd></a>&nbsp;
   <a href="02_hito1_gemelo_digital/README.md"><kbd>01 · Gemelo Digital</kbd></a>&nbsp;
   <a href="03_hito2_cinematica_dinamica/README.md"><kbd>02 · Cinemática y Dinámica</kbd></a>&nbsp;
   <a href="04_hito3_4_control_real/README.md"><kbd>03–04 · Control Real IRC5</kbd></a>&nbsp;
   <a href="04_hito3_4_control_real/02_vevas_studio/README.md"><kbd>VEVAS Studio</kbd></a>&nbsp;
   <a href="06_videos/README.md"><kbd>06 · Galería de Videos</kbd></a>&nbsp;
-  <a href="01_docs/04_LISTA_DE_ENTREGA.md"><kbd>Lista de Entrega</kbd></a>
+  <a href="https://florenciafrigerio.github.io/pfi-vevas-irb120/"><kbd>🌐 Visor 3D Web</kbd></a>
 </p>
 
 </div>
@@ -67,6 +68,23 @@ Cada etapa del proyecto produce una evidencia gráfica y numérica directamente 
         <img src="01_docs/06_figuras/05_velocidades_c02.png" alt="Velocidades medidas frente al tope C02">
       </a>
       <p><b>Tope impuesto en RAPID (5 % de ficha ABB):</b> picos medidos en laboratorio de <b>5,2–5,4 °/s</b> (<code>J1–J3</code>), <b>6,7–6,9 °/s</b> (<code>J4–J5</code>) y <b>8,8–8,9 °/s</b> (<code>J6</code>).</p>
+    </td>
+  </tr>
+</table>
+
+### Demostración animada en tiempo real (Hito 2 y Hitos 3/4)
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <h4 align="center"><a href="03_hito2_cinematica_dinamica/README.md">Hito 2 en movimiento · Pieper + LSPB (0,7746 s)</a></h4>
+      <img src="01_docs/06_figuras/15_animacion_hito2_pieper_lspb.gif" alt="Animación 3D y velocidades LSPB del Hito 2">
+      <p>Transición coordinada desde el cero mecánico ABB hasta la <b>Rama #1 de Pieper</b> mientras el cursor recorre los 6 perfiles de velocidad sincronizados.</p>
+    </td>
+    <td width="50%" valign="top">
+      <h4 align="center"><a href="04_hito3_4_control_real/README.md">Hitos 3 y 4 en movimiento · Corazón 40 mm (YZ)</a></h4>
+      <img src="01_docs/06_figuras/14_animacion_corazon_3d_2d.gif" alt="Animación 3D y vista 2D del TCP en VEVAS Studio">
+      <p>El brazo 3D traza la figura de frente (plano <code>YZ</code>) en sincronía con las <b>435 muestras medidas del TCP</b>, deteniéndose en la cúspide inferior (<code>v = 0</code>).</p>
     </td>
   </tr>
 </table>

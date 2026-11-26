@@ -75,6 +75,8 @@ Antes de mover hacia $q^*$, [`jacobiano.py`](../05_ros2_irb120_description/04_sc
 
 Para viajar desde el reposo $q_0 = [0,0,0,0,0,0]$ hasta la postura elegida $q^*$ con límites $V_{\max} = [2{,}0,\; 2{,}0,\; 2{,}5,\; 3{,}0,\; 3{,}0,\; 4{,}0]\text{ rad/s}$ y $A_{\max} = [4{,}0,\; 4{,}0,\; 5{,}0,\; 6{,}0,\; 6{,}0,\; 8{,}0]\text{ rad/s}^2$, `LSPBSincronizado` coordina las seis curvas:
 
+![Animación sincronizada del brazo 3D y los perfiles LSPB hacia q*](../01_docs/06_figuras/15_animacion_hito2_pieper_lspb.gif)
+
 ![Trayectoria LSPB sincronizada de las 6 juntas hacia la postura elegida](../01_docs/06_figuras/12_hito2_trayectoria_pose.png)
 
 > [!TIP]
