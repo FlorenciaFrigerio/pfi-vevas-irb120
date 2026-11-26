@@ -1,14 +1,33 @@
-# Descripción ROS 2 del ABB IRB 120
+# Paquete ROS 2 `irb120_description` y Biblioteca Numérica Compartida
 
-El paquete `irb120_description` contiene la geometría y los marcos que se comparan en el Hito 1 y los scripts de cálculo utilizados en el Hito 2.
+[Portada del proyecto](../README.md) · [Hito 1 · Gemelo digital](../02_hito1_gemelo_digital/README.md) · [Hito 2 · Cinemática y dinámica](../03_hito2_cinematica_dinamica/README.md)
 
-| Área | Función |
-| --- | --- |
-| [01 · URDF](01_urdf/) | Descripciones manual y generada del manipulador |
-| [02 · Lanzamiento](02_launch/) | Publicación del modelo y visualización |
-| [03 · RViz](03_rviz/) | Configuración de visualización |
-| [04 · Scripts](04_scripts/README.md) | Cinemática, trayectorias, dinámica y comparación |
+Este paquete `ament_cmake` cumple una doble función en la arquitectura del repositorio:
+1. **En ROS 2 Jazzy (Hito 1):** publica el modelo **URDF** del **ABB IRB 120**, la configuración de **RViz** y el archivo de lanzamiento `display.launch.py`.
+2. **En Python científico (Hitos 1 y 2):** aloja en [`04_scripts/`](04_scripts/README.md) la fuente única de verdad de la tabla Denavit-Hartenberg, el generador URDF, el validador TF y los módulos de Pieper, Jacobiano, singularidades, LSPB y dinámica.
 
-## Verificar los dos modelos
+---
 
-Desde la raíz del repositorio ejecuta `python 05_ros2_irb120_description/04_scripts/compare_urdf.py`. El script compara los orígenes y las orientaciones articulares de ambos archivos. La reproducción del recorrido numérico del Hito 2 se encuentra en su [guía de ejecución](../03_hito2_cinematica_dinamica/01_COMO_EJECUTAR.md).
+## Organización del paquete
+
+| Subcarpeta | Archivos principales | Propósito |
+| --- | --- | --- |
+| [`01_urdf/`](01_urdf/) | `irb120_manual.urdf`, `irb120.urdf` | Descripción razonada a mano frente a descripción generada automáticamente desde `DH_TABLE`. |
+| [`02_launch/`](02_launch/) | `display.launch.py` | Lanza `robot_state_publisher`, `joint_state_publisher_gui` (opcional con `gui:=true/false`) y `rviz2`. |
+| [`03_rviz/`](03_rviz/) | `irb120.rviz` | Escena preconfigurada con `RobotModel`, grilla métrica en `base_link` y árbol `TF`. |
+| [`04_scripts/`](04_scripts/README.md) | `fk_irb120.py`, `pieper.py`, `jacobiano.py`, `lspb.py`, `dinamica_1r.py`, `validate_tf.py`, `demo_recorrido.py` | 16 scripts documentados y verificables desde terminal o desde el notebook del Hito 2. |
+
+---
+
+## Verificación rápida
+
+```bash
+# Sin ROS (cualquier sistema con Python + NumPy)
+python 05_ros2_irb120_description/04_scripts/compare_urdf.py
+python 05_ros2_irb120_description/04_scripts/fk_irb120.py
+
+# Con ROS 2 Jazzy (Ubuntu 24.04)
+colcon build --packages-select irb120_description
+source install/setup.bash
+ros2 launch irb120_description display.launch.py
+```

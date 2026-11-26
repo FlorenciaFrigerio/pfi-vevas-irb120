@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 330" width="100%">
+  <defs>
+    <linearGradient id="heroBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#160a16"/>
+      <stop offset="52%" stop-color="#291227"/>
+      <stop offset="100%" stop-color="#131b2e"/>
+    </linearGradient>
+    <linearGradient id="pinkOrange" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#f472b6"/>
+      <stop offset="50%" stop-color="#e11d48"/>
+      <stop offset="100%" stop-color="#f97316"/>
+    </linearGradient>
+    <radialGradient id="glow1" cx="82%" cy="48%" r="42%">
+      <stop offset="0%" stop-color="#e11d48" stop-opacity="0.26"/>
+      <stop offset="60%" stop-color="#f97316" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#131b2e" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="techGrid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#ffffff" stroke-opacity="0.045" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="330" rx="20" fill="url(#heroBg)"/>
+  <rect width="1200" height="330" rx="20" fill="url(#techGrid)"/>
+  <rect width="1200" height="330" rx="20" fill="url(#glow1)"/>
+  <rect x="0" y="0" width="10" height="330" rx="5" fill="url(#pinkOrange)"/>
+
+  <!-- Top Kicker Pill -->
+  <rect x="48" y="34" width="438" height="28" rx="14" fill="#3a1936" stroke="#f472b6" stroke-opacity="0.45"/>
+  <circle cx="66" cy="48" r="4.5" fill="#4ade80"/>
+  <text x="80" y="52" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.3" fill="#fbcfe8">UCB TARIJA · INGENIERÍA MECATRÓNICA · IMT-342 · II-2026</text>
+
+  <!-- Main Title -->
+  <text x="48" y="118" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="48" font-weight="800" fill="#ffffff">ABB IRB 120</text>
+  <text x="358" y="118" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="48" font-weight="300" fill="#f472b6">· Grupo VEVAS</text>
+
+  <!-- Subtitle -->
+  <text x="48" y="156" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="17.5" font-weight="500" fill="#e2e8f0">Del gemelo digital en ROS 2 y la cinemática de Pieper al control físico seguro en el ABB IRC5</text>
+  <text x="48" y="183" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="13.5" fill="#94a3b8">Arquitectura unificada Denavit-Hartenberg · Trayectorias suaves C² / LSPB · Supervisión web 3D/2D en tiempo real</text>
+
+  <!-- Bottom Spec Chips -->
+  <g transform="translate(48, 216)">
+    <rect width="164" height="68" rx="11" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.14"/>
+    <text x="16" y="25" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="10" font-weight="700" letter-spacing="1" fill="#f472b6">GEMELO URDF / TF</text>
+    <text x="16" y="50" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="18" font-weight="800" fill="#ffffff">2,46×10⁻¹⁰ m</text>
+  </g>
+  <g transform="translate(226, 216)">
+    <rect width="164" height="68" rx="11" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.14"/>
+    <text x="16" y="25" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="10" font-weight="700" letter-spacing="1" fill="#fb923c">PIEPER ANALÍTICO</text>
+    <text x="16" y="50" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="18" font-weight="800" fill="#ffffff">8 ramas · 0 fallos</text>
+  </g>
+  <g transform="translate(404, 216)">
+    <rect width="168" height="68" rx="11" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.14"/>
+    <text x="16" y="25" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="10" font-weight="700" letter-spacing="1" fill="#38bdf8">RWS VS FLEXPENDANT</text>
+    <text x="16" y="50" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="18" font-weight="800" fill="#ffffff">0,0001 mm FK</text>
+  </g>
+  <g transform="translate(586, 216)">
+    <rect width="174" height="68" rx="11" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.14"/>
+    <text x="16" y="25" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="10" font-weight="700" letter-spacing="1" fill="#4ade80">SEGURIDAD C02 RAPID</text>
+    <text x="16" y="50" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="18" font-weight="800" fill="#ffffff">≤ 5 % catálogo</text>
+  </g>
+
+  <!-- Right Side Technical Illustration: 6-DOF Arm + Workspace Arc + Heart TCP Trajectory -->
+  <g transform="translate(825, 34)">
+    <!-- Workspace radar rings -->
+    <circle cx="170" cy="145" r="122" fill="none" stroke="#f472b6" stroke-opacity="0.18" stroke-width="1.2" stroke-dasharray="5 5"/>
+    <circle cx="170" cy="145" r="84" fill="none" stroke="#38bdf8" stroke-opacity="0.16" stroke-width="1"/>
+    <!-- Base platform -->
+    <line x1="58" y1="248" x2="215" y2="248" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round"/>
+    <rect x="96" y="232" width="48" height="16" rx="4" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
+    <!-- Links -->
+    <line x1="120" y1="232" x2="120" y2="172" stroke="#f97316" stroke-width="14" stroke-linecap="round"/>
+    <line x1="120" y1="172" x2="152" y2="96" stroke="#fb923c" stroke-width="12" stroke-linecap="round"/>
+    <line x1="152" y1="96" x2="228" y2="92" stroke="#f97316" stroke-width="9.5" stroke-linecap="round"/>
+    <line x1="228" y1="92" x2="262" y2="126" stroke="#f472b6" stroke-width="6.5" stroke-linecap="round"/>
+    <!-- Joints -->
+    <circle cx="120" cy="232" r="7" fill="#0f172a" stroke="#f8fafc" stroke-width="2.2"/>
+    <circle cx="120" cy="172" r="7.5" fill="#0f172a" stroke="#f8fafc" stroke-width="2.2"/>
+    <circle cx="152" cy="96" r="7" fill="#0f172a" stroke="#f8fafc" stroke-width="2.2"/>
+    <circle cx="228" cy="92" r="6.5" fill="#0f172a" stroke="#38bdf8" stroke-width="2.2"/>
+    <circle cx="262" cy="126" r="5.5" fill="#4ade80" stroke="#ffffff" stroke-width="2"/>
+    <!-- TCP RGB Triad -->
+    <line x1="262" y1="126" x2="286" y2="126" stroke="#ef4444" stroke-width="2.4"/>
+    <line x1="262" y1="126" x2="262" y2="102" stroke="#22c55e" stroke-width="2.4"/>
+    <line x1="262" y1="126" x2="279" y2="142" stroke="#3b82f6" stroke-width="2.4"/>
+    <!-- Heart trajectory path in front of TCP -->
+    <path d="M 284 156 C 284 139, 312 139, 312 158 C 312 175, 284 190, 284 205 C 284 190, 256 175, 256 158 C 256 139, 284 139, 284 156 Z"
+          fill="#f472b6" fill-opacity="0.14" stroke="#f472b6" stroke-width="2.2"/>
+    <!-- Callout labels -->
+    <text x="72" y="266" font-family="Consolas, monospace" font-size="10.5" fill="#cbd5e1">base_link</text>
+    <text x="214" y="76" font-family="Consolas, monospace" font-size="10.5" fill="#7dd3fc">p_W (muñeca)</text>
+    <text x="274" y="116" font-family="Consolas, monospace" font-size="10.5" font-weight="700" fill="#86efac">tool0</text>
+    <text x="246" y="224" font-family="Consolas, monospace" font-size="10.5" fill="#fbcfe8">Plano YZ (40 mm)</text>
+  </g>
+</svg>

@@ -30,15 +30,16 @@ jobs:
           import pathlib, re, sys, urllib.parse
 
           raiz = pathlib.Path(".").resolve()
-          patron = re.compile(r'!?\[[^\]]*\]\(([^)]+)\)')
+          pat_md = re.compile(r'!?\[[^\]]*\]\(([^)]+)\)')
+          pat_html = re.compile(r'(?:href|src)="([^"]+)"')
           rotos = []
 
           for md in sorted(raiz.rglob("*.md")):
               texto = md.read_text(encoding="utf-8")
-              # Ignorar bloques de codigo cercados
               texto_limpio = re.sub(r"```.*?```|~~~.*?~~~", "", texto, flags=re.S)
-              for m in patron.finditer(texto_limpio):
-                  raw = m.group(1).strip().split()[0].strip("<>")
+              candidatos = [m.group(1) for m in pat_md.finditer(texto_limpio)] + [m.group(1) for m in pat_html.finditer(texto_limpio)]
+              for raw_item in candidatos:
+                  raw = raw_item.strip().split()[0].strip("<>")
                   if not raw or raw.startswith(("http://", "https://", "mailto:", "#", "conversation://")):
                       continue
                   ruta_rel = urllib.parse.unquote(raw.split("#", 1)[0])

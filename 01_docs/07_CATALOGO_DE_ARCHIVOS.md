@@ -1,6 +1,6 @@
 # Catálogo de archivos
 
-381 archivos versionados. Cada identificador corresponde a una sección y a la posición del archivo dentro de su carpeta.
+392 archivos versionados. Cada identificador corresponde a una sección y a la posición del archivo dentro de su carpeta.
 
 ## 01 · Raíz
 
@@ -38,7 +38,18 @@
 - **04.12** [11_hito2_pose_y_ramas.png](06_figuras/11_hito2_pose_y_ramas.png)
 - **04.13** [12_hito2_trayectoria_pose.png](06_figuras/12_hito2_trayectoria_pose.png)
 - **04.14** [13_evidencia_sesion_tcp.png](06_figuras/13_evidencia_sesion_tcp.png)
-- **04.15** [generar_evidencia_visual.py](06_figuras/generar_evidencia_visual.py)
+- **04.15** [compuertas_seguridad_irc5.svg](06_figuras/compuertas_seguridad_irc5.svg)
+- **04.16** [divisor_seccion.svg](06_figuras/divisor_seccion.svg)
+- **04.17** [ficha_sesion_defensa.svg](06_figuras/ficha_sesion_defensa.svg)
+- **04.18** [generar_evidencia_visual.py](06_figuras/generar_evidencia_visual.py)
+- **04.19** [hero_hito1.svg](06_figuras/hero_hito1.svg)
+- **04.20** [hero_hito2.svg](06_figuras/hero_hito2.svg)
+- **04.21** [hero_hito3_4.svg](06_figuras/hero_hito3_4.svg)
+- **04.22** [hero_portada_vevas.svg](06_figuras/hero_portada_vevas.svg)
+- **04.23** [hero_videos.svg](06_figuras/hero_videos.svg)
+- **04.24** [kpi_resumen_global.svg](06_figuras/kpi_resumen_global.svg)
+- **04.25** [pipeline_4_hitos.svg](06_figuras/pipeline_4_hitos.svg)
+- **04.26** [recuadro_torque_1r.svg](06_figuras/recuadro_torque_1r.svg)
 
 ## 05 · 02_hito1_gemelo_digital
 

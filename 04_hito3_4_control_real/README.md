@@ -1,76 +1,90 @@
-![Hitos 3 y 4 · Del modelo al controlador ABB](../01_docs/06_figuras/03_control.png)
+<div align="center">
 
-# Hitos 3 y 4 · De la planificación a la evidencia en el controlador ABB IRC5
+<img src="../01_docs/06_figuras/hero_hito3_4.svg" alt="Hitos 3 y 4 · VEVAS Studio y Controlador ABB IRC5" width="100%">
 
-[Cómo ejecutar](01_COMO_EJECUTAR.md) · [Abrir VEVAS Studio](02_vevas_studio/README.md) · [Bitácora W12](01_docs/05_bitacora/06_bitacora.md) · [Videos H3/4](../06_videos/README.md) · [Portada del proyecto](../README.md)
+<br>
 
-**VEVAS Studio** integra la cinemática inversa de Pieper, la revisión preventiva de colisiones y singularidades, la generación de trayectorias suaves $C^2$ y la comunicación con el controlador **ABB IRC5** mediante **Robot Web Services (RWS)** y un servidor **RAPID** con velocidad acotada por junta.
+<p>
+  <a href="01_COMO_EJECUTAR.md"><kbd>Cómo ejecutar</kbd></a>&nbsp;
+  <a href="02_vevas_studio/README.md"><kbd>VEVAS Studio</kbd></a>&nbsp;
+  <a href="01_docs/04_resultados/README.md"><kbd>Panel de resultados</kbd></a>&nbsp;
+  <a href="01_docs/05_bitacora/06_bitacora.md"><kbd>Bitácora W12</kbd></a>&nbsp;
+  <a href="01_docs/01_informe/01_Informe_Hito3_4.pdf"><kbd>Informe IEEE PDF</kbd></a>&nbsp;
+  <a href="01_docs/02_presentacion/02_Defensa_Grupo_VEVAS.pdf"><kbd>Diapositivas Defensa</kbd></a>&nbsp;
+  <a href="../README.md"><kbd>← Portada principal</kbd></a>
+</p>
 
----
+</div>
+
+![Divisor](../01_docs/06_figuras/divisor_seccion.svg)
 
 ## 1. Figura central de la defensa: una sesión convertida en evidencia visual
 
-Para defender un movimiento sin ambigüedad se colocan lado a lado **la geometría solicitada**, **la trayectoria planificada** por cinemática inversa + interpolación quíntica $C^2$ y **las muestras medidas del TCP**, acompañadas debajo por la evolución temporal y los archivos de datos de esa misma corrida.
+Para demostrar de extremo a extremo cómo **VEVAS Studio** traduce una figura geométrica en órdenes articulares seguras y contrasta el plan con lo observado, la lámina siguiente integra **la figura solicitada**, **el camino quíntico $C^2$ planificado** y **las muestras medidas del TCP** de una misma sesión documentada:
+
+![Ficha de trazabilidad de la sesión central](../01_docs/06_figuras/ficha_sesion_defensa.svg)
 
 ![Evidencia visual de sesión: figura solicitada, trayectoria planificada y muestras medidas del TCP](../01_docs/06_figuras/13_evidencia_sesion_tcp.png)
 
-### Trazabilidad de la sesión representada
+### Enlaces directos y metadatos de esta misma ejecución
 
-| Campo | Valor documentado |
+| Recurso / Parámetro | Detalle verificable |
 | --- | --- |
-| **Ejecución y fecha** | Trazado completo de **Corazón (`40 mm`)** · esquema operativo del `2026-11-24` (reproducible offline en modo `SIM` con dinámica de actuador $\tau = 40\text{ ms}$) |
-| **Plano y marco** | Plano **`YZ` («De frente»**, mirado desde $+X$ hacia la base) · Marco **`Base` (`wobj0`)** · Herramienta **`tool0`** |
-| **Unidades del registro** | Posición TCP en **`mm`** (`x_mm`, `y_mm`, `z_mm`, `e_p_mm`) · Juntas en **`°`** (`q1..q6`) · Velocidades en **`°/s`** · Tiempo en **`s`** |
-| **CSV de muestras (`50 Hz`)** | [`muestras_corazon_yz_40mm.csv`](01_docs/04_resultados/01_sesion_evidencia/muestras_corazon_yz_40mm.csv) |
-| **Resumen y plan JSON** | [`resumen_corazon_yz_40mm.json`](01_docs/04_resultados/01_sesion_evidencia/resumen_corazon_yz_40mm.json) · [`plan_001_corazon_yz_40mm.json`](01_docs/04_resultados/01_sesion_evidencia/plan_001_corazon_yz_40mm.json) |
-| **Videos vinculados** | [Carpeta SIM (`03_hito3_4_simulacion/`)](../06_videos/03_hito3_4_simulacion/README.md) · [Carpeta IRC5 (`04_hito3_4_laboratorio_irc5/`)](../06_videos/04_hito3_4_laboratorio_irc5/README.md) |
+| **CSV completo de la sesión (`50 Hz`)** | [`muestras_corazon_yz_40mm.csv`](01_docs/04_resultados/01_sesion_evidencia/muestras_corazon_yz_40mm.csv) (`435` muestras en movimiento; columnas `t_s`, `q1..q6_cmd_deg`, `q1..q6_med_deg`, `e1..e6_deg`, `e_p_mm`, `e_R_deg`, `x_mm`, `y_mm`, `z_mm`, `sigma_min`, `v1..v6_med_deg_s`) |
+| **Resumen y plan calculado (`JSON`)** | [`resumen_corazon_yz_40mm.json`](01_docs/04_resultados/01_sesion_evidencia/resumen_corazon_yz_40mm.json) · [`plan_001_corazon_yz_40mm.json`](01_docs/04_resultados/01_sesion_evidencia/plan_001_corazon_yz_40mm.json) |
+| **Videos vinculados a la sesión** | [Toma de simulación (`06_videos/03_hito3_4_simulacion/`)](../06_videos/03_hito3_4_simulacion/README.md) · [Tomas presenciales IRC5 (`06_videos/04_hito3_4_laboratorio_irc5/`)](../06_videos/04_hito3_4_laboratorio_irc5/README.md) |
+| **Geometría, plano y unidades** | **Corazón de `40 mm`** en plano **`YZ` («De frente»**, mirado desde $+X$) · Marco **`Base` (`wobj0`)** · Herramienta **`tool0`** · Unidades: **`mm`**, **`°`**, **`°/s`**, **`s`** |
+| **Métricas obtenidas** | Duración `8,52 s` · Desviación media al contorno `0,491 mm` · Error dinámico máx. `0,81 mm` (por retardo $\tau = 40\text{ ms}$, cae a `0 mm` en la parada de la cúspide `#32`) · **Error final `0,038 mm` / `0,0046°`** |
 
 ---
 
-## 2. Verificación presencial frente al controlador ABB IRC5 (24/11/2026)
+## 2. Validación presencial en laboratorio con el ABB IRC5 (24/11/2026)
 
-### Gate 1 · Coincidencia geométrica con el FlexPendant
-En modo de solo lectura sobre el puerto `SERVICE` (`192.168.125.1`), las lecturas RWS de `J1`–`J6` coincidieron con el **FlexPendant DSQC 679** (`RobotWare 6.12.01.00`), arrojando una diferencia de cinemática directa (`Base`, `wobj0`, `tool0`) de **`0,0001 mm`** en posición y **`0,0000°`** en orientación ([entrada `S1-001` en bitácora](01_docs/05_bitacora/06_bitacora.md)).
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <h4 align="center">Compuerta física C02 en RAPID (<code>MoveAbsJ \T:=t</code>)</h4>
+      <img src="../01_docs/06_figuras/05_velocidades_c02.png" alt="Velocidades medidas frente al tope C02 en el IRC5">
+      <p>En modo <code>AUTO</code>, <a href="02_vevas_studio/05_rapid/VEVAS_RWS.mod"><code>VEVAS_RWS.mod</code></a> calcula en el propio IRC5 el tiempo mínimo por eje $t = \max(t_{\text{piso}}, 2{,}5|\Delta q_i|/v_{\text{Lim},i})$ para no superar el <b>5 % de catálogo</b> (<code>12,5 / 16,0 / 21,0 °/s</code>). Las velocidades reales medidas quedaron entre el <b>41,6 % y el 43,2 %</b> de ese tope.</p>
+    </td>
+    <td width="50%" valign="top">
+      <h4 align="center">Arquitectura desacoplada de VEVAS Studio</h4>
+      <img src="../01_docs/06_figuras/09_arquitectura.png" alt="Arquitectura de software de VEVAS Studio">
+      <p>La interfaz web 3D/2D nunca habla directo con el robot: toda orden atraviesa <a href="02_vevas_studio/07_vevas/consola.py"><code>Consola</code></a>, supera el revisor de colisiones/singularidades, comprueba las compuertas <b>GO + C02</b> y despacha hacia <code>BackendSim</code>, <code>BackendROS</code> o <code>BackendRWS</code> grabando cada ciclo a <code>50 Hz</code>.</p>
+    </td>
+  </tr>
+</table>
 
-### Compuerta C02 · Velocidad acotada en RAPID (`MoveAbsJ \T:=t`)
+### Resumen cuantitativo de las pruebas de laboratorio y software
 
-![Velocidades articulares medidas frente a los topes físicos C02 en el IRC5](../01_docs/06_figuras/05_velocidades_c02.png)
-
-El módulo [`VEVAS_RWS.mod`](02_vevas_studio/05_rapid/VEVAS_RWS.mod) impone en el propio controlador el tiempo mínimo por tramo $t = \max\big(t_{\text{piso}},\, 2{,}5\cdot |\Delta q_i| / v_{\text{Lim},i}\big)$ con $v_{\text{Lim}} = [12{,}5,\; 12{,}5,\; 12{,}5,\; 16{,}0,\; 16{,}0,\; 21{,}0]^\circ\text{/s}$ (`5 %` de la ficha ABB), usando `z1` en puntos intermedios de streaming y `fine` en paradas y extremos:
-
-| Grupo de ejes | Tope C02 (`5 %` ficha) | Pico medido en el IRC5 | Fracción del tope C02 |
+| Etapa / Compuerta | Qué se puso a prueba | Resultado verificado | Evidencia en el repositorio |
 | --- | --- | --- | --- |
-| **`J1` – `J3`** | `12,5 °/s` | **`5,2 – 5,4 °/s`** | `41,6 – 43,2 %` |
-| **`J4` – `J5`** | `16,0 °/s` | **`6,7 – 6,9 °/s`** | `41,9 – 43,1 %` |
-| **`J6`** | `21,0 °/s` | **`8,8 – 8,9 °/s`** | `41,9 – 42,4 %` |
-
-[Consultar cambios del 24/11](01_docs/05_bitacora/05_CAMBIOS_24NOV.md) · [Abrir figura vectorial PDF](01_docs/01_informe/01_informe_ieee/01_img/fig_c02.pdf)
-
----
-
-## 3. Arquitectura y flujo de seguridad
-
-![Arquitectura en capas de VEVAS Studio e integración con el ABB IRC5](../01_docs/06_figuras/09_arquitectura.png)
-
-~~~mermaid
-flowchart LR
- A["Objetivo\n(pose, junta o figura)"] --> B["Pieper + Camino C²\n(65 nudos)"]
- B --> C["Revisión previa\n(colisiones, σ_min, topes)"]
- C --> D{"Compuertas\nGO + C02"}
- D -->|SIM| E["Simulador interno\n(τ = 40 ms, 250 Hz)"]
- D -->|IRC5 Real| F["Streaming RWS\nMoveAbsJ \\T:=t, z1/fine"]
- E --> G["Registro 50 Hz\nmuestras.csv + resumen.json"]
- F --> G
-~~~
+| **Gate 0 · Auditoría IRC5** | Identificación de hardware y opciones del controlador | `IRB 120-3/0.6` (`s/n 120-101516`), `RobotWare 6.12.01.00`, `689-1 EGM`, `616-1 PC Interface`, `StateMachine 1.1` | [`06_bitacora.md` (`G0-001`)](01_docs/05_bitacora/06_bitacora.md) |
+| **S0 · Validación offline** | 5.000 poses FK, casos con fallo intencional, IK y Jacobiano vs DF | Error FK `6 × 10⁻¹⁶ m`; detecta errores de TCP/orden (`0,120 m`); $J$ `8,93 × 10⁻¹¹ m/rad` | [`01_resumen.md`](02_vevas_studio/01_docs/01_datos/01_validacion_offline/01_resumen.md) |
+| **Gate 1 · Lectura presencial (`S1-001`)** | Coincidencia entre `J1`–`J6` por RWS y pantalla del FlexPendant | **Error XYZ `0,0001 mm` y angular `0,0000°`** con `Base`, `wobj0` y `tool0` | [`05_CAMBIOS_24NOV.md`](01_docs/05_bitacora/05_CAMBIOS_24NOV.md) |
+| **C02 · Tope físico en AUTO (`C02-001`)** | Pulsos por junta y streaming en `J6` medidos por RWS (~30 Hz) | Picos **`5,2–5,4 °/s`** (`J1–J3`), **`6,7–6,9 °/s`** (`J4–J5`) y **`8,8–8,9 °/s`** (`J6`) | [`fig_c02.pdf`](01_docs/01_informe/01_informe_ieee/01_img/fig_c02.pdf) |
+| **Suite automatizada** | Cobertura de regresión Python y JavaScript | **`329` pruebas Python (`pytest`) + `20` pruebas JS (`node --test`)** | [`06_tests/README.md`](02_vevas_studio/06_tests/README.md) |
 
 ---
 
-## 4. Entregables principales de los Hitos 3 y 4
+## 3. Cinco compuertas de seguridad y problemas reales resueltos
 
-| Material | Para qué sirve | Enlace |
-| --- | --- | --- |
-| **Informe IEEE · PDF** | Arquitectura, formulación de seguridad C02, incidentes reales resueltos y métricas experimentales. | [Abrir PDF](01_docs/01_informe/01_Informe_Hito3_4.pdf) |
-| **Diapositivas de defensa** | Presentación final del Grupo VEVAS y guion con banco de 20 preguntas. | [Defensa PDF](01_docs/02_presentacion/02_Defensa_Grupo_VEVAS.pdf) · [Guion y Q&A](01_docs/02_presentacion/01_PRESENTACION.md) |
-| **VEVAS Studio (código y tests)** | Aplicación completa (`07_vevas/`, `08_web/`, `05_rapid/`) con `329` pruebas Python y `20` JS. | [Abrir VEVAS Studio](02_vevas_studio/README.md) |
-| **Guía completa y guía 24/11** | Procedimientos paso a paso de simulación, diagnóstico de red, GO y operación en celda. | [Guía completa](01_docs/03_guias/01_GUIA_COMPLETA_HITO3_4.md) · [Guía 24/11](01_docs/03_guias/02_Guia_aportada_24NOV.md) |
-| **Bitácora formal W12** | Entradas `G0-001` a `C02-001` y seguimiento cronológico de laboratorio. | [Leer `06_bitacora.md`](01_docs/05_bitacora/06_bitacora.md) |
+![Protocolo de cinco compuertas de seguridad antes de mover el ABB IRB 120 real](../01_docs/06_figuras/compuertas_seguridad_irc5.svg)
+
+1. **Bloqueo por `StateMachine AddIn` y límite de tamaño RWS (`< 4.800` caracteres):** En lugar de depender de una configuración externa frágil, se escribió un servidor RAPID compacto ([`VEVAS_RWS.mod`](02_vevas_studio/05_rapid/VEVAS_RWS.mod), `4.707` caracteres) cargado y verificado por huella SHA/contenido antes de cada movimiento.
+2. **Pausas bruscas punto a punto en figuras:** Se implementó **streaming continuo** con `MoveAbsJ \T:=t, z1` en los puntos de paso (acuse inmediato código `3` al encolar) y `fine` únicamente en vértices de cuadrado/triángulo, cúspide del corazón, extremos del saludo y punto final.
+3. **Rechazo al trazar figuras partiendo cerca de $q_5 \approx 0^\circ$:** Cuando el brazo está en la singularidad de muñeca, la consola inserta automáticamente un tramo previo revisado `J5 → +30°` con parada y dibuja la figura desde esa postura segura.
+4. **Orientación intuitiva para la audiencia («De frente»):** Las cinco figuras (`círculo`, `corazón`, `cuadrado`, `triángulo` y `saludo` en arco) se proyectan por defecto sobre el plano vertical **`YZ`**, ubicando la cámara 3D frente al robot y mostrando en paralelo el lienzo 2D milimetrado con error en vivo.
+5. **Transparencia cuando el slider supera el tope físico del RAPID:** El slider permite explorar hasta `50 %` en simulación, pero con el IRC5 bajo C02 la revisión advierte explícitamente cuánto tardará en realidad el controlador (`duracion_c02_s`) y la pestaña **Velocidades** contrasta velocidad medida, planificada y tope por eje.
+
+---
+
+## 4. Navegación rápida para estudio y defensa
+
+| Objetivo | Documento recomendado |
+| --- | --- |
+| **Leer el artículo completo de ingeniería** | [Informe IEEE Hitos 3 y 4 (`01_Informe_Hito3_4.pdf`)](01_docs/01_informe/01_Informe_Hito3_4.pdf) |
+| **Repasar las diapositivas y 20 preguntas del tribunal** | [Diapositivas PDF](01_docs/02_presentacion/02_Defensa_Grupo_VEVAS.pdf) · [Guion y banco Q&A](01_docs/02_presentacion/01_PRESENTACION.md) |
+| **Explorar todos los gráficos y CSV de resultados** | [Panel de resultados (`01_docs/04_resultados/README.md`)](01_docs/04_resultados/README.md) |
+| **Seguir el manual operativo paso a paso (SIM y laboratorio)** | [Guía completa (855 líneas)](01_docs/03_guias/01_GUIA_COMPLETA_HITO3_4.md) · [Guía aportada 24/11](01_docs/03_guias/02_Guia_aportada_24NOV.md) |
+| **Inspeccionar el código fuente de VEVAS Studio** | [Portada de VEVAS Studio (`02_vevas_studio/README.md`)](02_vevas_studio/README.md) |

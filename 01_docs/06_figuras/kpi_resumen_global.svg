@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 196" width="100%">
+  <defs>
+    <linearGradient id="bgCard" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2b1629"/>
+      <stop offset="100%" stop-color="#1b0e1a"/>
+    </linearGradient>
+    <linearGradient id="accentBar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#f472b6"/>
+      <stop offset="50%" stop-color="#e11d48"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1120" height="196" rx="16" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/>
+
+  <!-- Card 1: Hito 1 -->
+  <g transform="translate(18, 18)">
+    <rect width="258" height="160" rx="12" fill="url(#bgCard)"/>
+    <rect x="0" y="0" width="258" height="5" rx="2.5" fill="url(#accentBar)"/>
+    <text x="20" y="32" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.2" fill="#f472b6">HITO 1 · GEMELO DIGITAL TF</text>
+    <text x="20" y="76" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="27" font-weight="800" fill="#fff1f6">2,46 × 10⁻¹⁰ m</text>
+    <text x="20" y="102" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#fda4af">4 100× debajo del umbral (10⁻⁶ m)</text>
+    <line x1="20" y1="118" x2="238" y2="118" stroke="#4a2645" stroke-width="1"/>
+    <text x="20" y="140" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="11.5" fill="#cbd5e1">501 lecturas TF sincronizadas · URDF = D-H</text>
+  </g>
+
+  <!-- Card 2: Hito 2 -->
+  <g transform="translate(293, 18)">
+    <rect width="258" height="160" rx="12" fill="url(#bgCard)"/>
+    <rect x="0" y="0" width="258" height="5" rx="2.5" fill="url(#accentBar)"/>
+    <text x="20" y="32" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fb923c">HITO 2 · PIEPER Y FRONTERAS</text>
+    <text x="20" y="76" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="27" font-weight="800" fill="#fff1f6">0 rechazos</text>
+    <text x="20" y="102" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#fdba74">en 1 800 topes + 2 000 poses libres</text>
+    <line x1="20" y1="118" x2="238" y2="118" stroke="#4a2645" stroke-width="1"/>
+    <text x="20" y="140" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="11.5" fill="#cbd5e1">Error FK 4,98 × 10⁻¹⁶ m · τ(2,5 s) = 4,4298 N·m</text>
+  </g>
+
+  <!-- Card 3: Hito 3/4 FK -->
+  <g transform="translate(568, 18)">
+    <rect width="258" height="160" rx="12" fill="url(#bgCard)"/>
+    <rect x="0" y="0" width="258" height="5" rx="2.5" fill="url(#accentBar)"/>
+    <text x="20" y="32" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.2" fill="#38bdf8">HITO 3/4 · CONTROLADOR IRC5</text>
+    <text x="20" y="76" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="27" font-weight="800" fill="#fff1f6">0,0001 mm</text>
+    <text x="20" y="102" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#7dd3fc">diferencia FK frente al FlexPendant</text>
+    <line x1="20" y1="118" x2="238" y2="118" stroke="#4a2645" stroke-width="1"/>
+    <text x="20" y="140" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="11.5" fill="#cbd5e1">Base · wobj0 · tool0 · 0,0000° angular</text>
+  </g>
+
+  <!-- Card 4: Seguridad C02 y Pruebas -->
+  <g transform="translate(843, 18)">
+    <rect width="259" height="160" rx="12" fill="url(#bgCard)"/>
+    <rect x="0" y="0" width="259" height="5" rx="2.5" fill="url(#accentBar)"/>
+    <text x="20" y="32" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.2" fill="#4ade80">SEGURIDAD C02 · SUITE CI</text>
+    <text x="20" y="76" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="27" font-weight="800" fill="#fff1f6">5,2 – 8,9 °/s</text>
+    <text x="20" y="102" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#86efac">≤ 43 % del tope RAPID (5 % catálogo)</text>
+    <line x1="20" y1="118" x2="239" y2="118" stroke="#4a2645" stroke-width="1"/>
+    <text x="20" y="140" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="11.5" fill="#cbd5e1">329 tests Python · 20 JS · ROS 2 Jazzy</text>
+  </g>
+</svg>

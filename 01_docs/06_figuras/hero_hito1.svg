@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 220" width="100%">
+  <defs>
+    <linearGradient id="h1Bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e1024"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="220" rx="18" fill="url(#h1Bg)"/>
+  <rect x="0" y="0" width="9" height="220" rx="4.5" fill="#f472b6"/>
+
+  <rect x="42" y="28" width="270" height="26" rx="13" fill="#9d174d" fill-opacity="0.45" stroke="#f472b6" stroke-opacity="0.5"/>
+  <text x="58" y="45" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fbcfe8">HITO 01 · GEMELO DIGITAL EN ROS 2</text>
+
+  <text x="42" y="98" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="36" font-weight="800" fill="#ffffff">Geometría D-H, URDF y Árbol TF</text>
+  <text x="42" y="132" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="15.5" fill="#cbd5e1">Comparación directa entre el visor 3D CAD, el modelo URDF factorizado y 1.000 consultas a ROS 2 TF</text>
+
+  <g transform="translate(42, 154)">
+    <rect width="218" height="42" rx="9" fill="#ffffff" fill-opacity="0.08" stroke="#f472b6" stroke-opacity="0.4"/>
+    <text x="16" y="26" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="13" font-weight="700" fill="#fda4af">Error máx: 2,459 × 10⁻¹⁰ m</text>
+  </g>
+  <g transform="translate(274, 154)">
+    <rect width="234" height="42" rx="9" fill="#ffffff" fill-opacity="0.08" stroke="#38bdf8" stroke-opacity="0.4"/>
+    <text x="16" y="26" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="13" font-weight="700" fill="#7dd3fc">501 / 1 000 lecturas válidas</text>
+  </g>
+  <g transform="translate(522, 154)">
+    <rect width="224" height="42" rx="9" fill="#ffffff" fill-opacity="0.08" stroke="#4ade80" stroke-opacity="0.4"/>
+    <text x="16" y="26" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="13" font-weight="700" fill="#86efac">URDF manual == generado</text>
+  </g>
+
+  <!-- Right Dual-Frame Icon -->
+  <g transform="translate(880, 38)">
+    <rect width="276" height="144" rx="14" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.14"/>
+    <text x="138" y="28" text-anchor="middle" font-family="Consolas, monospace" font-size="11.5" fill="#fbcfe8">base_link ──► link_1..6 ──► tool0</text>
+    <line x1="66" y1="112" x2="66" y2="62" stroke="#22c55e" stroke-width="3"/>
+    <line x1="66" y1="112" x2="112" y2="112" stroke="#ef4444" stroke-width="3"/>
+    <line x1="66" y1="112" x2="44" y2="128" stroke="#3b82f6" stroke-width="3"/>
+    <text x="66" y="52" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#e2e8f0">T_ana(q)</text>
+    <text x="138" y="92" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="800" fill="#4ade80">≡</text>
+    <line x1="206" y1="112" x2="206" y2="62" stroke="#22c55e" stroke-width="3"/>
+    <line x1="206" y1="112" x2="252" y2="112" stroke="#ef4444" stroke-width="3"/>
+    <line x1="206" y1="112" x2="184" y2="128" stroke="#3b82f6" stroke-width="3"/>
+    <text x="206" y="52" text-anchor="middle" font-family="Consolas, monospace" font-size="11" fill="#e2e8f0">TF2 ROS 2</text>
+  </g>
+</svg>

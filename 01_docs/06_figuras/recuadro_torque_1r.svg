@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 248" width="100%">
+  <rect width="1080" height="248" rx="16" fill="#fdf2f8" stroke="#9d174d" stroke-width="2"/>
+  <rect x="0" y="0" width="1080" height="44" rx="14" fill="#9d174d"/>
+  <rect x="0" y="24" width="1080" height="20" fill="#9d174d"/>
+  <text x="28" y="28" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="13.5" font-weight="800" fill="#ffffff">RECUADRO DE CÁLCULO · MODELO DINÁMICO REDUCIDO 1R EN t = 2,5 s  (HOJA W10-S01 · TAREAS 3 Y 4D)</text>
+  <text x="1052" y="28" text-anchor="end" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="12" font-weight="700" fill="#fbcfe8">τ = J q̈ + m g l_c sin(q)</text>
+
+  <!-- Columna 1: Parámetros y estado en t=2.5s -->
+  <g transform="translate(24, 60)">
+    <rect width="320" height="168" rx="10" fill="#ffffff" stroke="#f9a8d4" stroke-width="1.2"/>
+    <text x="16" y="24" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#9d174d">1. PARÁMETROS DECLARADOS Y PERFIL</text>
+    <text x="16" y="47" font-family="Consolas, monospace" font-size="12" fill="#1f2a33">J = 0,25 kg·m²   m = 1,00 kg</text>
+    <text x="16" y="66" font-family="Consolas, monospace" font-size="12" fill="#1f2a33">l_c = 0,50 m     g = 9,81 m/s²</text>
+    <line x1="16" y1="79" x2="304" y2="79" stroke="#f1f5f9" stroke-width="1.5"/>
+    <text x="16" y="99" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#334155">Estado LSPB en t = 2,5 s (frenado):</text>
+    <text x="16" y="120" font-family="Consolas, monospace" font-size="12" fill="#1f2a33">q(2,5)   = +1,8750 rad</text>
+    <text x="16" y="138" font-family="Consolas, monospace" font-size="12" fill="#1f2a33">q̇(2,5)   = +0,5000 rad/s</text>
+    <text x="16" y="156" font-family="Consolas, monospace" font-size="12" font-weight="700" fill="#b91c1c">q̈(2,5)   = −1,0000 rad/s²</text>
+  </g>
+
+  <!-- Columna 2: Suma de términos -->
+  <g transform="translate(364, 60)">
+    <rect width="376" height="168" rx="10" fill="#ffffff" stroke="#f9a8d4" stroke-width="1.2"/>
+    <text x="18" y="24" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#9d174d">2. DESCOMPOSICIÓN FÍSICA DEL ESFUERZO</text>
+
+    <rect x="18" y="36" width="340" height="48" rx="8" fill="#eff6ff" stroke="#bfdbfe"/>
+    <text x="30" y="55" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1e40af">Término inercial (se opone al giro para frenar):</text>
+    <text x="30" y="74" font-family="Consolas, monospace" font-size="12.5" font-weight="700" fill="#1e3a8a">τ_inercial = 0,25 × (−1,0000) = −0,2500 N·m</text>
+
+    <rect x="18" y="94" width="340" height="58" rx="8" fill="#fff7ed" stroke="#fed7aa"/>
+    <text x="30" y="113" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#9a3412">Término gravitatorio (sostiene el eslabón):</text>
+    <text x="30" y="131" font-family="Consolas, monospace" font-size="12" fill="#7c2d12">τ_gravedad = 1,00 × 9,81 × 0,50 × sin(1,875)</text>
+    <text x="30" y="146" font-family="Consolas, monospace" font-size="12.5" font-weight="700" fill="#c2410c">           = 4,905 × 0,954086 = +4,6798 N·m</text>
+  </g>
+
+  <!-- Columna 3: Resultado final -->
+  <g transform="translate(760, 60)">
+    <rect width="296" height="168" rx="10" fill="#251323"/>
+    <text x="148" y="28" text-anchor="middle" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1" fill="#f472b6">RESULTADO EN t = 2,5 s</text>
+    <text x="148" y="74" text-anchor="middle" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="34" font-weight="800" fill="#fff1f6">4,4298 N·m</text>
+    <text x="148" y="98" text-anchor="middle" font-family="Consolas, monospace" font-size="12" fill="#fda4af">−0,2500 + 4,6798 = +4,4298</text>
+    <line x1="24" y1="114" x2="272" y2="114" stroke="#4a2645" stroke-width="1"/>
+    <text x="148" y="135" text-anchor="middle" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="11.5" font-weight="600" fill="#86efac">Referencia cátedra: 4,429 N·m</text>
+    <text x="148" y="153" text-anchor="middle" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="10.5" fill="#cbd5e1">Residuo 8×10⁻⁴ por redondeo sin(1,875)≈0,954</text>
+  </g>
+</svg>

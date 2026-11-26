@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 198" width="100%">
+  <rect width="1120" height="198" rx="16" fill="#0f172a"/>
+  <text x="28" y="32" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="12.5" font-weight="800" letter-spacing="1" fill="#38bdf8">PROTOCOLO DE DEFENSA EN PROFUNDIDAD · CINCO COMPUERTAS ANTES DE MOVER EL ABB IRB 120 REAL</text>
+  <text x="28" y="51" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="11.5" fill="#94a3b8">Ninguna orden viaja al controlador IRC5 si falla cualquiera de las cinco verificaciones en serie.</text>
+
+  <!-- Gate 1 -->
+  <g transform="translate(22, 68)">
+    <rect width="202" height="110" rx="10" fill="#1e293b" stroke="#475569"/>
+    <text x="14" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="800" fill="#f472b6">01 · AUDITORÍA Y ENTORNO</text>
+    <text x="14" y="46" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" fill="#e2e8f0">RobotWare 6.12 · Mesa</text>
+    <text x="14" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" fill="#e2e8f0">medida (190 mm, 4 cajas)</text>
+    <text x="14" y="88" font-family="Consolas, monospace" font-size="11" fill="#fda4af">z_min = 80 mm activo</text>
+  </g>
+
+  <!-- Gate 2 -->
+  <g transform="translate(240, 68)">
+    <rect width="202" height="110" rx="10" fill="#1e293b" stroke="#475569"/>
+    <text x="14" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="800" fill="#fb923c">02 · GATE 1 SOLO LECTURA</text>
+    <text x="14" y="46" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" fill="#e2e8f0">J1–J6 por RWS iguales al</text>
+    <text x="14" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" fill="#e2e8f0">FlexPendant DSQC 679</text>
+    <text x="14" y="88" font-family="Consolas, monospace" font-size="11" fill="#fdba74">FK Δ = 0,0001 mm</text>
+  </g>
+
+  <!-- Gate 3 -->
+  <g transform="translate(458, 68)">
+    <rect width="202" height="110" rx="10" fill="#1e293b" stroke="#475569"/>
+    <text x="14" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="800" fill="#eab308">03 · GO DIARIO DE SESIÓN</text>
+    <text x="14" y="46" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" fill="#e2e8f0">11 ítems confirmados +</text>
+    <text x="14" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" fill="#e2e8f0">paro a mano + frase exacta</text>
+    <text x="14" y="88" font-family="Consolas, monospace" font-size="11" fill="#fde047">"MOVER ROBOT REAL"</text>
+  </g>
+
+  <!-- Gate 4 -->
+  <g transform="translate(676, 68)">
+    <rect width="202" height="110" rx="10" fill="#1e293b" stroke="#475569"/>
+    <text x="14" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="800" fill="#38bdf8">04 · REVISIÓN 240 NUDOS</text>
+    <text x="14" y="46" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" fill="#e2e8f0">Cápsulas de colisión,</text>
+    <text x="14" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" fill="#e2e8f0">topes ABB y manipulabilidad</text>
+    <text x="14" y="88" font-family="Consolas, monospace" font-size="11" fill="#7dd3fc">σ_min ≥ 0,02 · C²</text>
+  </g>
+
+  <!-- Gate 5 -->
+  <g transform="translate(894, 68)">
+    <rect width="204" height="110" rx="10" fill="#052e16" stroke="#22c55e" stroke-width="1.6"/>
+    <text x="14" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="800" fill="#4ade80">05 · C02 FÍSICO EN RAPID</text>
+    <text x="14" y="46" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" fill="#dcfce7">MoveAbsJ \T:=t limita</text>
+    <text x="14" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" fill="#dcfce7">cada junta en el IRC5</text>
+    <text x="14" y="88" font-family="Consolas, monospace" font-size="11" font-weight="700" fill="#86efac">vLim = 12,5/16/21 °/s</text>
+  </g>
+</svg>
