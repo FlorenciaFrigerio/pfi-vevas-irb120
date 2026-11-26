@@ -1,0 +1,35 @@
+[
+ {
+  "plan_id": 1,
+  "descripcion": "Corazón · 40 mm · YZ",
+  "inicio": "2026-11-26T14:31:34",
+  "duracion_s": 8.52135263529568,
+  "duracion_planificada_s": 8.52135263529568,
+  "duracion_c02_estimada_s": null,
+  "vel_max_medida_deg_s": [
+   4.369829201387199,
+   0.3190556531585623,
+   3.4488861740680994,
+   4.225347772944398,
+   3.312078962791358,
+   6.503331232149315
+  ],
+  "error_final_juntas_deg": [
+   -0.0020645322108483488,
+   0.004615937909683888,
+   0.001976250221661874,
+   0.001517764168629967,
+   0.0011287438237865854,
+   0.003143665163474555
+  ],
+  "error_final_max_deg": 0.004615937909683888,
+  "e_p_final_mm": 0.03840458589553656,
+  "e_R_final_deg": 0.00971618821215544,
+  "err_seguimiento_max_deg": 0.24853539895810323,
+  "e_p_seguimiento_max_mm": 0.8068312759610078,
+  "e_R_seguimiento_max_deg": 0.01966225407321743,
+  "resultado_controlador": "terminada",
+  "estado": "completado",
+  "llegada_verificada": true
+ }
+]

@@ -1,0 +1,20 @@
+{
+  "archivo_video": "2026-11-24_hito3_4_sim_corazon_yz_40mm_5pct.mp4",
+  "fecha_iso": "2026-11-24",
+  "hito": "Hito 3/4",
+  "modo": "sim",
+  "marco_base": "Base ABB (wobj0)",
+  "herramienta": "tool0 (sin herramienta externa)",
+  "plano_figura": "YZ (De frente)",
+  "tamano_mm": 40,
+  "velocidad_plan_pct": 5,
+  "unidades": {
+    "posicion_cartesiana": "mm",
+    "angulos_articulares": "deg",
+    "velocidad_articular": "deg/s",
+    "tiempo": "s"
+  },
+  "csv_asociado": "../04_hito3_4_control_real/01_docs/04_resultados/01_sesion_evidencia/muestras_corazon_yz_40mm.csv",
+  "resumen_json": "../04_hito3_4_control_real/01_docs/04_resultados/01_sesion_evidencia/resumen_corazon_yz_40mm.json",
+  "entrada_bitacora": "../04_hito3_4_control_real/01_docs/05_bitacora/06_bitacora.md"
+}

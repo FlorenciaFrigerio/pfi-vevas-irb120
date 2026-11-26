@@ -1,0 +1,137 @@
+name: Verificación integral VEVAS
+
+on:
+  push:
+    branches: [main, dev, "feature/**"]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  enlaces:
+    name: Enlaces y estructura documental
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verificar enlaces internos Markdown
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, sys, urllib.parse
+
+          raiz = pathlib.Path(".").resolve()
+          patron = re.compile(r'!?\[[^\]]*\]\(([^)]+)\)')
+          rotos = []
+
+          for md in sorted(raiz.rglob("*.md")):
+              texto = md.read_text(encoding="utf-8")
+              # Ignorar bloques de codigo cercados
+              texto_limpio = re.sub(r"```.*?```|~~~.*?~~~", "", texto, flags=re.S)
+              for m in patron.finditer(texto_limpio):
+                  raw = m.group(1).strip().split()[0].strip("<>")
+                  if not raw or raw.startswith(("http://", "https://", "mailto:", "#", "conversation://")):
+                      continue
+                  ruta_rel = urllib.parse.unquote(raw.split("#", 1)[0])
+                  if not ruta_rel:
+                      continue
+                  destino = (md.parent / ruta_rel).resolve()
+                  if not destino.exists():
+                      rotos.append(f"{md.relative_to(raiz)} -> {raw}")
+
+          if rotos:
+              print("Enlaces rotos detectados:")
+              for r in rotos:
+                  print("  -", r)
+              sys.exit(1)
+          print("OK: 0 enlaces internos rotos en toda la documentacion.")
+          PY
+
+  python-y-notebook:
+    name: Suite Python (pytest) y Notebook Hito 2
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Instalar dependencias científicas y de prueba
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r 04_hito3_4_control_real/02_vevas_studio/requirements.txt
+          python -m pip install pytest matplotlib jupyter nbconvert ipykernel
+
+      - name: Verificar identidad de modelos URDF y módulos de Hito 1 y 2
+        working-directory: 05_ros2_irb120_description/04_scripts
+        run: |
+          python compare_urdf.py
+          python fk_irb120.py
+          python pieper.py
+          python jacobiano.py
+          python lspb.py
+          python singularidad.py
+          python dinamica_1r.py
+          python demo_recorrido.py --seguido
+
+      - name: Ejecutar Notebook completo del Hito 2
+        working-directory: 03_hito2_cinematica_dinamica/02_notebooks
+        run: |
+          python -m nbconvert --to notebook --execute 01_Hito2_VEVAS.ipynb --output /tmp/01_Hito2_VEVAS_verificado.ipynb
+
+      - name: Ejecutar suite completa de VEVAS Studio con pytest
+        working-directory: 04_hito3_4_control_real/02_vevas_studio
+        run: |
+          python -m pytest 06_tests -q
+
+  javascript:
+    name: Pruebas JavaScript (Node.js)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Ejecutar suite de pruebas web (cálculos, orientación y velocidad)
+        working-directory: 04_hito3_4_control_real/02_vevas_studio
+        run: |
+          node --test 06_tests/*.mjs
+
+  ros2-colcon:
+    name: Compilación ROS 2 Jazzy (colcon build)
+    runs-on: ubuntu-24.04
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Compilar paquete irb120_description con colcon
+        shell: bash
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          mkdir -p /tmp/ros2_ws/src
+          cp -r 05_ros2_irb120_description /tmp/ros2_ws/src/irb120_description
+          cd /tmp/ros2_ws
+          colcon build --packages-select irb120_description --event-handlers console_direct+
+          source install/setup.bash
+          ros2 pkg prefix irb120_description
+          test -f "$(ros2 pkg prefix irb120_description)/share/irb120_description/01_urdf/irb120.urdf"
+          python3 -m py_compile src/irb120_description/02_launch/display.launch.py

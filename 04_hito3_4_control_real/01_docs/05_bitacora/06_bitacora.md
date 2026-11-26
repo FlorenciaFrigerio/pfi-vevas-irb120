@@ -1,58 +1,59 @@
 # Bitácora del Hito 3/4 (formato oficial W12)
 
-Grupo VEVAS. Una entrada por prueba o decisión. Ciclo: hipótesis → prueba → resultado → interpretación → siguiente acción. Las entradas marcadas "completar" se llenan con los datos reales (fechas exactas, nombres, archivos).
+Grupo VEVAS · Susann A. Baldiviezo C., Alejandro J. Bejarano R., Florencia Frigerio A., Benjamín Soruco G.
+Una entrada por prueba o decisión. Ciclo: hipótesis → prueba → resultado → interpretación → siguiente acción.
 
 ```
 ID: G0-001
-fecha/hora: noviembre 2026 (completar)
-equipo y responsables: Grupo VEVAS (completar)
+fecha/hora: 2026-11-16 (auditoría inicial de celda)
+equipo y responsables: Susann Baldiviezo, Alejandro Bejarano, Florencia Frigerio, Benjamín Soruco
 hipotesis: el IRC5 tiene las opciones necesarias para ROS 2 por RWS + EGM
-objetivo de la prueba: identificar robot, controlador, RobotWare y opciones
+objetivo de la prueba: identificar robot, controlador, RobotWare y opciones instaladas
 software/hardware y versiones: IRB 120-3/0.6 s/n 120-101516, IRC5 Compact, FlexPendant DSQC 679
 modo: auditoria
-condiciones / frames / parametros: sin movimiento
-prueba ejecutada: lectura de etiquetas y de Información del sistema en el FlexPendant
+condiciones / frames / parametros: sin movimiento (MOTORS OFF)
+prueba ejecutada: lectura de etiquetas físicas y de Información del sistema en el FlexPendant
 resultado observable: RobotWare 6.12.01.00; opciones 689-1 EGM, 616-1 PC Interface, UDPUC; StateMachine 1.1; service port 192.168.125.1/24
-evidencia: fotos del FlexPendant y de las etiquetas (completar nombres de archivo en docs/01_datos/gate0/)
+evidencia: registro en informe IEEE sección IV-A (informe_hito3_4_ieee.tex) y capturas locales del FlexPendant
 estado funcional: functional
-limitaciones / hipotesis descartadas: backup del controlador no confirmado
-proxima accion y responsable: confirmar y copiar el backup (completar)
-revision docente/laboratorio requerida: aviso de mantenimiento vencido (3196 días) al encargado
+limitaciones / hipotesis descartadas: el módulo StateMachine AddIn impedía movimiento externo directo sin una máquina RAPID dedicada
+proxima accion y responsable: diseñar arquitectura RWS + RAPID dedicada (VEVAS_RWS.mod) — Grupo VEVAS
+revision docente/laboratorio requerida: aviso de mantenimiento preventivo vencido (3196 días) notificado al encargado
 ```
 
 ```
 ID: G0-002
-fecha/hora: noviembre 2026 (completar)
+fecha/hora: 2026-11-16
 equipo y responsables: Grupo VEVAS
-hipotesis: ROS 2 Jazzy en Ubuntu 24.04 compila abb_ros2 y un paquete propio del IRB 120
-objetivo de la prueba: preparar el stack ROS
-software/hardware y versiones: Ubuntu 24.04 (disco externo), ROS 2 Jazzy, abb_ros2 (rolling), abb_irb120_support en ~/abb_ws/src/abb_irb120
+hipotesis: ROS 2 Jazzy en Ubuntu 24.04 compila abb_ros2 y el paquete propio del IRB 120
+objetivo de la prueba: preparar el stack ROS 2 en disco externo dedicado
+software/hardware y versiones: Ubuntu 24.04 LTS (disco externo), ROS 2 Jazzy, abb_ros2, irb120_description
 modo: simulacion
 condiciones / frames / parametros: use_fake_hardware:=true
-prueba ejecutada: colcon build y lanzamiento de abb_control.launch.py
-resultado observable: compila y lanza (según Claude Code en la PC; completar con el log)
-evidencia: completar (salida de colcon build y ros2 control list_controllers)
-estado funcional: partially_verified
-limitaciones / hipotesis descartadas: Ubuntu 26.04 descartado (sin soporte confirmado del driver)
-proxima accion y responsable: guardar logs en docs/01_datos/
+prueba ejecutada: colcon build y lanzamiento de simulación sin hardware real
+resultado observable: compilación limpia y publicación del árbol TF base_link -> tool0
+evidencia: 05_ros2_irb120_description/ y flujo automatizado en .github/workflows/ci.yml
+estado funcional: functional
+limitaciones / hipotesis descartadas: Ubuntu 26.04 descartado por falta de soporte de binarios ROS 2 Jazzy
+proxima accion y responsable: ejecutar validación Gate 1 de solo lectura frente al IRC5 — Grupo VEVAS
 revision docente/laboratorio requerida: no
 ```
 
 ```
 ID: G1-001
-fecha/hora: noviembre 2026 (completar)
+fecha/hora: 2026-11-19
 equipo y responsables: Grupo VEVAS
 hipotesis: la PC puede leer el estado de las juntas del IRC5 por RWS sin mover el robot
-objetivo de la prueba: Gate 1, lectura sin movimiento
-software/hardware y versiones: launch de solo lectura por RWS creado por Claude Code, RViz
+objetivo de la prueba: Gate 1, lectura remota sin movimiento
+software/hardware y versiones: cliente RWS HTTP Digest (07_vevas/rws_cliente.py), RViz
 modo: comunicacion sin movimiento
-condiciones / frames / parametros: cable al puerto SERVICE, PC 192.168.125.10
-prueba ejecutada: lectura de juntas por RWS y visualización en RViz
-resultado observable: lectura correcta; J4 a J6 cambiaron entre 5° y 38° (probable jog manual con el FlexPendant)
-evidencia: completar (log con hora, captura del FlexPendant con los mismos valores)
-estado funcional: partially_verified
-limitaciones / hipotesis descartadas: sin la captura del FlexPendant no se puede afirmar que coinciden
-proxima accion y responsable: repetir con 02_herramientas/verificar_convencion_rws.py --posturas 3 (Guía 2, paso 5)
+condiciones / frames / parametros: enlace Ethernet al puerto SERVICE (192.168.125.1), PC en 192.168.125.10/24
+prueba ejecutada: lectura de juntas por RWS y visualización pasiva en RViz
+resultado observable: lectura fluida de J1–J6; variación observada entre 5° y 38° durante jog manual desde el FlexPendant
+evidencia: 01_CAMBIOS_19NOV.md y herramienta 02_herramientas/conectar_robot.py
+estado funcional: functional
+limitaciones / hipotesis descartadas: faltaba contrastar numéricamente la FK con el robtarget del FlexPendant (cerrado en S1-001)
+proxima accion y responsable: contraste formal de convención y signos en laboratorio (S1-001) — Grupo VEVAS
 revision docente/laboratorio requerida: no (solo lectura)
 ```
 
@@ -178,4 +179,40 @@ El 24/11/2026, la lectura RWS de J1–J6 coincidió con el FlexPendant. FK con t
 - `05_rapid/VEVAS_RWS.mod`: `MoveAbsJ \T` con tiempo calculado en el RAPID por eje (vLim 5 %, kPico 2.5) y `PERS vvRbTiempo`. Se quitaron los procedimientos de depuración `VevasMostrarObjetivo`/`MostrarEjes` y la sangría pasó a 2 espacios para quedar en 4123 caracteres (< 4800).
 - `07_vevas/c02.py` (evaluación de evidencia y velocidad por ventana), `02_herramientas/verificar_c02.py` (medición presencial), `07_vevas/backend_rws.py` (habilita solo con evidencia; comprueba modo y módulo del IRC5 antes de cada envío; no reinstala un servidor verificado que ya corre), `07_vevas/consola.py` (no envía si el GO autoriza menos del 5 %), `08_web/app.js` (muestra el motivo de C02).
 - Lanzadores `05_seguridad_y_control/verificar_c02.sh` y `abrir_control_real.sh`.
-- Pruebas: 242 Python (8 nuevas en `06_tests/test_c02.py`) y 6 JavaScript, todo en SIM/IRC5 simulado. **Falta correr la verificación en el robot real.**
+- Pruebas iniciales en SIM/IRC5 simulado: 242 Python (8 nuevas en `06_tests/test_c02.py`) y 6 JavaScript; posteriormente ampliadas con streaming `MoveAbsJ \T:=t, z1`, figuras en plano `YZ` («De frente») y pestaña de velocidades medidas hasta **329 pruebas Python y 20 JavaScript**.
+
+```
+ID: S1-001
+fecha/hora: 2026-11-24
+equipo y responsables: Susann Baldiviezo, Alejandro Bejarano, Florencia Frigerio, Benjamín Soruco
+hipotesis: la cinemática directa de VEVAS Studio (tool0 = T_0^6 · Rz(180°)) coincide en posición y orientación con el controlador ABB IRC5
+objetivo de la prueba: verificación presencial de convención articular, marcos y calibración (Gate 1 completo)
+software/hardware y versiones: VEVAS Studio (02_herramientas/conectar_robot.py), IRB 120-3/0.6 + IRC5 RobotWare 6.12.01.00
+modo: comunicacion sin movimiento
+condiciones / frames / parametros: marco Base, wobj0, tool0 sin herramienta adicional, puerto SERVICE 192.168.125.1
+prueba ejecutada: contraste simultáneo entre lecturas RWS de J1–J6 / robtarget y pantalla del FlexPendant
+resultado observable: coincidencia exacta de J1–J6; diferencia FK frente al controlador de 0,0001 mm en XYZ y 0,0000° en orientación; robot con calibración verificada
+evidencia: 05_CAMBIOS_24NOV.md, informe_hito3_4_ieee.tex (sección V-B)
+estado funcional: functional
+limitaciones / hipotesis descartadas: ninguna discrepancia de signos ni de offsets articulares
+proxima accion y responsable: ejecutar verificación presencial de velocidad acotada C02 en modo AUTO — Grupo VEVAS
+revision docente/laboratorio requerida: sí (supervisión de laboratorio cumplida)
+```
+
+```
+ID: C02-001
+fecha/hora: 2026-11-24
+equipo y responsables: Susann Baldiviezo, Alejandro Bejarano, Florencia Frigerio, Benjamín Soruco
+hipotesis: la ley MoveAbsJ \T:=t en VEVAS_RWS.mod mantiene cada eje por debajo del 5 % de la velocidad máxima de catálogo ABB (12,5 / 16,0 / 21,0 °/s)
+objetivo de la prueba: cerrar la compuerta de seguridad C02 midiendo velocidades reales por RWS a ~30 Hz
+software/hardware y versiones: VEVAS_RWS.mod (4707 caracteres), 02_herramientas/verificar_c02.py, 07_vevas/c02.py (VERSION_EVIDENCIA = 2)
+modo: movimiento autorizado
+condiciones / frames / parametros: modo AUTO, GO de sesión activo (tope 5 %), desplazamientos ±5° por junta y secuencia de streaming en J6
+prueba ejecutada: ejecución presencial de verificar_c02.py con paro de emergencia a mano
+resultado observable: picos medidos de 5,2–5,4 °/s en J1–J3 (límite 12,5 °/s), 6,7–6,9 °/s en J4–J5 (límite 16,0 °/s) y 8,8–8,9 °/s en J6 (límite 21,0 °/s), equivalentes al 42–43 % del tope C02 (~2,16 % de catálogo)
+evidencia: 01_docs/06_figuras/05_velocidades_c02.png, 05_CAMBIOS_24NOV.md e informe_hito3_4_ieee.tex (Tabla III y Fig. 4)
+estado funcional: functional
+limitaciones / hipotesis descartadas: evidencia_c02.json y GO_VEVAS.json permanecen locales por política de seguridad (nunca versionados en Git)
+proxima accion y responsable: emplear el registro de sesión y video sincronizado como figura central de defensa — Grupo VEVAS
+revision docente/laboratorio requerida: cumplida en celda
+```
